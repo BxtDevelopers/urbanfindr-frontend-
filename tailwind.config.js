@@ -1,0 +1,1 @@
+export default { content: ['./app/**/*.{js,jsx}', './components/**/*.{js,jsx}'], theme: { extend: { fontSize: { xs: ['14px', '21px'], sm: ['16px', '24px'], base: ['17px', '27px'] }, colors: { forest: '#163e35', lime: '#d8edb3', cream: '#f7f8f3' } } }, plugins: [] };

@@ -1,0 +1,121 @@
+[
+  {
+    "name": "hero-home",
+    "path": "/photos/hero-home.jpg",
+    "source": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1440&q=82",
+    "description": "Contemporary house exterior",
+    "bytes": 347922
+  },
+  {
+    "name": "house-1",
+    "path": "/photos/house-1.jpg",
+    "source": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1440&q=82",
+    "description": "Modern house with landscaped garden",
+    "bytes": 236435
+  },
+  {
+    "name": "house-2",
+    "path": "/photos/house-2.jpg",
+    "source": "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1440&q=82",
+    "description": "Residential home exterior",
+    "bytes": 350406
+  },
+  {
+    "name": "apartment-1",
+    "path": "/photos/apartment-1.jpg",
+    "source": "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1440&q=82",
+    "description": "Residential interior",
+    "bytes": 229497
+  },
+  {
+    "name": "living-1",
+    "path": "/photos/living-1.jpg",
+    "source": "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1440&q=82",
+    "description": "Living room",
+    "bytes": 296804
+  },
+  {
+    "name": "living-2",
+    "path": "/photos/living-2.jpg",
+    "source": "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1440&q=82",
+    "description": "Contemporary living space",
+    "bytes": 262865
+  },
+  {
+    "name": "kitchen-1",
+    "path": "/photos/kitchen-1.jpg",
+    "source": "https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?auto=format&fit=crop&w=1440&q=82",
+    "description": "Kitchen interior",
+    "bytes": 231989
+  },
+  {
+    "name": "kitchen-2",
+    "path": "/photos/kitchen-2.jpg",
+    "source": "https://images.unsplash.com/photo-1565538810643-b5bdb714032a?auto=format&fit=crop&w=1440&q=82",
+    "description": "Modular kitchen",
+    "bytes": 434798
+  },
+  {
+    "name": "bedroom-1",
+    "path": "/photos/bedroom-1.jpg",
+    "source": "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1440&q=82",
+    "description": "Furnished bedroom",
+    "bytes": 317211
+  },
+  {
+    "name": "bedroom-2",
+    "path": "/photos/bedroom-2.jpg",
+    "source": "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1440&q=82",
+    "description": "Furnished bedroom with warm finishes",
+    "bytes": 272653
+  },
+  {
+    "name": "bedroom-3",
+    "path": "/photos/bedroom-3.jpg",
+    "source": "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1440&q=82",
+    "description": "Bedroom interior",
+    "bytes": 193018
+  },
+  {
+    "name": "wardrobe-1",
+    "path": "/photos/wardrobe-1.jpg",
+    "source": "https://images.unsplash.com/photo-1558997519-83ea9252edf8?auto=format&fit=crop&w=1440&q=82",
+    "description": "Wardrobe and clothing storage",
+    "bytes": 322638
+  },
+  {
+    "name": "wardrobe-2",
+    "path": "/photos/wardrobe-2.jpg",
+    "source": "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1440&q=82",
+    "description": "Bedroom storage and furniture",
+    "bytes": 221183
+  },
+  {
+    "name": "office-1",
+    "path": "/photos/office-1.jpg",
+    "source": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1440&q=82",
+    "description": "Contemporary office workspace",
+    "bytes": 210488
+  },
+  {
+    "name": "office-2",
+    "path": "/photos/office-2.jpg",
+    "source": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1440&q=82",
+    "description": "Office workspace",
+    "bytes": 223684
+  },
+  {
+    "name": "builder-1",
+    "path": "/photos/builder-1.jpg",
+    "source": "https://images.unsplash.com/photo-1460317442991-0ec209397118?auto=format&fit=crop&w=1440&q=82",
+    "description": "Multi-storey residential architecture",
+    "bytes": 231193
+  },
+  {
+    "name": "commercial-1",
+    "path": "/photos/commercial-1.jpg",
+    "source": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1440&q=82",
+    "description": "Commercial building exterior",
+    "bytes": 309731
+  }
+]
