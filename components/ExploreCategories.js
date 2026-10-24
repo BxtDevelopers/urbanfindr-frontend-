@@ -66,16 +66,16 @@ export default function ExploreCategories() {
         </div>
       </div>
 
-      {/* Desktop / Laptop Layout: Compact, Sleek Cards */}
+      {/* Desktop / Laptop Layout: Compact, Sleek Cards with Full Text Visibility */}
       <div
         ref={scrollRef}
-        className="hidden sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-[repeat(13,minmax(0,1fr))] gap-2 sm:gap-2.5 xl:gap-2"
+        className="hidden sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-[repeat(13,minmax(0,1fr))] gap-2 sm:gap-2.5 xl:gap-2 items-stretch"
       >
         {serviceCategories.map((cat) => (
           <Link
             key={cat.slug}
             href={cat.href}
-            className="group relative flex flex-col items-center justify-center h-[76px] sm:h-[80px] p-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50/70 hover:border-forest/50 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-center w-full"
+            className="group relative flex flex-col items-center justify-center min-h-[84px] sm:min-h-[88px] py-2 px-1 sm:px-1.5 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50/70 hover:border-forest/50 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-center w-full"
           >
             {/* Live Indicator Dot for active categories */}
             {cat.isLive && (
@@ -86,26 +86,26 @@ export default function ExploreCategories() {
             )}
 
             {/* Vibrant Colored Icon */}
-            <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <CategoryIcon name={cat.iconName} size={25} />
+            <div className="w-8 h-8 flex items-center justify-center shrink-0 mb-1 group-hover:scale-110 transition-transform duration-200">
+              <CategoryIcon name={cat.iconName} size={24} />
             </div>
 
-            {/* Category Name */}
-            <span className="text-[11px] sm:text-[11.5px] font-semibold text-stone-700 group-hover:text-forest line-clamp-1 leading-tight mt-1 max-w-[90px]">
-              {cat.shortTitle || cat.label}
+            {/* Category Name - 100% Fully Visible Without Clipping */}
+            <span className="text-[10.5px] sm:text-[11px] font-semibold text-stone-700 group-hover:text-forest leading-[1.2] text-center w-full px-0.5 break-words">
+              {cat.label}
             </span>
           </Link>
         ))}
       </div>
 
-      {/* Mobile-Optimized 3-Column Compact Grid */}
+      {/* Mobile-Optimized 3-Column Compact Grid with Full Text Visibility */}
       <div className="sm:hidden">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 items-stretch">
           {displayedMobileCategories.map((cat) => (
             <Link
               key={cat.slug}
               href={cat.href}
-              className="group relative flex flex-col items-center justify-center h-[74px] p-2 rounded-xl border border-stone-200/90 bg-white active:scale-95 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all text-center"
+              className="group relative flex flex-col items-center justify-center min-h-[82px] py-2 px-1.5 rounded-xl border border-stone-200/90 bg-white active:scale-95 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all text-center"
             >
               {/* Live Dot */}
               {cat.isLive && (
@@ -115,12 +115,12 @@ export default function ExploreCategories() {
               )}
 
               {/* Colorful Icon */}
-              <div className="w-8 h-8 flex items-center justify-center">
-                <CategoryIcon name={cat.iconName} size={24} />
+              <div className="w-8 h-8 flex items-center justify-center shrink-0 mb-1">
+                <CategoryIcon name={cat.iconName} size={23} />
               </div>
 
-              {/* Category Name */}
-              <span className="text-[11px] font-semibold text-stone-800 line-clamp-1 leading-tight mt-1 max-w-[95%]">
+              {/* Category Name - Fully Visible */}
+              <span className="text-[10.5px] font-semibold text-stone-800 leading-[1.2] text-center w-full px-0.5 break-words">
                 {cat.label}
               </span>
             </Link>
