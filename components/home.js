@@ -29,6 +29,7 @@ import { PropertyCard, ProjectCard, SectionTitle, State, Image } from './ui';
 import { CityCards } from './city-discovery';
 import { categories, categoryFor } from '@/lib/catalog';
 import ExploreCategories from './ExploreCategories';
+import BuilderProjectsBanner from './BuilderProjectsBanner';
 import { cities, money } from '@/lib/format';
 
 export default function HomePage() {
@@ -222,6 +223,9 @@ export default function HomePage() {
         ))}
       </div>
     </section>
+
+    {/* Builder Projects Investment Showcase (directly after Featured Properties) */}
+    <BuilderProjectsBanner />
 
     {/* 2. Verified Properties Section */}
     <section className="wrap section !pt-4" id="verified-properties">
