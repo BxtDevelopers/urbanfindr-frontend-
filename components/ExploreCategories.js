@@ -29,11 +29,11 @@ export default function ExploreCategories() {
 
         <Link
           href="/categories"
-          className="text-[11px] sm:text-xs font-medium text-forest hover:text-emerald-800 inline-flex items-center gap-1 group whitespace-nowrap"
+          className="text-[11px] sm:text-xs font-semibold text-forest hover:text-emerald-800 inline-flex items-center gap-1 group whitespace-nowrap"
         >
           <span className="hidden sm:inline">View All Categories</span>
           <span className="sm:hidden">View All</span>
-          <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+          <ArrowRight size={12} strokeWidth={2.25} className="group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
 
@@ -141,7 +141,7 @@ export default function ExploreCategories() {
         <button
           type="button"
           onClick={() => setMobileExpanded(!mobileExpanded)}
-          className="w-auto mx-auto mt-2.5 py-1 px-3 text-[10.5px] font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-md flex items-center justify-center gap-1 transition"
+          className="w-auto mx-auto mt-2.5 py-1 px-3 text-[10.5px] font-semibold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-md flex items-center justify-center gap-1 transition"
         >
           {mobileExpanded ? (
             <>
