@@ -29,10 +29,11 @@ export default function ExploreCategories() {
 
         <Link
           href="/categories"
-          className="text-xs sm:text-sm font-semibold text-forest hover:text-emerald-800 inline-flex items-center gap-1 group whitespace-nowrap"
+          className="text-[11px] sm:text-xs font-medium text-forest hover:text-emerald-800 inline-flex items-center gap-1 group whitespace-nowrap"
         >
-          <span>View All Categories</span>
-          <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+          <span className="hidden sm:inline">View All Categories</span>
+          <span className="sm:hidden">View All</span>
+          <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
 
@@ -140,17 +141,17 @@ export default function ExploreCategories() {
         <button
           type="button"
           onClick={() => setMobileExpanded(!mobileExpanded)}
-          className="w-full mt-2.5 py-1.5 px-3 text-[11.5px] font-semibold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg flex items-center justify-center gap-1.5 transition"
+          className="w-auto mx-auto mt-2.5 py-1 px-3 text-[10.5px] font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-md flex items-center justify-center gap-1 transition"
         >
           {mobileExpanded ? (
             <>
               <span>Show less</span>
-              <ChevronUp size={13} />
+              <ChevronUp size={12} />
             </>
           ) : (
             <>
               <span>View all {serviceCategories.length} categories</span>
-              <ChevronDown size={13} />
+              <ChevronDown size={12} />
             </>
           )}
         </button>
