@@ -762,7 +762,7 @@ export function Header() {
 export function Footer() {
   return (
     <footer className="bg-forest text-white">
-      <div className="wrap max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 py-12">
+      <div className="wrap mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 py-12">
         <div className="col-span-2">
           <Link
             href="/"
@@ -811,6 +811,9 @@ export function Footer() {
             </Link>
             <Link href="/interiors" className="block hover:text-lime">
               Home interiors
+            </Link>
+            <Link href="/categories" className="block hover:text-lime">
+              All categories & services
             </Link>
           </div>
         </div>
@@ -877,7 +880,7 @@ export function Footer() {
       </div>
 
       {/* Popular Localities Bar */}
-      <div className="wrap border-t border-white/10 py-6 max-w-7xl mx-auto">
+      <div className="wrap border-t border-white/10 py-6 mx-auto">
         <p className="text-xs font-semibold text-white/60 mb-3 tracking-wider uppercase">Popular Localities</p>
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/60">
           <Link href="/properties?q=Indiranagar" className="hover:text-lime">Indiranagar</Link>
@@ -906,7 +909,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="wrap border-t border-white/20 py-4 text-xs text-white/40 flex flex-col sm:flex-row justify-between items-center max-w-7xl mx-auto">
+      <div className="wrap border-t border-white/20 py-4 text-xs text-white/40 flex flex-col sm:flex-row justify-between items-center mx-auto">
         <span>
           © {new Date().getFullYear()} UrbanFinder. Built for better living.
         </span>

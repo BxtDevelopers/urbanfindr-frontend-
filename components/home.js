@@ -28,6 +28,10 @@ import { useData } from './providers';
 import { PropertyCard, ProjectCard, SectionTitle, State, Image } from './ui';
 import { CityCards } from './city-discovery';
 import { categories, categoryFor } from '@/lib/catalog';
+import ExploreCategories from './ExploreCategories';
+import BuilderProjectsBanner from './BuilderProjectsBanner';
+import VerifiedPropertiesCarousel from './VerifiedPropertiesCarousel';
+import FeaturedProfessionals from './FeaturedProfessionals';
 import { cities, money } from '@/lib/format';
 
 export default function HomePage() {
@@ -37,7 +41,7 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState(null);
 
   const featured = useData(`properties?featured=true&limit=3${featuredPurpose ? '&purpose=' + featuredPurpose : ''}`);
-  const verified = useData('properties?verified=true&limit=3');
+  const verified = useData('properties?verified=true&limit=12');
   const latest = useData('properties?limit=6');
   const discovery = useData('discovery');
   const projects = useData('projects?limit=3');
@@ -188,25 +192,8 @@ export default function HomePage() {
       </form>
     </section>
 
-    {/* Category Shortcuts */}
-    <section className="wrap category-shortcuts !pt-28" aria-label="Explore property categories">
-      {[
-        [House, 'Buy a home', '/buy', 'A place to call your own'],
-        [KeyRound, 'Rent a home', '/rent', 'Move into your next chapter'],
-        [BedDouble, 'PG / Co-living', '/pg', 'Find your people and your place'],
-        [BriefcaseBusiness, 'Commercial', '/commercial', 'Make room for your business'],
-        [Plus, 'Post property', '/post-property', 'List directly. Start for free.']
-      ].map(([Icon, label, href, subtitle]) => (
-        <Link key={href} href={href}>
-          <span className="round-icon"><Icon size={22} /></span>
-          <div>
-            <strong>{label}</strong>
-            <p>{subtitle}</p>
-          </div>
-          <ArrowUpRight size={15} />
-        </Link>
-      ))}
-    </section>
+    {/* Explore by Category Section */}
+    <ExploreCategories />
 
     {/* 1. Featured Properties */}
     <section className="wrap section !pt-8" id="featured-properties">
@@ -239,22 +226,21 @@ export default function HomePage() {
       </div>
     </section>
 
-    {/* 2. Verified Properties Section */}
+    {/* Builder Projects Investment Showcase (directly after Featured Properties) */}
+    <BuilderProjectsBanner />
+
+    {/* 2. Verified Properties Section (Seamless Infinite Carousel) */}
     <section className="wrap section !pt-4" id="verified-properties">
-      <SectionTitle
-        eyebrow="REVIEWED BY OUR TEAM"
-        title="Verified direct owner properties"
-        description="All listings are thoroughly reviewed for authentic ownership, pricing, and clear documentation."
-        href="/properties?verified=true"
-        link="Browse all verified homes"
+      <VerifiedPropertiesCarousel
+        items={verified.data?.items}
+        loading={verified.loading}
+        error={verified.error}
+        total={verified.data?.total}
       />
-      <State loading={verified.loading} error={verified.error} empty={verified.data?.total === 0} />
-      <div className="grid md:grid-cols-3 gap-6">
-        {!verified.loading && verified.data?.items?.map(item => (
-          <PropertyCard key={item._id} item={item} />
-        ))}
-      </div>
     </section>
+
+    {/* 3. Featured Professionals (Verified Experts) Section */}
+    <FeaturedProfessionals />
 
     {/* Popular Cities */}
     <section className="soft-section" id="explore-by-city">

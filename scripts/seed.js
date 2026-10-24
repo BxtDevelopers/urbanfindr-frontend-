@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { pathToFileURL } from 'node:url';
 import { db } from '../lib/db.js';
-import { User, Property, Project, Design, Thread, Message, Visit, Lead, Notification, SavedSearch } from '../lib/models.js';
+import { User, Property, Project, Design, Thread, Message, Visit, Lead, Notification, SavedSearch, ServiceProvider } from '../lib/models.js';
+import { initialServiceProviders } from '../lib/serviceProviders.js';
 import { estimateInterior } from '../lib/validation.js';
 import { propertyGallery, projectGallery, designPhoto } from '../lib/media.js';
 
@@ -363,11 +364,17 @@ export async function seed() {
     alertEnabled: true
   });
 
-  for (const Model of [User, Property, Project, Design, Thread, Message, Visit, Lead, Notification, SavedSearch]) {
+  await ServiceProvider.deleteMany({});
+  const seededProviders = await ServiceProvider.insertMany(initialServiceProviders.map(p => {
+    const { _id, ...rest } = p;
+    return rest;
+  }));
+
+  for (const Model of [User, Property, Project, Design, Thread, Message, Visit, Lead, Notification, SavedSearch, ServiceProvider]) {
     await Model.init();
   }
 
-  console.log(`Seed complete: 4 accounts, ${homes.length} properties (10 per city across 8 cities), ${projects.length} builder projects, and 10 designs.`);
+  console.log(`Seed complete: 4 accounts, ${homes.length} properties, ${projects.length} builder projects, 10 designs, and ${seededProviders.length} service professionals.`);
   return { users, homes, projects, designs };
 }
 
