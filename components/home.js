@@ -28,6 +28,7 @@ import { useData } from './providers';
 import { PropertyCard, ProjectCard, SectionTitle, State, Image } from './ui';
 import { CityCards } from './city-discovery';
 import { categories, categoryFor } from '@/lib/catalog';
+import ExploreCategories from './ExploreCategories';
 import { cities, money } from '@/lib/format';
 
 export default function HomePage() {
@@ -188,25 +189,8 @@ export default function HomePage() {
       </form>
     </section>
 
-    {/* Category Shortcuts */}
-    <section className="wrap category-shortcuts !pt-28" aria-label="Explore property categories">
-      {[
-        [House, 'Buy a home', '/buy', 'A place to call your own'],
-        [KeyRound, 'Rent a home', '/rent', 'Move into your next chapter'],
-        [BedDouble, 'PG / Co-living', '/pg', 'Find your people and your place'],
-        [BriefcaseBusiness, 'Commercial', '/commercial', 'Make room for your business'],
-        [Plus, 'Post property', '/post-property', 'List directly. Start for free.']
-      ].map(([Icon, label, href, subtitle]) => (
-        <Link key={href} href={href}>
-          <span className="round-icon"><Icon size={22} /></span>
-          <div>
-            <strong>{label}</strong>
-            <p>{subtitle}</p>
-          </div>
-          <ArrowUpRight size={15} />
-        </Link>
-      ))}
-    </section>
+    {/* Explore by Category Section */}
+    <ExploreCategories />
 
     {/* 1. Featured Properties */}
     <section className="wrap section !pt-8" id="featured-properties">

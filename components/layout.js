@@ -812,6 +812,9 @@ export function Footer() {
             <Link href="/interiors" className="block hover:text-lime">
               Home interiors
             </Link>
+            <Link href="/categories" className="block hover:text-lime">
+              All categories & services
+            </Link>
           </div>
         </div>
 
