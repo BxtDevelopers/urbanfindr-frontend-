@@ -14,13 +14,16 @@ import {
   Sparkles,
   Calendar,
   Building2,
-  ShieldCheck
+  ShieldCheck,
+  TrendingUp,
+  Globe,
+  Award
 } from 'lucide-react';
 
 const PROPERTIES = [
   {
     id: 'prop-1',
-    badge: 'Ultra Luxury Penthouse',
+    badge: 'Ultra Luxury High-Rise',
     title: 'The Lumina Sky Crest',
     builder: 'Prestige Group & UrbanFinder Direct',
     location: 'Banjara Hills, Hyderabad',
@@ -31,13 +34,13 @@ const PROPERTIES = [
     sqft: '6,050 sq.ft',
     handover: 'Q4 2027',
     description:
-      'Sculptural modern tower boasting private cantilevered infinity sky decks, double-height ceilings, and panoramic skyline vistas directly from verified builders.',
+      'Sculptural modern high-rise tower boasting private cantilevered infinity sky decks, double-height ceilings, and panoramic skyline vistas directly from verified builders.',
     cutoutImage: '/images/towers/lumina-tower-cutout.png',
-    alt: 'Lumina Sky Crest High-rise',
+    alt: 'Lumina Sky Crest High-rise Skyscraper',
   },
   {
     id: 'prop-2',
-    badge: 'Waterfront Gated Villa',
+    badge: 'Premium Waterfront Tower',
     title: 'Aura Marina Spire',
     builder: 'Sobha Developers & UrbanFinder Verified',
     location: 'Financial District, Hyderabad',
@@ -50,7 +53,7 @@ const PROPERTIES = [
     description:
       'Curvilinear architectural masterwork featuring energy-efficient acoustic façade glass, private high-speed biometric elevators, and tranquil lakeside views.',
     cutoutImage: '/images/towers/aura-spire-cutout.png',
-    alt: 'Aura Marina Spire',
+    alt: 'Aura Marina Spire Luxury Tower',
   },
 ];
 
@@ -68,31 +71,31 @@ export default function BuilderProjectsBanner() {
   const currentProp = PROPERTIES[currentIndex];
 
   return (
-    <section className="wrap relative w-full !pt-24 !pb-12 overflow-visible" aria-label="Builder Projects Showcase">
+    <section className="wrap relative w-full !pt-32 sm:!pt-36 lg:!pt-44 !pb-14 overflow-visible" aria-label="Builder Projects Showcase">
       {/* 
-        CRITICAL: Parent section has extra vertical padding (`!pt-24`)
-        so the building popping out the top never gets truncated! 
+        CRITICAL: Parent section has generous top clearance (!pt-36 to !pt-44)
+        so the long building protruding 25% out of the top has ample breathing room! 
       */}
 
       {/* Main Single Card Per View Container */}
       <div className="relative w-full overflow-visible">
         {/* The Card Box (70% Left Details, 30% Right Building) with UrbanFinder Forest Green Theme */}
-        <div className="relative w-full min-h-[480px] lg:h-[500px] bg-gradient-to-r from-[#0f2e26] via-[#153e34] to-[#0c2620] border border-[#2b6858]/60 rounded-3xl p-6 md:p-10 lg:p-12 backdrop-blur-xl shadow-[0_24px_60px_rgba(15,46,38,0.35)] flex flex-col md:flex-row justify-between items-stretch overflow-visible group">
+        <div className="relative w-full min-h-[500px] lg:min-h-[520px] bg-gradient-to-r from-[#0d2a23] via-[#143a31] to-[#0a221c] border border-[#276454]/60 rounded-3xl p-6 sm:p-8 md:p-10 lg:p-12 backdrop-blur-xl shadow-[0_24px_60px_rgba(10,34,28,0.45)] flex flex-col md:flex-row justify-between items-stretch overflow-visible group">
           
           {/* Subtle Ambient Radial Glows behind the card */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-[#d8edb3]/15 via-emerald-700/10 to-[#d8edb3]/10 rounded-3xl blur-2xl opacity-60 pointer-events-none" />
 
-          {/* Concentric Ambient Light Rings (Brand motif) */}
+          {/* Concentric Ambient Light Rings (Brand motif inspired by reference design) */}
           <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
-            <div className="absolute right-[5%] lg:right-[15%] top-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full border border-white/10" />
-            <div className="absolute right-[5%] lg:right-[15%] top-1/2 -translate-y-1/2 w-[480px] h-[480px] rounded-full border border-white/5" />
-            <div className="absolute right-[5%] lg:right-[15%] top-1/2 -translate-y-1/2 w-[640px] h-[640px] rounded-full border border-white/[0.03]" />
+            <div className="absolute right-[5%] lg:right-[15%] top-1/2 -translate-y-1/2 w-[340px] h-[340px] rounded-full border border-white/10" />
+            <div className="absolute right-[5%] lg:right-[15%] top-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full border border-white/5" />
+            <div className="absolute right-[5%] lg:right-[15%] top-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full border border-white/[0.03]" />
           </div>
 
           {/* =========================================
-              LEFT COLUMN: 70% DETAILS
+              LEFT COLUMN: ~65% DETAILS
              ========================================= */}
-          <div className="relative z-10 w-full md:w-[68%] lg:w-[70%] flex flex-col justify-between pr-0 md:pr-8 space-y-5">
+          <div className="relative z-10 w-full md:w-[62%] lg:w-[65%] flex flex-col justify-between pr-0 md:pr-6 lg:pr-8 space-y-5">
             
             {/* Top row: Badge, Builder & Slide Index */}
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -113,13 +116,15 @@ export default function BuilderProjectsBanner() {
 
             {/* Title & Location */}
             <div>
-              <h2 className="!text-2xl sm:!text-3xl lg:!text-4xl font-extrabold tracking-tight text-white mb-2">
+              <h2 className="!text-2xl sm:!text-3xl lg:!text-4xl font-extrabold tracking-tight text-white mb-2 leading-tight">
                 {currentProp.title}
               </h2>
-              <div className="flex items-center text-xs sm:text-sm text-white/80 gap-1.5">
-                <MapPin className="w-4 h-4 text-[#d8edb3] shrink-0" />
-                <span>{currentProp.location}</span>
-                <span className="text-white/40">•</span>
+              <div className="flex items-center flex-wrap text-xs sm:text-sm text-white/80 gap-2">
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4 text-[#d8edb3] shrink-0" />
+                  {currentProp.location}
+                </span>
+                <span className="text-white/40 hidden sm:inline">•</span>
                 <span className="text-white/70 flex items-center gap-1">
                   <Calendar size={13} className="text-[#d8edb3]" />
                   Handover: {currentProp.handover}
@@ -128,7 +133,7 @@ export default function BuilderProjectsBanner() {
             </div>
 
             {/* Specs Grid */}
-            <div className="grid grid-cols-3 gap-2.5 sm:gap-3 p-3.5 sm:p-4 bg-black/35 border border-white/10 rounded-2xl backdrop-blur-md">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3 sm:p-4 bg-black/35 border border-white/10 rounded-2xl backdrop-blur-md">
               <div className="flex flex-col">
                 <span className="text-[11px] sm:text-xs text-white/60 flex items-center gap-1">
                   <BedDouble className="w-3.5 h-3.5 text-[#d8edb3]" /> Bedrooms
@@ -137,7 +142,7 @@ export default function BuilderProjectsBanner() {
                   {currentProp.beds} BHK
                 </span>
               </div>
-              <div className="flex flex-col border-x border-white/10 px-3">
+              <div className="flex flex-col border-x border-white/10 px-2 sm:px-3">
                 <span className="text-[11px] sm:text-xs text-white/60 flex items-center gap-1">
                   <Bath className="w-3.5 h-3.5 text-[#d8edb3]" /> Bathrooms
                 </span>
@@ -175,7 +180,7 @@ export default function BuilderProjectsBanner() {
               <div className="flex items-center gap-2.5">
                 <Link 
                   href="/projects"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#d8edb3] hover:bg-[#c6df9b] active:scale-95 text-forest font-bold text-xs sm:text-sm rounded-xl transition duration-200 shadow-lg shadow-[#d8edb3]/20"
+                  className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 bg-[#d8edb3] hover:bg-[#c6df9b] active:scale-95 text-forest font-bold text-xs sm:text-sm rounded-xl transition duration-200 shadow-lg shadow-[#d8edb3]/20"
                 >
                   <PhoneCall className="w-4 h-4" />
                   Schedule Private Viewing
@@ -191,30 +196,53 @@ export default function BuilderProjectsBanner() {
           </div>
 
           {/* =========================================
-              RIGHT COLUMN: 30% POP-OUT BUILDING
+              RIGHT COLUMN: ~35% POP-OUT LONG BUILDING & FLOATING PILLS
              ========================================= */}
           {/*
-            DESKTOP: Absolute positioned to break out on top (-top-24 / -top-32)
-            MOBILE: Anchored on right / bottom
+            DESKTOP: Absolute positioned to break out on top by ~25% (-top-24 to -top-36)
+            MOBILE: Visible anchored on right
           */}
-          <div className="w-full md:w-[32%] lg:w-[30%] relative flex justify-center items-end pointer-events-none mt-6 md:mt-0">
-            <div className="relative w-full h-[280px] sm:h-[320px] md:h-full flex items-end justify-center">
-              
-              {/* The Pop-out Image Element (75% inside, 25% outside from the top) */}
-              <div className="absolute right-0 -bottom-4 md:-bottom-6 md:-top-24 lg:-top-28 w-[240px] sm:w-[280px] md:w-[320px] lg:w-[360px] max-w-none transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-2">
-                <div className="relative w-full h-full min-h-[340px] sm:min-h-[400px] md:min-h-[520px]">
-                  <Image
-                    src={currentProp.cutoutImage}
-                    alt={currentProp.alt}
-                    fill
-                    priority
-                    sizes="(max-width: 768px) 260px, (max-width: 1200px) 340px, 400px"
-                    className="object-contain object-bottom drop-shadow-[0_-16px_28px_rgba(0,0,0,0.7)] drop-shadow-[0_20px_25px_rgba(216,237,179,0.15)] filter"
-                  />
-                </div>
-              </div>
-
+          <div className="w-full md:w-[38%] lg:w-[35%] relative flex justify-center items-end pointer-events-none mt-8 md:mt-0 overflow-visible">
+            
+            {/* Floating Feature Pills (matching user's reference image style) */}
+            <div className="hidden sm:flex absolute -top-14 md:-top-20 lg:-top-24 right-0 lg:-right-4 z-10 flex-wrap justify-end gap-1.5 md:gap-2 max-w-[320px] pointer-events-none">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-black/40 backdrop-blur-md border border-white/15 text-white text-[10px] md:text-[11px] font-semibold rounded-full shadow-md animate-pulse">
+                <TrendingUp className="w-3 h-3 text-[#d8edb3]" />
+                High ROI
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-black/40 backdrop-blur-md border border-white/15 text-white text-[10px] md:text-[11px] font-semibold rounded-full shadow-md">
+                <Globe className="w-3 h-3 text-[#d8edb3]" />
+                Prime Investment
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-black/40 backdrop-blur-md border border-white/15 text-white text-[10px] md:text-[11px] font-semibold rounded-full shadow-md">
+                <Sparkles className="w-3 h-3 text-[#d8edb3]" />
+                Exclusive Launch
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-black/40 backdrop-blur-md border border-white/15 text-white text-[10px] md:text-[11px] font-semibold rounded-full shadow-md">
+                <ShieldCheck className="w-3 h-3 text-[#d8edb3]" />
+                Secure Future
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-black/40 backdrop-blur-md border border-white/15 text-white text-[10px] md:text-[11px] font-semibold rounded-full shadow-md">
+                <Award className="w-3 h-3 text-[#d8edb3]" />
+                Promising Returns
+              </span>
             </div>
+
+            {/* Pop-Out Long Skyscraper Container:
+                75% inside the card, 25% outside from the top! */}
+            <div className="relative w-full h-[320px] sm:h-[380px] md:h-full flex items-end justify-center md:justify-end overflow-visible">
+              <div className="relative md:absolute md:right-4 lg:right-6 md:-bottom-8 lg:-bottom-10 md:-top-28 lg:-top-36 xl:-top-40 w-[240px] sm:w-[280px] md:w-[320px] lg:w-[360px] h-[360px] sm:h-[420px] md:h-[580px] lg:h-[640px] max-w-none transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-2 z-20">
+                <Image
+                  src={currentProp.cutoutImage}
+                  alt={currentProp.alt}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 260px, (max-width: 1200px) 340px, 380px"
+                  className="object-contain object-bottom drop-shadow-[0_-20px_35px_rgba(0,0,0,0.65)] drop-shadow-[0_25px_30px_rgba(216,237,179,0.2)] filter"
+                />
+              </div>
+            </div>
+
           </div>
 
         </div>
