@@ -10,11 +10,11 @@ Open the **urbanfinder-photo-edition** folder in VS Code. This is a complete new
 **`.env.local` is included** with:
 
 ```dotenv
-MONGODB_URI=mongodb://127.0.0.1:27017/nobroker_clone
-APP_URL=http://localhost:3000
+MONGODB_URI=
+APP_URL=
 COOKIE_SECURE=false
-ALLOW_DEMO_SEED=true
-DEMO_PASSWORD=UrbanFinderDemo123!
+ALLOW_DEMO_SEED=
+DEMO_PASSWORD=
 ```
 
 It also contains a generated random `JWT_SECRET`. Do not replace that file with `.env.example` unless you intend to configure everything yourself. This is local development configuration; do not publish the environment file or reuse demo credentials for a public deployment.
