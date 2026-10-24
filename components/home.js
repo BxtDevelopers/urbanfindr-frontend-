@@ -30,6 +30,8 @@ import { CityCards } from './city-discovery';
 import { categories, categoryFor } from '@/lib/catalog';
 import ExploreCategories from './ExploreCategories';
 import BuilderProjectsBanner from './BuilderProjectsBanner';
+import VerifiedPropertiesCarousel from './VerifiedPropertiesCarousel';
+import FeaturedProfessionals from './FeaturedProfessionals';
 import { cities, money } from '@/lib/format';
 
 export default function HomePage() {
@@ -39,7 +41,7 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState(null);
 
   const featured = useData(`properties?featured=true&limit=3${featuredPurpose ? '&purpose=' + featuredPurpose : ''}`);
-  const verified = useData('properties?verified=true&limit=3');
+  const verified = useData('properties?verified=true&limit=12');
   const latest = useData('properties?limit=6');
   const discovery = useData('discovery');
   const projects = useData('projects?limit=3');
@@ -227,22 +229,18 @@ export default function HomePage() {
     {/* Builder Projects Investment Showcase (directly after Featured Properties) */}
     <BuilderProjectsBanner />
 
-    {/* 2. Verified Properties Section */}
+    {/* 2. Verified Properties Section (Seamless Infinite Carousel) */}
     <section className="wrap section !pt-4" id="verified-properties">
-      <SectionTitle
-        eyebrow="REVIEWED BY OUR TEAM"
-        title="Verified direct owner properties"
-        description="All listings are thoroughly reviewed for authentic ownership, pricing, and clear documentation."
-        href="/properties?verified=true"
-        link="Browse all verified homes"
+      <VerifiedPropertiesCarousel
+        items={verified.data?.items}
+        loading={verified.loading}
+        error={verified.error}
+        total={verified.data?.total}
       />
-      <State loading={verified.loading} error={verified.error} empty={verified.data?.total === 0} />
-      <div className="grid md:grid-cols-3 gap-6">
-        {!verified.loading && verified.data?.items?.map(item => (
-          <PropertyCard key={item._id} item={item} />
-        ))}
-      </div>
     </section>
+
+    {/* 3. Featured Professionals (Verified Experts) Section */}
+    <FeaturedProfessionals />
 
     {/* Popular Cities */}
     <section className="soft-section" id="explore-by-city">
