@@ -34,7 +34,7 @@ function Contact(){
     <div className="wrap section max-w-4xl">
       <p className="eyebrow">GET IN TOUCH</p>
       <h1 className="!text-4xl">We’re here to help you move forward.</h1>
-      <p className="muted leading-8 mt-4">Have questions about listings, zero brokerage, or owner verification? Contact our team anytime.</p>
+      <p className="muted leading-8 mt-4">Have questions about listings or owner verification? Contact our team anytime.</p>
       <div className="grid md:grid-cols-2 gap-8 mt-8">
         <div className="panel space-y-5">
           <h3>Support &amp; Assistance</h3>
@@ -42,7 +42,7 @@ function Contact(){
           <p className="muted leading-7">Helpline: <a href="tel:+918000000000" className="text-forest font-semibold">+91 8000 000 000</a> (9 AM – 8 PM)</p>
           <p className="muted leading-7">Head Office: 14th Cross, Indiranagar, Bengaluru, Karnataka 560038</p>
           <div className="border-t border-stone-100 pt-4 text-xs muted space-y-1">
-            <p>✓ Zero brokerage guidance</p>
+            <p>✓ Direct owner guidance</p>
             <p>✓ Property verification checks</p>
             <p>✓ Technical &amp; account support</p>
           </div>
@@ -98,8 +98,8 @@ function Privacy(){
           <p className="muted mt-2">When you create an account, we collect your name, email address, phone number, and account role. For property listings, we store listing details, uploaded photos, and locality information provided by you.</p>
         </div>
         <div>
-          <h3 className="font-semibold text-lg">2. Zero Brokerage &amp; Direct Connection</h3>
-          <p className="muted mt-2">Your contact phone number is shared only with verified signed-in users who express direct interest in your listing or schedule a visit. We never sell phone numbers to cold-calling broker agencies or marketing brokers.</p>
+          <h3 className="font-semibold text-lg">2. Direct Connection &amp; Privacy</h3>
+          <p className="muted mt-2">Your contact phone number is shared only with verified signed-in users who express direct interest in your listing or schedule a visit. We never sell phone numbers to cold-calling agencies or third-party marketers.</p>
         </div>
         <div>
           <h3 className="font-semibold text-lg">3. Cookie &amp; Session Storage</h3>
@@ -122,8 +122,8 @@ function Terms(){
       <p className="muted leading-8 mt-4">Please read these terms carefully before posting or browsing properties on UrbanFinder.</p>
       <div className="panel mt-8 space-y-6 leading-7">
         <div>
-          <h3 className="font-semibold text-lg">1. Zero Brokerage Guarantee</h3>
-          <p className="muted mt-2">UrbanFinder provides a direct connection platform between property owners, prospective buyers, and tenants. No brokerage or transaction fees are charged by UrbanFinder for listing or discovering properties.</p>
+          <h3 className="font-semibold text-lg">1. Direct Connection Platform</h3>
+          <p className="muted mt-2">UrbanFinder provides a direct connection platform between property owners, prospective buyers, and tenants. No transaction fees are charged by UrbanFinder for listing or discovering properties.</p>
         </div>
         <div>
           <h3 className="font-semibold text-lg">2. Owner Listing Guidelines</h3>

@@ -984,7 +984,7 @@ export default function CityDiscovery({ slug }) {
                     ? 'Explore RERA-approved developments and gated townships in ' + city.name
                     : currentBedrooms
                     ? `Showing verified ${currentBedrooms} BHK properties in ${city.name} with direct owner contact`
-                    : 'Verified direct owner listings with zero brokerage in ' + city.name}
+                    : 'Verified direct owner listings in ' + city.name}
                 </p>
               </div>
 
@@ -1049,7 +1049,7 @@ export default function CityDiscovery({ slug }) {
                       Looking for 2 BHK Homes in {city.name}?
                     </h3>
                     <p className="text-xs muted mt-1">
-                      Browse verified 2 BHK apartments and independent homes with zero brokerage.
+                      Browse verified 2 BHK apartments and independent homes.
                     </p>
                   </div>
                   <button

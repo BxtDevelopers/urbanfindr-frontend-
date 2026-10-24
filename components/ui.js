@@ -74,10 +74,8 @@ export function PropertyCard({item,onFavorite}){
         <div className="flex items-baseline gap-1.5 mb-2">
           <strong className="text-xl">{money(item.price)}</strong>
           {isMonthly(item) ? (
-            <span className="muted text-sm">/ month <span className="font-semibold text-amber-700">(Rent)</span></span>
-          ) : (
-            <span className="muted text-sm font-semibold text-forest">(Buy)</span>
-          )}
+            <span className="muted text-sm">/ month</span>
+          ) : null}
         </div>
         <Link className="card-title" href={`/properties/${item._id}`}>{item.title}</Link>
         <p className="muted flex gap-1 items-center text-sm mt-2"><MapPin size={13}/>{item.locality}, {item.city}</p>
@@ -89,14 +87,14 @@ export function PropertyCard({item,onFavorite}){
         <div className="flex justify-between items-center border-t border-stone-100 pt-4">
           <span className="text-xs font-semibold text-forest">
             {isRent
-              ? 'FOR RENT · ZERO BROKERAGE'
+              ? 'FOR RENT'
               : isBuy
-              ? 'FOR BUY · ZERO BROKERAGE'
+              ? 'FOR BUY'
               : isPg
-              ? `${item.sharing || 'Private room'} · ${item.availableBeds ?? 1} beds (RENT)`
+              ? `${item.sharing || 'Private room'} · ${item.availableBeds ?? 1} beds`
               : item.transaction === 'sale'
-              ? 'FOR SALE · ZERO BROKERAGE'
-              : 'FOR LEASE / RENT · ZERO BROKERAGE'}
+              ? 'FOR SALE'
+              : 'FOR LEASE / RENT'}
           </span>
           <button
             className={`text-xs flex gap-1 items-center ${compare.includes(item._id)?'font-bold text-forest':'muted'}`}

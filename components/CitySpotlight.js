@@ -134,7 +134,7 @@ export default function CitySpotlight({ city }) {
           <div className="city-spotlight-trust">
             <div className="city-spotlight-trust-item">
               <Star size={15} />
-              <span>Zero brokerage</span>
+              <span>Direct connections</span>
             </div>
 
             <div className="city-spotlight-trust-item">

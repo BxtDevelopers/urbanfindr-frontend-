@@ -309,7 +309,7 @@ export default function Listings({
 
                 <span className="chip">
                   <Check size={13} />
-                  Zero brokerage
+                  Verified listings
                 </span>
 
                 <span className="chip">
@@ -857,7 +857,7 @@ export default function Listings({
           <span className="text-xs muted hidden sm:inline">
             {projects
               ? 'Verified builder projects'
-              : 'Direct connections. No brokerage.'}
+              : 'Direct owner connections.'}
           </span>
         </div>
       </div>

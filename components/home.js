@@ -63,7 +63,7 @@ export default function HomePage() {
       role: 'Tenant in Bengaluru',
       rating: 5,
       avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
-      text: 'Saved over ₹45,000 in brokerage when moving to HSR Layout! Direct owner contact was fast, and the visit was confirmed within minutes. Best renting experience so far.'
+      text: 'Found the perfect home in HSR Layout within days! Direct owner contact was fast, and the visit was confirmed within minutes. Best renting experience so far.'
     },
     {
       name: 'Vikramaditya Roy',
@@ -83,8 +83,8 @@ export default function HomePage() {
 
   const faqs = [
     {
-      q: 'How does UrbanFinder guarantee zero brokerage?',
-      a: 'UrbanFinder connects genuine buyers and tenants directly with verified property owners and builder project coordinators. We eliminate middleman commissions so you never pay brokerage.'
+      q: 'How does UrbanFinder connect you directly with owners?',
+      a: 'UrbanFinder connects genuine buyers and tenants directly with verified property owners and builder project coordinators with transparent contact details and zero middleman friction.'
     },
     {
       q: 'How are properties verified before going live?',
@@ -116,7 +116,7 @@ export default function HomePage() {
           <h1>Every space.<br />Every <em>next chapter.</em></h1>
           <p className="hero-sub">
             Buy a home. Find a rental. Share a place. Build your business.<br className="hidden lg:block" />
-            Your next move starts here, without the brokerage.
+            Your next move starts here, directly with owners.
           </p>
           <div className="hero-proof">
             <span className="flex -space-x-2">
@@ -137,7 +137,7 @@ export default function HomePage() {
             <span className="bg-lime rounded-full p-2"><Check size={19} /></span>
             <div>
               <strong>Your space, your terms.</strong>
-              <p className="text-xs muted mt-1">Connect directly. Pay zero brokerage.</p>
+              <p className="text-xs muted mt-1">Connect directly with verified owners.</p>
             </div>
           </div>
           <span className="hero-vertical">A PLACE FOR THE WAY YOU LIVE</span>
@@ -416,7 +416,7 @@ export default function HomePage() {
       <SectionTitle
         eyebrow="GOT QUESTIONS?"
         title="Frequently asked questions"
-        description="Everything you need to know about finding homes, scheduling visits, and posting properties with zero brokerage."
+        description="Everything you need to know about finding homes, scheduling visits, and posting properties directly."
       />
       <div className="max-w-3xl mx-auto mt-8 space-y-3">
         {faqs.map((faq, index) => {
