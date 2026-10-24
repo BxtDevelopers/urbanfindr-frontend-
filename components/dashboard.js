@@ -798,7 +798,7 @@ function Profile() {
           </Field>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Company / Brokerage name">
+          <Field label="Company / Agency name">
             <input
               name="company"
               defaultValue={user?.company || ''}

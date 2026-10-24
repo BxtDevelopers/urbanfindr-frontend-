@@ -124,7 +124,7 @@ export default function PostProperty() {
       <div className="nb-hero">
         <div className="nb-hero-badge">
           <Sparkles size={14} className="text-forest" />
-          FOR PROPERTY OWNERS • ZERO BROKERAGE
+          FOR PROPERTY OWNERS • DIRECT LISTINGS
         </div>
         <h1 className="nb-hero-title">
           Post your Property for{' '}
@@ -134,12 +134,12 @@ export default function PostProperty() {
         </h1>
         <p className="nb-hero-sub">
           Sell or Rent your home, commercial space, or PG directly to genuine seekers.
-          Connect directly and pay zero brokerage.
+          Connect directly with verified inquiries.
         </p>
 
         <div className="nb-trust-strip">
           <span className="nb-trust-pill">
-            <Check size={14} className="text-forest" /> Zero Brokerage Guaranteed
+            <Check size={14} className="text-forest" /> Direct Owner Network
           </span>
           <span className="nb-trust-pill">
             <Check size={14} className="text-forest" /> Direct Tenant / Buyer Calls
@@ -372,16 +372,16 @@ export default function PostProperty() {
 
             <p className="text-xs text-center text-muted mt-3 flex items-center justify-center gap-1.5">
               <ShieldCheck size={14} className="text-forest" />
-              Direct Owner Listing • No Middlemen • No Brokerage Guaranteed
+              Direct Owner Listing • No Middlemen • Verified Leads
             </p>
           </form>
         </div>
       </div>
 
-      {/* Why Post with Us / NoBroker-style Value Props */}
+      {/* Why Post with Us / Value Props */}
       <div className="mt-8">
         <div className="text-center mb-6">
-          <p className="eyebrow">WHY CHOOSE ZERO BROKERAGE</p>
+          <p className="eyebrow">WHY POST ON URBANFINDER</p>
           <h2 className="!text-3xl font-semibold">How UrbanFinder helps you rent or sell faster</h2>
         </div>
 
@@ -390,9 +390,9 @@ export default function PostProperty() {
             <div className="nb-why-icon">
               <ShieldCheck size={22} />
             </div>
-            <h3>Zero Brokerage Always</h3>
+            <h3>100% Free Listing</h3>
             <p>
-              Never pay a single rupee in brokerage or commission. Keep 100% of your rental or sale
+              List your property at zero cost. Keep 100% of your rental or sale
               proceeds.
             </p>
           </div>
@@ -425,7 +425,7 @@ export default function PostProperty() {
           {[
             ['01', 'Choose Property & Location', 'Select Buy/Rent/PG/Commercial, pick your city and enter your locality.'],
             ['02', 'Add Details & Photos', 'Provide BHK configuration, pricing, amenities and upload property pictures.'],
-            ['03', 'Direct Calls & Close Deal', 'Receive direct calls and inquiries from genuine seekers with 0% brokerage.'],
+            ['03', 'Direct Calls & Close Deal', 'Receive direct calls and inquiries from genuine seekers without intermediaries.'],
           ].map(([num, heading, desc]) => (
             <div className="panel" key={num}>
               <p className="eyebrow">{num}</p>

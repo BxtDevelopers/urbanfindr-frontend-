@@ -86,7 +86,15 @@ export function PropertyCard({item,onFavorite}){
         </div>
         <div className="flex justify-between items-center border-t border-stone-100 pt-4">
           <span className="text-xs font-semibold text-forest">
-            Zero Brokerage
+            {isRent
+              ? 'FOR RENT'
+              : isBuy
+              ? 'FOR BUY'
+              : isPg
+              ? `${item.sharing || 'Private room'} · ${item.availableBeds ?? 1} beds`
+              : item.transaction === 'sale'
+              ? 'FOR SALE'
+              : 'FOR LEASE / RENT'}
           </span>
           <button
             className={`text-xs flex gap-1 items-center ${compare.includes(item._id)?'font-bold text-forest':'muted'}`}

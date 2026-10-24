@@ -183,7 +183,7 @@ export async function seed() {
       const data = {
         title,
         owner: i % 2 === 0 ? owner._id : owner2._id,
-        description: `A thoughtfully planned ${type.toLowerCase()} in ${locality}, ${city}. Features generous natural light, peaceful surroundings, and convenient access to transit and daily essentials.\n\nVerified direct listing on UrbanFinder with zero brokerage. Contact directly to arrange a personalized visit.`,
+        description: `A thoughtfully planned ${type.toLowerCase()} in ${locality}, ${city}. Features generous natural light, peaceful surroundings, and convenient access to transit and daily essentials.\n\nVerified direct listing on UrbanFinder. Contact directly to arrange a personalized visit.`,
         purpose,
         type,
         city,

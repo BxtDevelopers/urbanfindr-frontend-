@@ -774,13 +774,13 @@ export function Footer() {
 
           <p className="max-w-sm text-sm text-white/70 mt-4 leading-7">
             A place for every next chapter. Find a home, meet its owner,
-            and make it yours — completely without brokerage.
+            and make it yours — direct and transparent.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-2 text-xs text-white/70">
             <span className="bg-white/10 px-2.5 py-1 rounded">100% Direct Owners</span>
             <span className="bg-white/10 px-2.5 py-1 rounded">Verified Listings</span>
-            <span className="bg-white/10 px-2.5 py-1 rounded">Zero Brokerage</span>
+            <span className="bg-white/10 px-2.5 py-1 rounded">Instant Site Visits</span>
           </div>
 
           <p className="mt-6 text-xs text-white/50">
