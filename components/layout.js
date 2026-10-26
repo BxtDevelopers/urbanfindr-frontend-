@@ -491,7 +491,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import React, { useState, Fragment } from 'react';
 import {
   Menu,
   X,
@@ -501,6 +501,7 @@ import {
 
 import { useApp } from './providers';
 import { cityGuides } from '@/lib/catalog';
+import { serviceCategories } from '@/lib/serviceCategories';
 
 function CityPickerModal({ onClose }) {
   const router = useRouter();
@@ -879,33 +880,43 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Popular Localities Bar */}
+      {/* Our Services Bar */}
       <div className="wrap border-t border-white/10 py-6 mx-auto">
-        <p className="text-xs font-semibold text-white/60 mb-3 tracking-wider uppercase">Popular Localities</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/60">
-          <Link href="/properties?q=Indiranagar" className="hover:text-lime">Indiranagar</Link>
-          <span>•</span>
-          <Link href="/properties?q=Whitefield" className="hover:text-lime">Whitefield</Link>
-          <span>•</span>
-          <Link href="/properties?q=HSR Layout" className="hover:text-lime">HSR Layout</Link>
-          <span>•</span>
-          <Link href="/properties?q=Gachibowli" className="hover:text-lime">Gachibowli</Link>
-          <span>•</span>
-          <Link href="/properties?q=Kondapur" className="hover:text-lime">Kondapur</Link>
-          <span>•</span>
-          <Link href="/properties?q=Powai" className="hover:text-lime">Powai</Link>
-          <span>•</span>
-          <Link href="/properties?q=Andheri West" className="hover:text-lime">Andheri West</Link>
-          <span>•</span>
-          <Link href="/properties?q=Baner" className="hover:text-lime">Baner</Link>
-          <span>•</span>
-          <Link href="/properties?q=Wakad" className="hover:text-lime">Wakad</Link>
-          <span>•</span>
-          <Link href="/properties?q=South Extension" className="hover:text-lime">South Extension</Link>
-          <span>•</span>
-          <Link href="/properties?q=Golf Course Road" className="hover:text-lime">Golf Course Road</Link>
-          <span>•</span>
-          <Link href="/properties?q=Adyar" className="hover:text-lime">Adyar</Link>
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <p className="text-xs font-semibold text-white/60 tracking-wider uppercase">Our Services</p>
+          <Link href="/categories" className="text-xs text-[#C19A6B] hover:underline inline-flex items-center gap-1 font-medium">
+            All categories &amp; services
+            <ArrowUpRight size={12} />
+          </Link>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/70">
+          <Link href="/properties" className="hover:text-lime">Properties</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/projects" className="hover:text-lime">Builder Projects</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/interiors" className="hover:text-lime">Home Interiors</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/landscapers" className="hover:text-lime">Landscapers</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/lawyers" className="hover:text-lime">Lawyers &amp; Legal</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/electricians" className="hover:text-lime">Electricians</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/ac-technicians" className="hover:text-lime">AC Technicians</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/pest-control" className="hover:text-lime">Pest Control</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/pool-cleaning" className="hover:text-lime">Pool Cleaning</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/tank-cleaning" className="hover:text-lime">Tank Cleaning</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/inverter-maintenance" className="hover:text-lime">Inverter Maintenance</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/lift-maintenance" className="hover:text-lime">Lift Maintenance</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/office-supplies" className="hover:text-lime">Office Supplies</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/categories/facility-management" className="hover:text-lime">Facility Management</Link>
         </div>
       </div>
 
