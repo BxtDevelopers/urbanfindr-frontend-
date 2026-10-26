@@ -135,16 +135,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="hero-visual">
-          <Image src="/photos/hero-home.jpg" alt="A contemporary home surrounded by green spaces" />
-          <div className="floating-note">
-            <span className="bg-lime rounded-full p-2"><Check size={19} /></span>
-            <div>
-              <strong>Your space, your terms.</strong>
-              <p className="text-xs muted mt-1">Connect directly with verified owners.</p>
-            </div>
-          </div>
-          <span className="hero-vertical">A PLACE FOR THE WAY YOU LIVE</span>
+        <div className="flex items-center justify-center">
+          <img 
+            src="/images/home-hero.png" 
+            alt="UrbanFinder properties, interiors and home services"
+            className="w-full max-w-[540px] h-auto object-contain" 
+          />
         </div>
       </div>
 
@@ -342,7 +338,7 @@ export default function HomePage() {
           <Link href={`/interiors/${item._id}`} className="property-card" key={item._id}>
             <div className="card-image">
               <Image src={designImage(item)} alt={item.title} />
-              <span className="badge absolute left-4 top-4">{item.category}</span>
+              <span className="card-badge bg-white/95 text-stone-900 border border-stone-200/80 absolute left-3 top-3 font-semibold">{item.category}</span>
             </div>
             <div className="p-5">
               <h3 className="!text-lg">{item.title}</h3>
