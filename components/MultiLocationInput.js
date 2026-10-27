@@ -28,7 +28,7 @@ export default function MultiLocationInput({
   // Load recent searches from localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('urbanfinder_recent_searches');
+      const stored = localStorage.getItem('urbanfindr_recent_searches') || localStorage.getItem('urbanfinder_recent_searches');
       if (stored) {
         setRecentSearches(JSON.parse(stored).slice(0, 4));
       }
@@ -43,9 +43,9 @@ export default function MultiLocationInput({
 
     if (newLocations.length > 0) {
       try {
-        const stored = JSON.parse(localStorage.getItem('urbanfinder_recent_searches') || '[]');
+        const stored = JSON.parse(localStorage.getItem('urbanfindr_recent_searches') || localStorage.getItem('urbanfinder_recent_searches') || '[]');
         const updated = [newLocations[newLocations.length - 1], ...stored.filter(x => x !== newLocations[newLocations.length - 1])].slice(0, 5);
-        localStorage.setItem('urbanfinder_recent_searches', JSON.stringify(updated));
+        localStorage.setItem('urbanfindr_recent_searches', JSON.stringify(updated));
         setRecentSearches(updated);
       } catch {}
     }

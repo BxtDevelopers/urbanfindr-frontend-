@@ -31,7 +31,7 @@ export default function CategoryComingSoon({ slug }) {
       'Verified background checks & certifications',
       'Transparent upfront pricing',
       'Doorstep service scheduling',
-      'UrbanFinder quality guarantee',
+      'UrbanFindr quality guarantee',
     ],
   };
 
@@ -70,7 +70,7 @@ export default function CategoryComingSoon({ slug }) {
       <div className="panel text-center py-12 px-6 sm:px-12 relative overflow-hidden bg-gradient-to-b from-[#fafcf7] to-white border border-stone-200/80">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-forest bg-lime/40 border border-forest/10 mb-6">
           <Sparkles size={13} className="text-forest" />
-          <span>Coming Soon • UrbanFinder Services</span>
+          <span>Coming Soon • UrbanFindr Services</span>
         </div>
 
         {/* Large Category Icon Box */}

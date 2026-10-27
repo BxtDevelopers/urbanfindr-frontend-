@@ -32,7 +32,7 @@ export default function AllCategoriesPage() {
       <div className="page-heading !pt-0">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-forest bg-lime/40 border border-forest/10 mb-4">
           <Sparkles size={13} className="text-forest" />
-          <span>URBANFINDER DIRECTORY</span>
+          <span>URBANFINDR DIRECTORY</span>
         </div>
         <h1 className="!text-3xl sm:!text-4xl lg:!text-5xl font-bold tracking-tight text-stone-900">
           Explore by Category

@@ -334,7 +334,7 @@ export default function PostProperty() {
               {!user && (
                 <div className="flex items-center justify-between text-sm muted mb-6">
                   <span>
-                    {isRegister ? 'Already registered on UrbanFinder?' : 'New property owner?'}
+                    {isRegister ? 'Already registered on UrbanFindr?' : 'New property owner?'}
                   </span>
                   <button
                     type="button"
@@ -381,8 +381,8 @@ export default function PostProperty() {
       {/* Why Post with Us / Value Props */}
       <div className="mt-8">
         <div className="text-center mb-6">
-          <p className="eyebrow">WHY POST ON URBANFINDER</p>
-          <h2 className="!text-3xl font-semibold">How UrbanFinder helps you rent or sell faster</h2>
+          <p className="eyebrow">WHY POST ON URBANFINDR</p>
+          <h2 className="!text-3xl font-semibold">How UrbanFindr helps you rent or sell faster</h2>
         </div>
 
         <div className="nb-why-grid">

@@ -214,7 +214,7 @@ export default function InteriorStepsProcess() {
                   urbaninteriors
                 </div>
                 <div className="absolute top-2.5 right-2.5 bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] font-bold text-forest shadow-xs">
-                  urbanfinder<span className="text-forest">.</span>
+                  urbanfindr<span className="text-forest">.</span>
                 </div>
 
                 {/* Centered Play Button in Brand Forest Green */}

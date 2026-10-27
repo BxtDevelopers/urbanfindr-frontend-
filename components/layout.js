@@ -433,7 +433,7 @@
 
 //       <div className="wrap border-t border-white/20 py-4 text-xs text-white/40 flex flex-col sm:flex-row justify-between items-center max-w-7xl mx-auto">
 //         <span>
-//           © {new Date().getFullYear()} UrbanFinder. Built for better living.
+//           © {new Date().getFullYear()} UrbanFindr. Built for better living.
 //         </span>
 
 //         <span className="flex items-center">
@@ -560,7 +560,7 @@ function CityPickerModal({ onClose }) {
 }
 
 export function Header() {
-  const { user } = useApp();
+  const { user, roleMeta, logout } = useApp();
 
   const [open, setOpen] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
@@ -581,11 +581,18 @@ export function Header() {
     <>
       {/* Main navbar */}
       <header className="header">
-        <Link href="/" className="brand">
-          <span className="brand-icon">
+        <Link href="/" className="brand flex items-center gap-2.5 group">
+          <span className="brand-icon shrink-0">
             <House size={22} />
           </span>
-          <span className="brand-text">urban<span className="brand-finder">finder</span><span className="brand-dot">.</span></span>
+          <div className="flex flex-col justify-center">
+            <span className="brand-text leading-none">
+              urban<span className="brand-finder">findr</span><span className="brand-dot">.</span>
+            </span>
+            <span className="text-[10px] sm:text-[11px] font-medium tracking-normal text-stone-500 leading-none mt-1">
+              Find. Connect. Build Your Life.
+            </span>
+          </div>
         </Link>
 
         <nav className="desktop-nav">
@@ -626,12 +633,41 @@ export function Header() {
           </div>
         </nav>
 
-        {/* Right-side actions: Compare and Notifications removed */}
+        {/* Right-side actions: User Account & Role Badge */}
         <div className="flex gap-3 items-center">
           {user ? (
-            <Link className="account-btn" href="/dashboard">
-              {user.name.split(' ')[0]}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                className="account-btn flex items-center gap-2"
+                href="/dashboard"
+                title={`${user.name} (${roleMeta?.label || 'Account'})`}
+              >
+                <span>{user.name.split(' ')[0]}</span>
+                {roleMeta && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      background: roleMeta.bgColor,
+                      color: roleMeta.color,
+                      border: `1px solid ${roleMeta.borderColor}`,
+                    }}
+                  >
+                    {roleMeta.shortLabel}
+                  </span>
+                )}
+              </Link>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-xs text-muted hover:text-forest hidden sm:inline-block px-1"
+                title="Log out"
+              >
+                Sign out
+              </button>
+            </div>
           ) : (
             <Link
               href="/login"
@@ -712,8 +748,29 @@ export function Header() {
             href={user ? '/dashboard' : '/login'}
             onClick={() => setOpen(false)}
           >
-            {user ? 'My dashboard' : 'Log in / Register'}
+            {user ? `My dashboard (${roleMeta?.shortLabel || 'Account'})` : 'Log in / Register'}
           </Link>
+
+          {user && (
+            <button
+              style={{
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                font: 'inherit',
+                padding: 0,
+                fontSize: 16,
+                color: '#991b1b',
+              }}
+              onClick={() => {
+                setOpen(false);
+                logout();
+              }}
+            >
+              Sign out
+            </button>
+          )}
         </nav>
       )}
 
@@ -770,7 +827,7 @@ export function Footer() {
             className="brand !text-white flex items-center gap-2 mb-4"
           >
             <House size={24} />
-            <span className="brand-text">urban<span className="brand-finder">finder</span><span className="brand-dot">.</span></span>
+            <span className="brand-text">urban<span className="brand-finder">findr</span><span className="brand-dot">.</span></span>
           </Link>
 
           <p className="max-w-sm text-sm text-white/70 mt-4 leading-7">
@@ -922,7 +979,7 @@ export function Footer() {
 
       <div className="wrap border-t border-white/20 py-4 text-xs text-white/40 flex flex-col sm:flex-row justify-between items-center mx-auto">
         <span>
-          © {new Date().getFullYear()} UrbanFinder. Built for better living.
+          © {new Date().getFullYear()} UrbanFindr. Built for better living.
         </span>
 
         <span className="flex items-center">
@@ -935,7 +992,7 @@ export function Footer() {
 }
 
 export function Guard({ children, roles }) {
-  const { user, ready } = useApp();
+  const { user, ready, hasRole } = useApp();
 
   if (!ready) {
     return (
@@ -963,20 +1020,23 @@ export function Guard({ children, roles }) {
     );
   }
 
-  if (roles && !roles.includes(user.role)) {
+  if (roles && !hasRole(roles)) {
     return (
       <div className="wrap py-20">
         <h2>This area requires additional access.</h2>
 
         <p className="muted my-5">
-          Property posting requires an owner account; administration
-          requires an admin account. Ask an administrator to update
-          your access.
+          This feature requires an account with {Array.isArray(roles) ? roles.join(' or ') : roles} access. Your current account role is &ldquo;{user.role}&rdquo;.
         </p>
 
-        <Link href="/dashboard" className="btn">
-          Your dashboard
-        </Link>
+        <div className="flex gap-4 items-center">
+          <Link href="/dashboard" className="btn">
+            Your dashboard
+          </Link>
+          <Link href="/dashboard/profile" className="btn-outline">
+            Account settings &amp; roles
+          </Link>
+        </div>
       </div>
     );
   }
