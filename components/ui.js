@@ -38,7 +38,7 @@ export function PropertyCard({item,onFavorite}){
           <Image src={propertyImages(item)[0]} alt={item.title}/>
         </Link>
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5 items-center z-10">
-          <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-sm ${
+          <span className={`card-badge uppercase tracking-wider ${
             isRent
               ? 'bg-amber-600 text-white'
               : isBuy
@@ -50,12 +50,12 @@ export function PropertyCard({item,onFavorite}){
             {isRent ? 'Rent' : isBuy ? 'Buy' : isPg ? 'PG / Rent' : item.transaction === 'sale' ? 'Commercial Sale' : 'Commercial Lease'}
           </span>
           {item.verified && (
-            <span className="badge bg-white/95 text-stone-900 border border-stone-200/60 shadow-sm flex items-center gap-1">
-              <Check size={12} className="text-forest" /> Verified
+            <span className="card-badge bg-white/95 text-stone-900 border border-stone-200/80 gap-1 font-semibold">
+              <Check size={12} className="text-forest stroke-[2.5]" /> Verified
             </span>
           )}
           {item.featured && (
-            <span className="badge bg-lime text-stone-900 font-semibold shadow-sm">
+            <span className="card-badge bg-lime text-stone-900 font-semibold">
               Featured
             </span>
           )}
@@ -107,5 +107,5 @@ export function PropertyCard({item,onFavorite}){
     </article>
   );
 }
-export function ProjectCard({item}){return <article className="property-card"><Link href={`/projects/${item._id}`} className="card-image block"><Image src={projectImages(item)[0]} alt={item.title}/><span className="badge absolute left-4 top-4">{item.stage}</span></Link><div className="p-5"><p className="eyebrow mb-2">{item.builder}</p><Link className="card-title" href={`/projects/${item._id}`}>{item.title}</Link><p className="muted text-sm mt-2">{item.locality}, {item.city}</p><p className="font-semibold text-lg my-4">{money(item.price)} – {money(item.maxPrice)}</p><div className="flex justify-between text-xs border-t pt-4"><span>{item.configurations?.map(x=>x.name).join(' · ')}</span><ArrowUpRight size={16}/></div></div></article>;}
+export function ProjectCard({item}){return <article className="property-card"><Link href={`/projects/${item._id}`} className="card-image block"><Image src={projectImages(item)[0]} alt={item.title}/><span className="card-badge bg-white/95 text-stone-900 border border-stone-200/80 absolute left-3 top-3 font-semibold">{item.stage}</span></Link><div className="p-5"><p className="eyebrow mb-2">{item.builder}</p><Link className="card-title" href={`/projects/${item._id}`}>{item.title}</Link><p className="muted text-sm mt-2">{item.locality}, {item.city}</p><p className="font-semibold text-lg my-4">{money(item.price)} – {money(item.maxPrice)}</p><div className="flex justify-between text-xs border-t pt-4"><span>{item.configurations?.map(x=>x.name).join(' · ')}</span><ArrowUpRight size={16}/></div></div></article>;}
 export function SectionTitle({eyebrow,title,description,href,link='View all'}){return <div className="section-title"><div>{eyebrow&&<p className="eyebrow">{eyebrow}</p>}<h2>{title}</h2>{description&&<p className="muted mt-3">{description}</p>}</div>{href&&<Link className="text-link" href={href}>{link}<ArrowUpRight size={17}/></Link>}</div>;}

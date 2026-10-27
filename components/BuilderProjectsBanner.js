@@ -18,23 +18,23 @@ import {
 } from 'lucide-react';
 
 const PROPERTIES = [
-  {
-    id: 'prop-1',
-    badge: 'Ultra Luxury High-Rise',
-    title: 'The Lumina Sky Crest',
-    builder: 'Prestige Group & UrbanFinder Direct',
-    location: 'Banjara Hills, Hyderabad',
-    price: '₹ 14.85 Cr',
-    pricePerSqFt: '₹ 24,500 / sq.ft',
-    beds: 4,
-    baths: 5,
-    sqft: '6,050 sq.ft',
-    handover: 'Q4 2027',
-    description:
-      'Sculptural modern high-rise tower boasting private cantilevered infinity sky decks, double-height ceilings, and panoramic skyline vistas directly from verified builders.',
-    cutoutImage: '/photos/builder-tower-cutout.png',
-    alt: 'Lumina Sky Crest High-rise Skyscraper',
-  },
+  // {
+  //   id: 'prop-1',
+  //   badge: 'Ultra Luxury High-Rise',
+  //   title: 'The Lumina Sky Crest',
+  //   builder: 'Prestige Group & UrbanFinder Direct',
+  //   location: 'Banjara Hills, Hyderabad',
+  //   price: '₹ 14.85 Cr',
+  //   pricePerSqFt: '₹ 24,500 / sq.ft',
+  //   beds: 4,
+  //   baths: 5,
+  //   sqft: '6,050 sq.ft',
+  //   handover: 'Q4 2027',
+  //   description:
+  //     'Sculptural modern high-rise tower boasting private cantilevered infinity sky decks, double-height ceilings, and panoramic skyline vistas directly from verified builders.',
+  //   cutoutImage: '/photos/builder-tower-cutout.png',
+  //   alt: 'Lumina Sky Crest High-rise Skyscraper',
+  // },
   {
     id: 'prop-2',
     badge: 'Premium Waterfront Tower',
