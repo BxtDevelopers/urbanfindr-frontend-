@@ -28,6 +28,7 @@ import { Image, Field, Pagination, State, Submit } from './ui';
 import { money, date } from '@/lib/format';
 import { serviceCategories } from '@/lib/serviceCategories';
 import Listings from './listings';
+import ChannelPartnerDashboard from './channel-partner-dashboard';
 
 export default function Dashboard({ section = '' }) {
   const { user, setUser, toast, roleMeta, logout } = useApp(),
@@ -42,6 +43,10 @@ export default function Dashboard({ section = '' }) {
       router.replace('/admin');
     }
   }, [user, section, isUserView, router]);
+
+  if (user && user.role === 'channel_partner') {
+    return <ChannelPartnerDashboard initialSection={section} />;
+  }
 
   const isCustomer = !user || user.role === 'customer' || user.role === 'user';
   const isOwner = user?.role === 'owner';

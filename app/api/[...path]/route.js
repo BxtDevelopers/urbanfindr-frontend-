@@ -18,6 +18,18 @@ async function dispatch(req, context) {
     const pathSegments = params?.path || [];
     const pathname = pathSegments.join('/');
     const search = new URL(req.url).search;
+
+    // Directly handle Channel Partner system, Support Desk, Leads, Contact, and Password updates with native Next.js API
+    if (
+      pathname.startsWith('channel-partner') ||
+      pathname.startsWith('support-tickets') ||
+      pathname.startsWith('leads') ||
+      pathname.startsWith('contact') ||
+      pathname === 'auth/password'
+    ) {
+      return originalHandle(req, context);
+    }
+
     const targetUrl = `${expressUrl}/api/${pathname}${search}`;
 
     const headers = new Headers(req.headers);
@@ -57,6 +69,11 @@ async function dispatch(req, context) {
         resHeaders.delete('set-cookie');
         cookies.forEach(c => resHeaders.append('set-cookie', c));
       }
+    }
+
+    // If Express backend does not recognize the endpoint (404), fall back to native Next.js API
+    if (expressResponse.status === 404) {
+      return originalHandle(req, context);
     }
 
     const data = await expressResponse.arrayBuffer();

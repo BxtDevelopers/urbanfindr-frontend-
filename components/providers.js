@@ -76,6 +76,16 @@ export function getRoleMeta(role = 'customer') {
         borderColor: '#d8b4fe',
         description: 'Verified home service & interior design professional',
       };
+    case 'channel_partner':
+      return {
+        key: 'channel_partner',
+        label: 'Channel Partner',
+        shortLabel: 'Channel Partner',
+        color: '#065f46',
+        bgColor: '#ecfdf5',
+        borderColor: '#a7f3d0',
+        description: 'RERA-registered channel partner agency & sales network',
+      };
     case 'admin':
       return {
         key: 'admin',

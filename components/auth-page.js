@@ -65,6 +65,15 @@ const ROLE_OPTIONS = [
     description: 'Real estate developer managing project launches, units, and floor plans.',
   },
   {
+    id: 'channel_partner',
+    apiValue: 'channel_partner',
+    label: 'Channel Partner',
+    shortTagline: 'RERA Agency',
+    tagline: 'RERA Channel Partner & Sales Network',
+    icon: Briefcase,
+    description: 'Corporate real estate partner managing client inventory, sales teams & leads.',
+  },
+  {
     id: 'service_provider',
     apiValue: 'service_provider',
     label: 'Service Pro',
@@ -529,7 +538,7 @@ export default function AuthPage({ register = false, adminLogin = false }) {
             {/* Account Type Selection */}
             <div>
               <div className="text-xs font-bold text-stone-800 mb-2.5">Select your account type</div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
                 {ROLE_OPTIONS.map((opt) => {
                   const isSelected = selectedRole === opt.id;
                   const Icon = opt.icon;
@@ -706,6 +715,32 @@ export default function AuthPage({ register = false, adminLogin = false }) {
                   </Field>
                   <Field label="RERA Registration ID">
                     <input name="reraId" placeholder="e.g. PRM/KA/RERA/..." maxLength={60} />
+                  </Field>
+                </div>
+              </div>
+            )}
+
+            {selectedRole === 'channel_partner' && (
+              <div className="panel bg-emerald-50/60 border-emerald-200/80 p-3.5 space-y-3 my-2 rounded-xl">
+                <div className="flex items-center gap-2 text-emerald-900 font-semibold text-xs tracking-wider uppercase">
+                  <Briefcase size={15} /> Channel Partner Credentials
+                </div>
+                <div className="grid sm:grid-cols-2 gap-2.5">
+                  <Field label="Agency / Firm name">
+                    <input
+                      name="company"
+                      required
+                      placeholder="e.g. Apex Realty Advisory Network"
+                      maxLength={120}
+                    />
+                  </Field>
+                  <Field label="Channel Partner RERA ID">
+                    <input
+                      name="reraId"
+                      required
+                      placeholder="e.g. KA/RERA/AGENT/2024/00842"
+                      maxLength={60}
+                    />
                   </Field>
                 </div>
               </div>
