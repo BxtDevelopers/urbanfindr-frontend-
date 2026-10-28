@@ -350,11 +350,13 @@ describe('4. Tile source resolution with and without env tokens', () => {
   const originalMapbox = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const originalMaptiler = process.env.NEXT_PUBLIC_MAPTILER_KEY;
   const originalStadia = process.env.NEXT_PUBLIC_STADIA_API_KEY;
+  const originalCarto = process.env.NEXT_PUBLIC_CARTO_KEY;
 
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     delete process.env.NEXT_PUBLIC_MAPTILER_KEY;
     delete process.env.NEXT_PUBLIC_STADIA_API_KEY;
+    delete process.env.NEXT_PUBLIC_CARTO_KEY;
   });
 
   afterEach(() => {
@@ -374,6 +376,12 @@ describe('4. Tile source resolution with and without env tokens', () => {
       process.env.NEXT_PUBLIC_STADIA_API_KEY = originalStadia;
     } else {
       delete process.env.NEXT_PUBLIC_STADIA_API_KEY;
+    }
+
+    if (originalCarto !== undefined) {
+      process.env.NEXT_PUBLIC_CARTO_KEY = originalCarto;
+    } else {
+      delete process.env.NEXT_PUBLIC_CARTO_KEY;
     }
   });
 
@@ -434,6 +442,14 @@ describe('4. Tile source resolution with and without env tokens', () => {
       'stadia url should contain api key'
     );
     assert.equal(sources.stadia.maxZoom, 20);
+  });
+
+  it('appends key to CARTO Voyager URL when NEXT_PUBLIC_CARTO_KEY is configured', () => {
+    process.env.NEXT_PUBLIC_CARTO_KEY = 'carto_test_key_789';
+    const sources = getTileSources();
+
+    assert.ok(sources.voyager.url.includes('key=carto_test_key_789'), 'voyager url should contain key parameter');
+    delete process.env.NEXT_PUBLIC_CARTO_KEY;
   });
 
   it('includes both Mapbox and MapTiler sources when both tokens are configured', () => {

@@ -36,7 +36,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
   const tileLayerRef = useRef(null);
 
   const [selectedPropId, setSelectedPropId] = useState(properties[0]?._id || null);
-  const [mapStyle, setMapStyle] = useState('voyager'); // 'voyager' | 'osm' | 'satellite' | 'mapbox_streets' | 'maptiler'
+  const [mapStyle, setMapStyle] = useState('osm'); // 'osm' | 'streets' | 'satellite' | 'mapbox_streets' | 'maptiler'
   const [purposeFilter, setPurposeFilter] = useState('all');
   const [localityFilter, setLocalityFilter] = useState('all');
   const [isMapReady, setIsMapReady] = useState(false);
@@ -128,7 +128,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
         .addTo(map);
 
       // Add Base Tile Layer
-      const baseSource = tileSources[mapStyle] || tileSources.voyager;
+      const baseSource = tileSources[mapStyle] || tileSources.osm;
       const tileLayer = L.tileLayer(baseSource.url, {
         attribution: baseSource.attrib,
         maxZoom: baseSource.maxZoom,
@@ -157,7 +157,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
     import('leaflet').then((L) => {
       if (!mapInstanceRef.current) return;
       mapInstanceRef.current.removeLayer(tileLayerRef.current);
-      const nextSource = tileSources[mapStyle] || tileSources.voyager;
+      const nextSource = tileSources[mapStyle] || tileSources.osm;
       const newLayer = L.tileLayer(nextSource.url, {
         attribution: nextSource.attrib,
         maxZoom: nextSource.maxZoom,
@@ -355,27 +355,27 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           <div className="flex items-center gap-1 bg-stone-200/60 p-0.5 rounded-lg text-xs font-medium">
             <button
               type="button"
-              onClick={() => setMapStyle('voyager')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                mapStyle === 'voyager'
-                  ? 'bg-white text-forest shadow-2xs font-semibold'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-              title="CartoDB Voyager - Clean high-res road map (Free OpenStreetMap)"
-            >
-              Streets
-            </button>
-            <button
-              type="button"
               onClick={() => setMapStyle('osm')}
               className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                 mapStyle === 'osm'
                   ? 'bg-white text-forest shadow-2xs font-semibold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
-              title="Standard OpenStreetMap Carto (Free OpenStreetMap)"
+              title="Standard OpenStreetMap (100% Free, No Watermark, No Key Required)"
             >
               OSM
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle('streets')}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                mapStyle === 'streets'
+                  ? 'bg-white text-forest shadow-2xs font-semibold'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+              title="Streets (Esri World Street Map - Free, Clean, No Watermark)"
+            >
+              Streets
             </button>
             <button
               type="button"
@@ -385,7 +385,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                   ? 'bg-white text-forest shadow-2xs font-semibold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
-              title="Satellite High-Resolution Imagery (Esri World Imagery)"
+              title="Satellite (Esri World Imagery - High Resolution)"
             >
               Satellite
             </button>
@@ -415,6 +415,20 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                 title="MapTiler Streets (Using NEXT_PUBLIC_MAPTILER_KEY)"
               >
                 MapTiler
+              </button>
+            )}
+            {process.env.NEXT_PUBLIC_CARTO_KEY && (
+              <button
+                type="button"
+                onClick={() => setMapStyle('voyager')}
+                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                  mapStyle === 'voyager'
+                    ? 'bg-white text-forest shadow-2xs font-semibold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="CARTO Voyager (Using NEXT_PUBLIC_CARTO_KEY)"
+              >
+                CARTO
               </button>
             )}
           </div>

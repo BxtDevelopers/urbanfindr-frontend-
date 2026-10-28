@@ -1,30 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { MapPin, Navigation, ZoomIn, ZoomOut, Maximize2, ExternalLink } from 'lucide-react';
-import { getCoordinatesForProperty } from '@/lib/geo';
+import { getCoordinatesForProperty, getTileSources } from '@/lib/geo';
 
 export default function PropertyLocationMap({ item }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const [mapStyle, setMapStyle] = useState('voyager'); // 'voyager' | 'satellite'
+  const tileLayerRef = useRef(null);
+  const [mapStyle, setMapStyle] = useState('osm'); // 'osm' | 'streets' | 'satellite'
 
   const coords = getCoordinatesForProperty(item, item?.city || 'Bengaluru');
-
-  const tileSources = {
-    voyager: {
-      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      attrib: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    },
-    satellite: {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      attrib: 'Tiles &copy; Esri',
-      maxZoom: 18,
-      subdomains: '',
-    },
-  };
+  const tileSources = useMemo(() => getTileSources(), []);
 
   useEffect(() => {
     let isMounted = true;
@@ -49,16 +36,17 @@ export default function PropertyLocationMap({ item }) {
       // Add attribution
       L.control
         .attribution({ position: 'bottomright', prefix: false })
-        .addAttribution('OpenStreetMap')
+        .addAttribution('OpenStreetMap &bull; UrbanFindr')
         .addTo(map);
 
-      // Add Tile Layer
-      const base = tileSources[mapStyle] || tileSources.voyager;
-      L.tileLayer(base.url, {
+      // Add Tile Layer (Default: OpenStreetMap - 100% free, no key, no watermark)
+      const base = tileSources[mapStyle] || tileSources.osm;
+      const layer = L.tileLayer(base.url, {
         attribution: base.attrib,
         maxZoom: base.maxZoom,
         subdomains: base.subdomains,
       }).addTo(map);
+      tileLayerRef.current = layer;
 
       // Custom Pin Marker
       const customIcon = L.divIcon({
@@ -90,7 +78,23 @@ export default function PropertyLocationMap({ item }) {
         mapInstanceRef.current = null;
       }
     };
-  }, [coords.lat, coords.lng, mapStyle, item?.locality]);
+  }, [coords.lat, coords.lng, item?.locality]);
+
+  // Switch Tile Layer when style changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+    import('leaflet').then((L) => {
+      if (!mapInstanceRef.current) return;
+      mapInstanceRef.current.removeLayer(tileLayerRef.current);
+      const nextSource = tileSources[mapStyle] || tileSources.osm;
+      const newLayer = L.tileLayer(nextSource.url, {
+        attribution: nextSource.attrib,
+        maxZoom: nextSource.maxZoom,
+        subdomains: nextSource.subdomains,
+      }).addTo(mapInstanceRef.current);
+      tileLayerRef.current = newLayer;
+    });
+  }, [mapStyle, tileSources]);
 
   const externalMapUrl = `https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=16/${coords.lat}/${coords.lng}`;
 
@@ -112,19 +116,31 @@ export default function PropertyLocationMap({ item }) {
           <div className="inline-flex items-center p-0.5 rounded-lg border border-stone-200 bg-stone-100 text-xs font-medium">
             <button
               type="button"
-              onClick={() => setMapStyle('voyager')}
-              className={`px-2.5 py-1 rounded-md transition ${
-                mapStyle === 'voyager' ? 'bg-white text-forest shadow-2xs font-semibold' : 'text-stone-600'
+              onClick={() => setMapStyle('osm')}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                mapStyle === 'osm' ? 'bg-white text-forest shadow-2xs font-semibold' : 'text-stone-600'
               }`}
+              title="Standard OpenStreetMap (100% Free, No Watermark)"
+            >
+              OSM
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle('streets')}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                mapStyle === 'streets' ? 'bg-white text-forest shadow-2xs font-semibold' : 'text-stone-600'
+              }`}
+              title="Esri World Street Map (Free, Clean Streets)"
             >
               Streets
             </button>
             <button
               type="button"
               onClick={() => setMapStyle('satellite')}
-              className={`px-2.5 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                 mapStyle === 'satellite' ? 'bg-white text-forest shadow-2xs font-semibold' : 'text-stone-600'
               }`}
+              title="Esri Satellite Imagery"
             >
               Satellite
             </button>
@@ -149,7 +165,7 @@ export default function PropertyLocationMap({ item }) {
         <div className="absolute top-3 left-3 z-400 flex flex-col gap-1 bg-white/95 backdrop-blur rounded-lg shadow-sm border border-stone-200 p-1">
           <button
             type="button"
-            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
+            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition cursor-pointer"
             onClick={() => mapInstanceRef.current?.zoomIn()}
             aria-label="Zoom in"
           >
@@ -157,7 +173,7 @@ export default function PropertyLocationMap({ item }) {
           </button>
           <button
             type="button"
-            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
+            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition cursor-pointer"
             onClick={() => mapInstanceRef.current?.zoomOut()}
             aria-label="Zoom out"
           >
@@ -165,7 +181,7 @@ export default function PropertyLocationMap({ item }) {
           </button>
           <button
             type="button"
-            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
+            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition cursor-pointer"
             onClick={() => mapInstanceRef.current?.setView([coords.lat, coords.lng], 14)}
             aria-label="Recenter"
             title="Recenter on property"
@@ -183,4 +199,3 @@ export default function PropertyLocationMap({ item }) {
     </div>
   );
 }
-
