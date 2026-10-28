@@ -13,6 +13,14 @@ export default function PropertyLocationMap({ item }) {
   const coords = getCoordinatesForProperty(item, item?.city || 'Bengaluru');
   const tileSources = useMemo(() => getTileSources(), []);
 
+  const isApproximate =
+    item?.locationPrecision === 'approximate' ||
+    item?.coordinates?.precision === 'approximate' ||
+    Boolean(item?.hideExactAddress);
+  const radiusMeters = item?.radiusMeters || 500;
+  const locality = item?.locality || 'the locality';
+  const city = item?.city || 'Bengaluru';
+
   useEffect(() => {
     let isMounted = true;
 
@@ -28,7 +36,7 @@ export default function PropertyLocationMap({ item }) {
 
       const map = L.map(mapContainerRef.current, {
         center: [coords.lat, coords.lng],
-        zoom: 14,
+        zoom: isApproximate ? 14 : 14,
         zoomControl: false,
         attributionControl: false,
       });
@@ -48,23 +56,40 @@ export default function PropertyLocationMap({ item }) {
       }).addTo(map);
       tileLayerRef.current = layer;
 
-      // Custom Pin Marker
-      const customIcon = L.divIcon({
-        className: 'uf-marker-container',
-        html: `
-          <div class="uf-marker-pill buy selected" style="padding: 6px 12px; font-size: 12px;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-            <span>${item?.locality || 'Property Location'}</span>
-          </div>
-        `,
-        iconSize: [120, 32],
-        iconAnchor: [60, 16],
-      });
+      if (isApproximate) {
+        // Render an L.circle on the map instead of a misleading single exact pinpoint
+        const circle = L.circle([coords.lat, coords.lng], {
+          radius: radiusMeters,
+          color: '#163e35',
+          fillColor: '#163e35',
+          fillOpacity: 0.15,
+          weight: 2,
+          dashArray: '6, 6',
+        }).addTo(map);
 
-      L.marker([coords.lat, coords.lng], { icon: customIcon }).addTo(map);
+        circle.bindTooltip(
+          `<strong>Approximate Area</strong><br/>Located within ~${radiusMeters}m in ${locality}, ${city}`,
+          { direction: 'top', opacity: 0.95 }
+        );
+      } else {
+        // Custom Pin Marker for exact properties
+        const customIcon = L.divIcon({
+          className: 'uf-marker-container',
+          html: `
+            <div class="uf-marker-pill buy selected" style="padding: 6px 12px; font-size: 12px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>${item?.locality || 'Property Location'}</span>
+            </div>
+          `,
+          iconSize: [120, 32],
+          iconAnchor: [60, 16],
+        });
+
+        L.marker([coords.lat, coords.lng], { icon: customIcon }).addTo(map);
+      }
 
       mapInstanceRef.current = map;
     }
@@ -78,7 +103,7 @@ export default function PropertyLocationMap({ item }) {
         mapInstanceRef.current = null;
       }
     };
-  }, [coords.lat, coords.lng, item?.locality]);
+  }, [coords.lat, coords.lng, item?.locality, isApproximate, radiusMeters, locality, city]);
 
   // Switch Tile Layer when style changes
   useEffect(() => {
@@ -96,7 +121,9 @@ export default function PropertyLocationMap({ item }) {
     });
   }, [mapStyle, tileSources]);
 
-  const externalMapUrl = `https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=16/${coords.lat}/${coords.lng}`;
+  const externalMapUrl = isApproximate
+    ? `https://www.openstreetmap.org/#map=15/${coords.lat}/${coords.lng}`
+    : `https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=16/${coords.lat}/${coords.lng}`;
 
   return (
     <div className="panel mt-6">
@@ -107,7 +134,9 @@ export default function PropertyLocationMap({ item }) {
             Neighborhood &amp; Locality Map
           </h3>
           <p className="text-xs muted mt-1">
-            Exact geographical location in {item?.locality}, {item?.city}.
+            {isApproximate
+              ? `Approximate geographical area in ${locality}, ${city}.`
+              : `Exact geographical location in ${locality}, ${city}.`}
           </p>
         </div>
 
@@ -157,6 +186,20 @@ export default function PropertyLocationMap({ item }) {
         </div>
       </div>
 
+      {/* Prominent Banner for Approximate Precision */}
+      {isApproximate && (
+        <div className="mb-4 p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-950 shadow-2xs">
+          <span className="text-base leading-none shrink-0 mt-0.5">📍</span>
+          <div className="leading-relaxed">
+            <strong className="font-bold text-amber-950">Approximate Area</strong>
+            <span className="mx-1.5 text-amber-400 font-bold">•</span>
+            <span>
+              Located within ~{radiusMeters}m in {locality}, {city}. Exact building and street details are shared upon booking a visit for owner privacy.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Map Canvas */}
       <div className="relative w-full h-[320px] rounded-xl overflow-hidden border border-stone-200 bg-[#eef1eb]">
         <div ref={mapContainerRef} className="w-full h-full" />
@@ -193,7 +236,11 @@ export default function PropertyLocationMap({ item }) {
         {/* Locality badge in bottom left */}
         <div className="absolute bottom-3 left-3 z-400 bg-white/95 backdrop-blur border border-stone-200 px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-800 shadow-sm flex items-center gap-1.5">
           <MapPin size={13} className="text-forest" />
-          <span>{item?.address || `${item?.locality}, ${item?.city}`}</span>
+          <span>
+            {isApproximate
+              ? `Approximate Area: ${locality}, ${city}`
+              : (item?.address || `${locality}, ${city}`)}
+          </span>
         </div>
       </div>
     </div>

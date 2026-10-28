@@ -191,6 +191,13 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           // Single property in this locality: render direct price pill
           const prop = item.property;
           const isSelected = selectedProp?._id === prop._id;
+          const isApproximate =
+            item.precision === 'approximate' ||
+            prop?.locationPrecision === 'approximate' ||
+            prop?.coordinates?.precision === 'approximate' ||
+            Boolean(prop?.hideExactAddress);
+          const radiusMeters = item.radiusMeters || prop?.radiusMeters || 500;
+
           const purposeClass =
             prop.purpose === 'rent'
               ? 'rent'
@@ -199,6 +206,34 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
               : prop.purpose === 'commercial'
               ? 'commercial'
               : 'buy';
+
+          const themeColor =
+            prop.purpose === 'rent'
+              ? '#d97706'
+              : prop.purpose === 'pg'
+              ? '#7e22ce'
+              : prop.purpose === 'commercial'
+              ? '#0f766e'
+              : '#163e35';
+
+          // If approximate precision, render area circle
+          if (isApproximate) {
+            const circle = L.circle(latLng, {
+              radius: radiusMeters,
+              color: themeColor,
+              fillColor: themeColor,
+              fillOpacity: 0.15,
+              weight: 2,
+              dashArray: '6, 6',
+            }).addTo(map);
+
+            circle.on('click', () => {
+              setSelectedPropId(prop._id);
+              map.panTo(latLng, { animate: true, duration: 0.5 });
+            });
+
+            markersRef.current.push(circle);
+          }
 
           const priceLabel = money(prop.price);
           const markerHtml = `
@@ -221,6 +256,16 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
 
           const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
 
+          const tooltipHtml = isApproximate
+            ? `<strong>${prop.title}</strong><br/><span>${priceLabel}</span><br/><span style="color:#d97706;font-weight:600;font-size:11px;">Approximate Area (~${radiusMeters}m)</span>`
+            : `<strong>${prop.title}</strong><br/><span>${priceLabel}</span>`;
+
+          marker.bindTooltip(tooltipHtml, {
+            direction: 'top',
+            offset: [0, -18],
+            opacity: 0.95,
+          });
+
           marker.on('click', () => {
             setSelectedPropId(prop._id);
             map.panTo(latLng, { animate: true, duration: 0.5 });
@@ -229,6 +274,37 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           markersRef.current.push(marker);
         } else {
           // Clustered 2 or more properties in the same locality
+          const isClusterApprox =
+            item.precision === 'approximate' ||
+            item.properties?.some(
+              (p) =>
+                p?.locationPrecision === 'approximate' ||
+                p?.coordinates?.precision === 'approximate' ||
+                Boolean(p?.hideExactAddress)
+            );
+          const clusterRadius = item.radiusMeters || 500;
+          const clusterThemeColor = '#163e35';
+
+          // If approximate precision, render area circle
+          if (isClusterApprox) {
+            const circle = L.circle(latLng, {
+              radius: clusterRadius,
+              color: clusterThemeColor,
+              fillColor: clusterThemeColor,
+              fillOpacity: 0.15,
+              weight: 2,
+              dashArray: '6, 6',
+            }).addTo(map);
+
+            circle.on('click', () => {
+              setActiveCluster(item);
+              setClusterPurposeFilter('all');
+              map.panTo(latLng, { animate: true, duration: 0.5 });
+            });
+
+            markersRef.current.push(circle);
+          }
+
           const minPriceLabel = money(item.minPrice);
           const dotsHtml = item.purposes?.length
             ? `<div class="uf-cluster-dots">${item.purposes.map((p) => `<span class="uf-cluster-dot ${p}"></span>`).join('')}</div>`
@@ -254,10 +330,15 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
 
           const marker = L.marker(latLng, { icon: clusterIcon }).addTo(map);
 
-          marker.bindTooltip(
-            `<strong>${item.count} Properties</strong> in ${item.locality}<br/><span style="color:#163e35;font-weight:600">Click to view all</span>`,
-            { direction: 'top', offset: [0, -18], opacity: 0.95 }
-          );
+          const clusterTooltip = isClusterApprox
+            ? `<strong>${item.count} Properties</strong> in ${item.locality}<br/><span style="color:#d97706;font-weight:600;font-size:11px;">Approximate Area (~${clusterRadius}m)</span><br/><span style="color:#163e35;font-weight:600">Click to view all</span>`
+            : `<strong>${item.count} Properties</strong> in ${item.locality}<br/><span style="color:#163e35;font-weight:600">Click to view all</span>`;
+
+          marker.bindTooltip(clusterTooltip, {
+            direction: 'top',
+            offset: [0, -18],
+            opacity: 0.95,
+          });
 
           marker.on('click', () => {
             setActiveCluster(item);
@@ -518,22 +599,34 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           </div>
 
           {/* Floating Map Legend & Cluster Hint (Bottom Left) */}
-          <div className="absolute bottom-4 left-4 z-400 flex flex-wrap items-center gap-3 bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-200/80 shadow-md">
-            <span className="flex items-center gap-1.5" title="Dark Green pin = For Buy / Sale">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] inline-block shadow-2xs" /> Green: Buy
+          <div className="absolute bottom-4 left-4 z-400 flex flex-wrap items-center gap-2 bg-white/95 backdrop-blur px-3 py-2 rounded-xl text-xs font-semibold border border-stone-200/90 shadow-md">
+            <span className="font-bold text-stone-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5 mr-0.5">
+              <Info size={13} className="text-forest" />
+              Map Color Key:
             </span>
-            <span className="flex items-center gap-1.5" title="Orange pin = For Rent">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] inline-block shadow-2xs" /> Orange: Rent
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] shadow-2xs">
+              <span>Rent</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] shadow-2xs" />
             </span>
-            <span className="flex items-center gap-1.5" title="Purple pin = PG / Co-living">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce] inline-block shadow-2xs" /> Purple: PG
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-950 border border-emerald-300 font-bold text-[11px] shadow-2xs">
+              <span>Buy / Sale</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] shadow-2xs" />
             </span>
-            <span className="flex items-center gap-1.5" title="Teal pin = Commercial space">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] inline-block shadow-2xs" /> Teal: Commercial
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-purple-900 border border-purple-300 font-bold text-[11px] shadow-2xs">
+              <span>PG/Co-living</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce] shadow-2xs" />
             </span>
-            <span className="flex items-center gap-1.5 border-l border-stone-200 pl-2.5 text-stone-600 font-normal">
-              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#d4e844] text-[#0d2620] text-[10px] font-bold">2+</span>
-              <span>Cluster (Click to view)</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 text-teal-900 border border-teal-300 font-bold text-[11px] shadow-2xs">
+              <span>Commercial</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] shadow-2xs" />
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 text-stone-700 border border-stone-300 font-bold text-[11px] shadow-2xs">
+              <span>Cluster</span>
+              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-[#d4e844] text-[#0d2620] text-[9px] font-black">2+</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-dashed border-amber-300 font-bold text-[11px] shadow-2xs">
+              <span>Approx Area</span>
+              <span className="w-2.5 h-2.5 rounded-full border border-dashed border-amber-500 bg-amber-200/60" />
             </span>
           </div>
         </div>
@@ -543,29 +636,39 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           {selectedProp ? (
             <div className="space-y-4">
               {/* Header with Purpose Badge & Navigation Buttons */}
-              <div className="flex items-center justify-between">
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                    selectedProp.purpose === 'rent'
-                      ? 'bg-amber-100 text-amber-900 border border-amber-200'
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                      selectedProp.purpose === 'rent'
+                        ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                        : selectedProp.purpose === 'buy'
+                        ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                        : selectedProp.purpose === 'pg'
+                        ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                        : 'bg-teal-100 text-teal-900 border border-teal-200'
+                    }`}
+                  >
+                    {selectedProp.purpose === 'rent'
+                      ? 'For Rent'
                       : selectedProp.purpose === 'buy'
-                      ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                      ? 'For Buy'
                       : selectedProp.purpose === 'pg'
-                      ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                      : 'bg-teal-100 text-teal-900 border border-teal-200'
-                  }`}
-                >
-                  {selectedProp.purpose === 'rent'
-                    ? 'For Rent'
-                    : selectedProp.purpose === 'buy'
-                    ? 'For Buy'
-                    : selectedProp.purpose === 'pg'
-                    ? 'PG / Co-living'
-                    : 'Commercial Space'}
-                </span>
+                      ? 'PG / Co-living'
+                      : 'Commercial Space'}
+                  </span>
+
+                  {(selectedProp.locationPrecision === 'approximate' ||
+                    selectedProp.coordinates?.precision === 'approximate' ||
+                    Boolean(selectedProp.hideExactAddress)) && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs">
+                      <span>Approximate Area (~{selectedProp.radiusMeters || 500}m)</span>
+                    </span>
+                  )}
+                </div>
 
                 {/* Prev / Next controls */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   <span className="text-xs text-stone-400 font-mono mr-1">
                     {filteredProperties.findIndex((p) => p._id === selectedProp._id) + 1} of{' '}
                     {filteredProperties.length}
@@ -601,6 +704,13 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                     <Check size={12} className="text-emerald-700" /> Direct Verified
                   </span>
                 )}
+                {(selectedProp.locationPrecision === 'approximate' ||
+                  selectedProp.coordinates?.precision === 'approximate' ||
+                  Boolean(selectedProp.hideExactAddress)) && (
+                  <span className="absolute top-2.5 right-2.5 bg-amber-100/95 backdrop-blur text-amber-950 text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs flex items-center gap-1 border border-amber-300">
+                    Approximate Area (~{selectedProp.radiusMeters || 500}m)
+                  </span>
+                )}
                 <span className="absolute bottom-2.5 right-2.5 bg-black/60 text-white text-[11px] font-mono px-2 py-0.5 rounded">
                   {imgList.length} photos
                 </span>
@@ -611,12 +721,21 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                 <h3 className="font-bold text-base line-clamp-2 text-stone-900 leading-snug">
                   {selectedProp.title}
                 </h3>
-                <p className="text-stone-500 text-xs flex items-center gap-1 mt-1 font-medium">
-                  <MapPin size={13} className="text-forest shrink-0" />
-                  <span>
-                    {selectedProp.locality}, {selectedProp.city}
-                  </span>
-                </p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <p className="text-stone-500 text-xs flex items-center gap-1 font-medium">
+                    <MapPin size={13} className="text-forest shrink-0" />
+                    <span>
+                      {selectedProp.locality}, {selectedProp.city}
+                    </span>
+                  </p>
+                  {(selectedProp.locationPrecision === 'approximate' ||
+                    selectedProp.coordinates?.precision === 'approximate' ||
+                    Boolean(selectedProp.hideExactAddress)) && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
+                      Approximate Area (~{selectedProp.radiusMeters || 500}m)
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Specs Metric Strip */}
@@ -694,7 +813,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-4xl max-h-[100vh] flex flex-col gap-y-6 overflow-hidden no-scrollbar animate-in zoom-in-95 duration-200"
           >
             {/* 1. Modal Header */}
-            <div className="p-5 sm:p-6 bg-gradient-to-r from-[#163e35] via-[#1b4a40] to-[#205347] text-white flex items-center justify-between shrink-0 shadow-sm">
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-[#163e35] via-[#1b4a40] to-[#205347] text-white flex items-center justify-between shrink-0 shadow-sm w-full">
               <div className="flex items-center gap-3.5">
                 <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 text-[#d4e844] shadow-xs">
                   <Building size={22} />
@@ -707,6 +826,11 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                     <span className="bg-[#d4e844] text-[#0d2620] text-xs font-black px-2.5 py-0.5 rounded-full shadow-2xs">
                       {activeCluster.count} Properties Mapped
                     </span>
+                    {activeCluster.precision === 'approximate' && (
+                      <span className="bg-amber-300 text-amber-950 text-xs font-bold px-2.5 py-0.5 rounded-full shadow-2xs border border-amber-400">
+                        Approximate Area (~{activeCluster.radiusMeters || 500}m)
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-stone-200 flex items-center gap-2 mt-1">
                     <span>{activeCluster.city} Metro Region</span>
@@ -732,38 +856,40 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             </div>
 
             {/* 2. Map Color Distinction Guide Banner */}
-            <div className="px-5 sm:px-6 py-3 bg-[#f8faf6] border-b border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+            <div className="px-5 sm:px-6 py-3 bg-[#f8faf6] border-b border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs w-full">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-stone-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                   <Info size={14} className="text-forest" />
                   Map Color Key:
                 </span>
-                <span className="text-stone-500 hidden md:inline">Why pins are different colors on map:</span>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] shadow-2xs">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] shadow-2xs" />
-                  <span>Orange Pin = Rent</span>
+                  <span>Rent</span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] shadow-2xs" />
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-950 border border-emerald-300 font-bold text-[11px] shadow-2xs">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] shadow-2xs" />
-                  <span>Green Pin = Buy / Sale</span>
+                  <span>Buy / Sale</span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] shadow-2xs" />
+
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-purple-900 border border-purple-300 font-bold text-[11px] shadow-2xs">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce] shadow-2xs" />
-                  <span>Purple Pin = PG</span>
+                  <span> PG/Co-living</span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce] shadow-2xs" />
+
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 text-teal-900 border border-teal-300 font-bold text-[11px] shadow-2xs">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] shadow-2xs" />
-                  <span>Teal Pin = Commercial</span>
+                  <span> Commercial</span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] shadow-2xs" />
+
                 </span>
               </div>
             </div>
 
             {/* 3. Purpose Filter Tabs with Color Dots */}
             {activeCluster.purposes?.length > 1 && (
-              <div className="px-5 sm:px-6 py-2.5 bg-white border-b border-stone-200/70 flex items-center gap-2 text-xs overflow-x-auto no-scrollbar">
+              <div className="px-5 sm:px-6 py-4 bg-white border-b border-stone-200/70 flex items-center gap-2 text-xs overflow-x-auto no-scrollbar w-full">
                 <span className="text-stone-400 font-bold uppercase text-[10px] tracking-wider shrink-0 mr-1">
                   Filter by Type:
                 </span>
@@ -820,6 +946,11 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                   const isRent = prop.purpose === 'rent';
                   const isBuy = prop.purpose === 'buy';
                   const isPg = prop.purpose === 'pg';
+                  const isPropApprox =
+                    prop?.locationPrecision === 'approximate' ||
+                    prop?.coordinates?.precision === 'approximate' ||
+                    Boolean(prop?.hideExactAddress);
+                  const propRadius = prop?.radiusMeters || 500;
 
                   return (
                     <div
@@ -875,6 +1006,12 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                               </span>
                             </span>
 
+                            {isPropApprox && (
+                              <span className="bg-amber-100/95 backdrop-blur text-amber-950 text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs flex items-center gap-1 border border-amber-300 w-fit">
+                                <span>Approximate Area (~{propRadius}m)</span>
+                              </span>
+                            )}
+
                             {prop.verified && (
                               <span className="bg-white/95 backdrop-blur text-forest text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs flex items-center gap-1 border border-stone-200 w-fit">
                                 <Check size={11} className="text-emerald-600" /> Direct Verified
@@ -896,12 +1033,19 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                                 <h3 className="font-bold text-stone-900 text-base sm:text-lg leading-snug line-clamp-2">
                                   {prop.title}
                                 </h3>
-                                <p className="text-xs text-stone-500 flex items-center gap-1.5 font-medium">
-                                  <MapPin size={13} className="text-forest shrink-0" />
-                                  <span>
-                                    {prop.locality}, {prop.city}
-                                  </span>
-                                </p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-xs text-stone-500 flex items-center gap-1.5 font-medium">
+                                    <MapPin size={13} className="text-forest shrink-0" />
+                                    <span>
+                                      {prop.locality}, {prop.city}
+                                    </span>
+                                  </p>
+                                  {isPropApprox && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
+                                      Approximate Area (~{propRadius}m)
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               {/* Price Display */}

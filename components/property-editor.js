@@ -26,6 +26,7 @@ import {
 import { api, useApp, useData } from './providers';
 import { Field, Image, State, Submit } from './ui';
 import CaptchaModal from './CaptchaModal';
+import PropertyLocationPicker from './PropertyLocationPicker';
 import { cities, amenities as defaultAmenities } from '@/lib/format';
 import { categoryFor, categories, cityGuides } from '@/lib/catalog';
 import { propertyGallery, propertyImages } from '@/lib/media';
@@ -87,6 +88,20 @@ function Editor({
   const [city, setCity] = useState(item?.city || initialCity || 'Bengaluru');
   const [locality, setLocality] = useState(item?.locality || initialLocality || '');
   const [address, setAddress] = useState(item?.address || '');
+  const [coordinates, setCoordinates] = useState(
+    item?.coordinates?.lat && item?.coordinates?.lng
+      ? { lat: Number(item.coordinates.lat), lng: Number(item.coordinates.lng) }
+      : null
+  );
+  const [locationPrecision, setLocationPrecision] = useState(
+    item?.locationPrecision || 'exact'
+  );
+  const [radiusMeters, setRadiusMeters] = useState(
+    Number(item?.radiusMeters) || 500
+  );
+  const [hideExactAddress, setHideExactAddress] = useState(
+    Boolean(item?.hideExactAddress)
+  );
 
   // Content
   const [title, setTitle] = useState(item?.title || '');
@@ -273,7 +288,6 @@ function Editor({
       const data = new FormData();
       for (const file of files) {
         data.append('files', file);
-        data.append('file', file);
       }
       try {
         const result = await api('uploads', { method: 'POST', body: data });
@@ -756,6 +770,26 @@ function Editor({
               ))}
             </div>
           )}
+
+          {/* Interactive Map & Geolocation Picker */}
+          <div className="mt-5 pt-4 border-t border-stone-200">
+            <PropertyLocationPicker
+              city={city}
+              locality={locality}
+              address={address}
+              coordinates={coordinates}
+              locationPrecision={locationPrecision}
+              radiusMeters={radiusMeters}
+              hideExactAddress={hideExactAddress}
+              onCityChange={setCity}
+              onLocalityChange={setLocality}
+              onAddressChange={setAddress}
+              onCoordinatesChange={setCoordinates}
+              onPrecisionChange={setLocationPrecision}
+              onRadiusChange={setRadiusMeters}
+              onHideExactAddressChange={setHideExactAddress}
+            />
+          </div>
 
           {/* Street Address */}
           <div className="mt-4">
@@ -1291,7 +1325,8 @@ function Editor({
           </div>
 
           {/* Multi-Photo Drag & Drop Dropzone */}
-          <div
+          <label
+            htmlFor="property-multi-file-input"
             onDragOver={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -1310,11 +1345,7 @@ function Editor({
                 handleFiles(e.dataTransfer.files);
               }
             }}
-            onClick={() => {
-              const fileInput = document.getElementById('property-multi-file-input');
-              if (fileInput) fileInput.click();
-            }}
-            className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer mb-4 ${
+            className={`block relative border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer mb-4 ${
               isDragOver
                 ? 'border-forest bg-[#edf3e2]/70 scale-[1.01]'
                 : 'border-stone-300 bg-stone-50/70 hover:bg-[#f7f9f3] hover:border-forest/60'
@@ -1322,12 +1353,12 @@ function Editor({
           >
             <input
               id="property-multi-file-input"
-              className="hidden"
+              className="sr-only"
               type="file"
-              accept="image/*,.jpeg,.jpg,.png,.webp"
+              accept="image/png,image/jpeg,image/webp,image/jpg,.png,.jpg,.jpeg,.webp"
               multiple
               onChange={(e) => {
-                if (e.target.files) {
+                if (e.target.files && e.target.files.length > 0) {
                   handleFiles(e.target.files);
                   e.target.value = '';
                 }
@@ -1349,8 +1380,15 @@ function Editor({
               <p className="text-xs text-stone-500 mt-1">
                 Select multiple photos at once with <kbd className="px-1.5 py-0.5 bg-white border border-stone-200 rounded font-mono text-[10px]">Ctrl</kbd> or <kbd className="px-1.5 py-0.5 bg-white border border-stone-200 rounded font-mono text-[10px]">Shift</kbd> (JPEG, PNG, WebP up to 5 MB each)
               </p>
+
+              <div className="mt-3 pointer-events-auto">
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest text-white text-xs font-bold shadow-xs hover:bg-[#12332c] transition">
+                  <Upload size={14} />
+                  Choose Multiple Photos
+                </span>
+              </div>
             </div>
-          </div>
+          </label>
 
           {/* Paste HTTPS URL Alternative */}
           <div className="flex flex-col sm:flex-row gap-2 mb-4">

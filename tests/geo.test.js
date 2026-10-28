@@ -269,6 +269,25 @@ describe('3. Property clustering / locality grouping', () => {
     assert.ok(bellandurSingle);
     assert.equal(bellandurSingle.type, 'single');
     assert.equal(bellandurSingle.property._id, 'p3');
+    assert.equal(bellandurSingle.precision, 'exact');
+    assert.equal(bellandurSingle.radiusMeters, 500);
+
+    // Verify approximate precision and custom radius handling
+    const approxProps = [
+      { _id: 'p-approx-1', locality: 'Koramangala', city: 'Bengaluru', locationPrecision: 'approximate', radiusMeters: 750 },
+      { _id: 'p-approx-2', locality: 'Indiranagar', city: 'Bengaluru', hideExactAddress: true },
+      { _id: 'p-approx-3', locality: 'Indiranagar', city: 'Bengaluru', coordinates: { precision: 'approximate' } },
+    ];
+    const approxResult = groupPropertiesByLocality(approxProps, 'Bengaluru');
+    const singleApprox = approxResult.find((r) => r.locality === 'Koramangala');
+    assert.equal(singleApprox.type, 'single');
+    assert.equal(singleApprox.precision, 'approximate');
+    assert.equal(singleApprox.radiusMeters, 750);
+
+    const clusterApprox = approxResult.find((r) => r.locality === 'Indiranagar');
+    assert.equal(clusterApprox.type, 'cluster');
+    assert.equal(clusterApprox.precision, 'approximate');
+    assert.equal(clusterApprox.radiusMeters, 500);
   });
 
   it('handles empty properties list or non-array inputs gracefully', () => {
