@@ -1,17 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ArrowUpRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Sparkles, CheckCircle2, Search } from 'lucide-react';
 import { serviceCategories } from '@/lib/serviceCategories';
 import CategoryIcon from './CategoryIcon';
 
 export default function AllCategoriesPage() {
+  const searchParams = useSearchParams();
+  const initialQ = (searchParams && searchParams.get('q')) || '';
+  const [searchQuery, setSearchQuery] = useState(initialQ);
   const [filter, setFilter] = useState('all');
 
+  const q = searchQuery.toLowerCase().trim();
   const filteredCategories = serviceCategories.filter((cat) => {
-    if (filter === 'live') return cat.isLive;
-    if (filter === 'services') return !cat.isLive;
+    if (filter === 'live' && !cat.isLive) return false;
+    if (filter === 'services' && cat.isLive) return false;
+    if (q) {
+      const matchLabel = cat.label?.toLowerCase().includes(q);
+      const matchDesc = (cat.description || '').toLowerCase().includes(q);
+      const matchTagline = (cat.tagline || '').toLowerCase().includes(q);
+      const matchSlug = cat.slug?.toLowerCase().includes(q);
+      if (!matchLabel && !matchDesc && !matchTagline && !matchSlug) return false;
+    }
     return true;
   });
 

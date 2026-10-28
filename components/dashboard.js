@@ -1,5 +1,5 @@
 'use client';
-import { propertyImages } from '@/lib/media';
+import { propertyImages, projectImages } from '@/lib/media';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { api, useApp, useData, getRoleMeta } from './providers';
 import { Image, Field, Pagination, State, Submit } from './ui';
-import { money, date } from '@/lib/format';
+import { money, date, cities } from '@/lib/format';
 import { serviceCategories } from '@/lib/serviceCategories';
 import Listings from './listings';
 
@@ -130,7 +130,11 @@ export default function Dashboard({ section = '' }) {
           ) : section === 'saved-searches' ? (
             <SavedSearches />
           ) : section === 'properties' ? (
-            <MyProperties />
+            isBuilder ? (
+              <BuilderProjectsManager />
+            ) : (
+              <MyProperties />
+            )
           ) : section === 'messages' ? (
             <Messages />
           ) : section === 'visits' ? (
@@ -497,8 +501,8 @@ function Overview() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link className="btn" href="/post-property">
-              Publish project
+            <Link className="btn" href="/dashboard/properties">
+              Manage projects &amp; towers
             </Link>
             <Link className="btn-outline" href="/dashboard/profile">
               Developer details
@@ -758,6 +762,372 @@ function MyProperties() {
       </div>
       <Pagination data={data} onChange={setPage} />
     </>
+  );
+}
+
+function BuilderProjectsManager() {
+  const { user, toast } = useApp();
+  const [page, setPage] = useState(1);
+  const [editing, setEditing] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [busy, setBusy] = useState('');
+  const { data, error, loading, reload } = useData(`projects?mine=true&page=${page}`);
+
+  async function archive(id) {
+    if (!window.confirm('Archive this project? It will no longer appear in public searches.'))
+      return;
+    try {
+      await api(`projects/${id}`, { method: 'DELETE' });
+      reload();
+      toast('Project archived.');
+    } catch (e) {
+      toast(e.message);
+    }
+  }
+
+  async function togglePromote(id) {
+    setBusy(id);
+    try {
+      const res = await api(`projects/${id}/promote`, { method: 'POST' });
+      reload();
+      toast(
+        res.featured ? 'Project promoted to Featured Showcase!' : 'Project unpromoted from showcase.'
+      );
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  if (creating || editing) {
+    return (
+      <BuilderProjectEditor
+        item={editing}
+        onDone={() => {
+          setEditing(null);
+          setCreating(false);
+          reload();
+        }}
+        onCancel={() => {
+          setEditing(null);
+          setCreating(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="section-title">
+        <div>
+          <p className="eyebrow">DEVELOPER PORTFOLIO</p>
+          <h2>Projects &amp; towers</h2>
+          <p className="muted text-sm mt-1">
+            Showcase your communities, manage unit configurations, floor plans, and track approval status.
+          </p>
+        </div>
+        <button className="btn" onClick={() => setCreating(true)}>
+          <Plus size={16} />
+          Publish new project
+        </button>
+      </div>
+
+      <State loading={loading} error={error} empty={data?.total === 0} />
+
+      <div className="space-y-4">
+        {data?.items?.map(item => (
+          <article className="panel flex flex-col sm:flex-row gap-5" key={item._id}>
+            <Image
+              src={projectImages(item)[0]}
+              alt={item.title}
+              className="sm:w-44 h-32 object-cover rounded-lg"
+            />
+            <div className="flex-1 flex flex-col justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="!text-lg font-bold">{item.title}</h3>
+                    {item.featured && (
+                      <span className="pill !bg-forest !text-lime text-[10px] font-bold">
+                        ★ Featured
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`pill uppercase text-[10px] tracking-wider ${
+                      item.status === 'approved'
+                        ? '!bg-emerald-100 !text-emerald-900'
+                        : item.status === 'pending'
+                        ? '!bg-amber-100 !text-amber-900'
+                        : item.status === 'rejected'
+                        ? '!bg-red-100 !text-red-900'
+                        : ''
+                    }`}
+                  >
+                    {item.status || 'pending'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-stone-500 mt-1">
+                  {item.locality}, {item.city} · Stage: <strong>{item.stage}</strong> · Possession: <strong>{item.possession}</strong>
+                </p>
+
+                <p className="font-semibold text-sm text-stone-900 mt-2">
+                  {money(item.price)} {item.maxPrice ? `– ${money(item.maxPrice)}` : ''} · {item.acres} Acres · {item.towers} Towers · {item.units} Units
+                </p>
+
+                <div className="text-xs muted mt-1 flex flex-wrap gap-1">
+                  Configurations: {item.configurations?.map(c => c.name).join(', ') || 'Standard'}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 mt-4 pt-3 border-t border-stone-100 text-xs font-medium">
+                <Link className="text-link" href={`/projects/${item._id}`}>
+                  View public page
+                </Link>
+                <button className="text-link" onClick={() => setEditing(item)}>
+                  Edit project
+                </button>
+                <button
+                  disabled={busy === item._id}
+                  className={`text-link ${item.featured ? 'text-amber-800' : 'text-forest'}`}
+                  onClick={() => togglePromote(item._id)}
+                >
+                  {item.featured ? 'Remove featured' : '★ Feature placement'}
+                </button>
+                {item.status !== 'archived' && (
+                  <button className="text-xs text-red-700 ml-auto" onClick={() => archive(item._id)}>
+                    Archive
+                  </button>
+                )}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      <Pagination data={data} onChange={setPage} />
+    </>
+  );
+}
+
+function BuilderProjectEditor({ item, onDone, onCancel }) {
+  const { user, toast } = useApp();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [configs, setConfigs] = useState(
+    item?.configurations?.map(v => ({ name: v.name, area: v.area, price: v.price, plan: v.plan })) || [
+      { name: '2 BHK', area: 1200, price: 8500000, plan: '/images/plan-1.svg' },
+      { name: '3 BHK', area: 1650, price: 12500000, plan: '/images/plan-2.svg' }
+    ]
+  );
+  const [images, setImages] = useState(item?.images || ['/photos/builder-1.jpg']);
+  const [uploading, setUploading] = useState(false);
+
+  async function upload(e) {
+    setUploading(true);
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      const form = new FormData();
+      form.append('file', file);
+      const result = await api('uploads', { method: 'POST', body: form });
+      setImages(v => [...v, result.url].slice(-12));
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    const form = new FormData(e.currentTarget);
+    const input = Object.fromEntries(form);
+    input.amenities = input.amenities?.split(',').map(v => v.trim()).filter(Boolean);
+    input.images = images;
+    input.configurations = configs;
+
+    try {
+      if (item) {
+        await api(`projects/${item._id}`, { method: 'PATCH', body: input });
+        toast('Project updated successfully.');
+      } else {
+        await api('projects', { method: 'POST', body: input });
+        toast('Project submitted successfully! It will be reviewed by administrators.');
+      }
+      onDone();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="panel space-y-6">
+      <div className="flex justify-between items-center pb-3 border-b">
+        <div>
+          <h2>{item ? 'Edit builder project' : 'Publish new builder project'}</h2>
+          <p className="text-xs muted mt-1">Configure project specifications, launch stages, pricing, and unit floor plans.</p>
+        </div>
+        <button type="button" className="text-link" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+
+      {error && <div className="error whitespace-pre-line">{error}</div>}
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <Field label="Project title">
+          <input required minLength={4} name="title" defaultValue={item?.title} placeholder="e.g. The Willow Collective" />
+        </Field>
+        <Field label="Developer / Builder name">
+          <input required name="builder" minLength={2} defaultValue={item?.builder || user?.company || user?.name} />
+        </Field>
+        <Field label="City">
+          <select name="city" defaultValue={item?.city || 'Bengaluru'}>
+            {cities.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </Field>
+        <Field label="Locality">
+          <input name="locality" required minLength={2} defaultValue={item?.locality} placeholder="e.g. Whitefield" />
+        </Field>
+        <Field label="Full site address">
+          <input name="address" defaultValue={item?.address || ''} placeholder="e.g. Plot 42, Outer Ring Road" />
+        </Field>
+        <Field label="RERA registration number">
+          <input name="rera" required minLength={3} defaultValue={item?.rera} placeholder="e.g. PRM/KA/RERA/1251/..." />
+        </Field>
+        <Field label="Target possession">
+          <input name="possession" required minLength={4} defaultValue={item?.possession} placeholder="e.g. December 2028 or Ready to move" />
+        </Field>
+        <Field label="Construction stage">
+          <select name="stage" defaultValue={item?.stage || 'Under construction'}>
+            {['New launch', 'Under construction', 'Ready to move'].map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </Field>
+        <Field label="Starting price (₹)">
+          <input type="number" min="1" required name="price" defaultValue={item?.price || 8500000} />
+        </Field>
+        <Field label="Maximum price (₹)">
+          <input type="number" min="1" required name="maxPrice" defaultValue={item?.maxPrice || 16000000} />
+        </Field>
+        <Field label="Starting carpet area (sq ft)">
+          <input type="number" min="1" required name="area" defaultValue={item?.area || 1200} />
+        </Field>
+        <Field label="Site parcel area (acres)">
+          <input type="number" min="0.1" step="0.1" required name="acres" defaultValue={item?.acres || 5} />
+        </Field>
+        <Field label="Total residences / units">
+          <input type="number" min="1" required name="units" defaultValue={item?.units || 250} />
+        </Field>
+        <Field label="Number of towers">
+          <input type="number" min="1" required name="towers" defaultValue={item?.towers || 3} />
+        </Field>
+      </div>
+
+      <Field label="Project overview & description">
+        <textarea name="description" required minLength={30} maxLength={5000} rows={4} defaultValue={item?.description} placeholder="Describe the master plan, location highlights, architectural design, and connectivity..." />
+      </Field>
+
+      <Field label="Community amenities (comma separated)">
+        <input name="amenities" defaultValue={item?.amenities?.join(', ') || 'Clubhouse, Swimming pool, Gymnasium, Landscaped gardens, 24/7 Security, EV charging stations, Badminton court, Children play area'} />
+      </Field>
+
+      <div>
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-semibold text-base">Unit Configurations &amp; Floor Plans</h3>
+          <button
+            type="button"
+            className="btn-outline !text-xs !py-1 !px-2.5"
+            disabled={configs.length >= 12}
+            onClick={() => setConfigs(v => [...v, { name: `${v.length + 2} BHK`, area: 1500, price: 11000000, plan: '/images/plan-2.svg' }])}
+          >
+            + Add configuration
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {configs.map((config, i) => (
+            <div className="p-4 bg-stone-50 border rounded-lg grid sm:grid-cols-4 gap-3 items-end" key={i}>
+              <Field label="Configuration name">
+                <input
+                  required
+                  value={config.name}
+                  onChange={e => setConfigs(v => v.map((c, n) => n === i ? { ...c, name: e.target.value } : c))}
+                  placeholder="e.g. 2 BHK Luxe"
+                />
+              </Field>
+              <Field label="Carpet area (sq ft)">
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={config.area}
+                  onChange={e => setConfigs(v => v.map((c, n) => n === i ? { ...c, area: Number(e.target.value) } : c))}
+                />
+              </Field>
+              <Field label="Configuration price (₹)">
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={config.price}
+                  onChange={e => setConfigs(v => v.map((c, n) => n === i ? { ...c, price: Number(e.target.value) } : c))}
+                />
+              </Field>
+              <div>
+                <Field label="Floor plan layout URL">
+                  <input
+                    required
+                    value={config.plan}
+                    onChange={e => setConfigs(v => v.map((c, n) => n === i ? { ...c, plan: e.target.value } : c))}
+                  />
+                </Field>
+                {configs.length > 1 && (
+                  <button
+                    type="button"
+                    className="text-xs text-red-600 mt-1 hover:underline"
+                    onClick={() => setConfigs(v => v.filter((_, n) => n !== i))}
+                  >
+                    Remove unit
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Field label="Gallery photographs (one per line; HTTPS, /photos or /uploads path)">
+        <textarea
+          rows={3}
+          value={images.join('\n')}
+          onChange={e => setImages(e.target.value.split('\n').map(x => x.trim()).filter(Boolean))}
+        />
+      </Field>
+
+      <div className="flex items-center gap-4">
+        <label className="btn-outline cursor-pointer">
+          {uploading ? 'Uploading photograph…' : 'Upload photograph'}
+          <input
+            className="hidden"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={upload}
+            disabled={uploading}
+          />
+        </label>
+        <span className="text-xs muted">Supported: /photos/builder-1.jpg, /photos/house-1.jpg, /photos/house-2.jpg. Plans: /images/plan-1.svg, plan-2.svg.</span>
+      </div>
+
+      <Submit busy={busy || uploading}>
+        {item ? 'Save project updates' : 'Submit project for review'}
+      </Submit>
+    </form>
   );
 }
 
@@ -1243,7 +1613,7 @@ function Profile() {
             Need to list properties, manage client portfolios, or offer professional home services? Upgrade your account in one click:
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="p-3.5 bg-white rounded-lg border border-line flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 font-semibold text-sm text-forest mb-1">
@@ -1279,6 +1649,25 @@ function Profile() {
                 onClick={() => handleRoleUpgrade('broker')}
               >
                 {upgradeBusy === 'broker' ? 'Updating…' : 'Switch to Broker'}
+              </button>
+            </div>
+
+            <div className="p-3.5 bg-white rounded-lg border border-line flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-sm text-amber-800 mb-1">
+                  <Building2 size={16} /> Builder &amp; Developer
+                </div>
+                <p className="text-xs muted leading-relaxed">
+                  Showcase projects, manage high-rise towers, configurations &amp; site visit leads.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-outline text-xs !py-1.5 mt-3 w-full"
+                disabled={upgradeBusy === 'builder'}
+                onClick={() => handleRoleUpgrade('builder')}
+              >
+                {upgradeBusy === 'builder' ? 'Updating…' : 'Switch to Builder'}
               </button>
             </div>
 
@@ -1388,13 +1777,64 @@ function Profile() {
                 />
               </Field>
             </div>
-            <Field label="Experience / Industry presence">
-              <input
-                name="experience"
-                defaultValue={user?.experience || ''}
-                placeholder="e.g. 15+ years in residential construction"
-              />
-            </Field>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Experience / Industry presence">
+                <input
+                  name="experience"
+                  defaultValue={user?.experience || ''}
+                  placeholder="e.g. 15+ years in residential construction"
+                />
+              </Field>
+              <Field label="Headquarters / Base city">
+                <input
+                  name="city"
+                  defaultValue={user?.city || 'Bengaluru'}
+                  placeholder="e.g. Bengaluru, Mumbai, Pune"
+                />
+              </Field>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <Field label="Completed projects">
+                <input
+                  type="number"
+                  min="0"
+                  name="completedProjects"
+                  defaultValue={user?.completedProjects || 12}
+                />
+              </Field>
+              <Field label="Active developments">
+                <input
+                  type="number"
+                  min="0"
+                  name="ongoingProjects"
+                  defaultValue={user?.ongoingProjects || 4}
+                />
+              </Field>
+              <Field label="Total units delivered">
+                <input
+                  type="number"
+                  min="0"
+                  name="totalUnitsDelivered"
+                  defaultValue={user?.totalUnitsDelivered || 4500}
+                />
+              </Field>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Official builder website">
+                <input
+                  name="website"
+                  defaultValue={user?.website || ''}
+                  placeholder="https://developer.demo"
+                />
+              </Field>
+              <Field label="Developer brand logo URL">
+                <input
+                  name="logo"
+                  defaultValue={user?.logo || '/photos/builder-1.jpg'}
+                  placeholder="/photos/builder-1.jpg or https://..."
+                />
+              </Field>
+            </div>
           </>
         )}
 

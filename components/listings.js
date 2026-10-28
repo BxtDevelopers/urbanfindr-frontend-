@@ -11,6 +11,7 @@ import {
   Bell,
   Map as MapIcon,
   LayoutGrid,
+  Sparkles,
 } from 'lucide-react';
 
 import { useData, useApp, api } from './providers';
@@ -228,6 +229,11 @@ export default function Listings({
     ? params.get('city') || city || ''
     : '';
 
+  const currentCityData = cityGuides?.find(
+    c => c.name?.toLowerCase() === (currentCity || '').toLowerCase() || c.slug === (currentCity || '').toLowerCase().replace(/\s+/g, '-')
+  );
+  const currentCityLocalities = currentCityData?.localities || [];
+
   const spotlightCity = selectedCityName
     ? cityGuides?.find(item =>
         item.name?.toLowerCase() === selectedCityName.toLowerCase() ||
@@ -389,89 +395,145 @@ export default function Listings({
       >
         <div className="filter-grid">
           {projects ? (
-            <Field label="Search">
-              <input
-                name="q"
-                defaultValue={params.get('q') || ''}
-                placeholder="Project, builder or locality"
-              />
-            </Field>
+            <>
+              <Field label="Search project or builder">
+                <input
+                  name="q"
+                  defaultValue={params.get('q') || ''}
+                  placeholder="Project, builder or locality"
+                />
+              </Field>
+
+              <Field label="City">
+                <select
+                  name="city"
+                  value={currentCity}
+                  onChange={e => setCurrentCity(e.target.value)}
+                >
+                  <option value="">All cities</option>
+                  {cities.map(value => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Locality">
+                <input
+                  name="locality"
+                  list="project-localities-datalist"
+                  defaultValue={params.get('locality') || ''}
+                  placeholder={currentCityLocalities.length ? `e.g. ${currentCityLocalities.slice(0, 2).join(', ')}` : "All localities"}
+                />
+                {currentCityLocalities.length > 0 && (
+                  <datalist id="project-localities-datalist">
+                    {currentCityLocalities.map(loc => (
+                      <option key={loc} value={loc} />
+                    ))}
+                  </datalist>
+                )}
+              </Field>
+
+              <Field label="Project status">
+                <select
+                  name="stage"
+                  defaultValue={params.get('stage') || ''}
+                >
+                  <option value="">All stages</option>
+                  {[
+                    'New launch',
+                    'Under construction',
+                    'Ready to move',
+                  ].map(value => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Configurations">
+                <select
+                  name="bedrooms"
+                  defaultValue={params.get('bedrooms') || ''}
+                >
+                  <option value="">All BHKs</option>
+                  <option value="1">1 BHK</option>
+                  <option value="2">2 BHK</option>
+                  <option value="3">3 BHK</option>
+                  <option value="4">4+ BHK</option>
+                </select>
+              </Field>
+
+              <Field label="Maximum budget (₹)">
+                <input
+                  type="number"
+                  min="0"
+                  name="maxPrice"
+                  placeholder="Any budget"
+                  defaultValue={params.get('maxPrice') || ''}
+                />
+              </Field>
+            </>
           ) : (
-            <Field label="Locations (up to 5)">
-              <MultiLocationInput
-                selectedCity={currentCity}
-                initialValue={params.get('localities') || params.get('q') || ''}
-              />
-            </Field>
-          )}
+            <>
+              <Field label="Locations (up to 5)">
+                <MultiLocationInput
+                  selectedCity={currentCity}
+                  initialValue={params.get('localities') || params.get('q') || ''}
+                />
+              </Field>
 
-          <Field label="City">
-            <select
-              name="city"
-              value={currentCity}
-              onChange={e => setCurrentCity(e.target.value)}
-            >
-              <option value="">All cities</option>
-              {cities.map(value => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </Field>
+              <Field label="City">
+                <select
+                  name="city"
+                  value={currentCity}
+                  onChange={e => setCurrentCity(e.target.value)}
+                >
+                  <option value="">All cities</option>
+                  {cities.map(value => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-          {projects ? (
-            <Field label="Project status">
-              <select
-                name="stage"
-                defaultValue={params.get('stage') || ''}
-              >
-                <option value="">All stages</option>
-                {[
-                  'New launch',
-                  'Under construction',
-                  'Ready to move',
-                ].map(value => (
-                  <option key={value} value={value}>
-                    {value}
+              <Field label="Looking to">
+                <select
+                  name="purpose"
+                  defaultValue={purpose || params.get('purpose') || ''}
+                  disabled={!!purpose}
+                >
+                  <option value="">
+                    Buy, rent, PG & commercial
                   </option>
-                ))}
-              </select>
-            </Field>
-          ) : (
-            <Field label="Looking to">
-              <select
-                name="purpose"
-                defaultValue={purpose || params.get('purpose') || ''}
-                disabled={!!purpose}
-              >
-                <option value="">
-                  Buy, rent, PG & commercial
-                </option>
-                {categories.map(item => (
-                  <option key={item.purpose} value={item.purpose}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
+                  {categories.map(item => (
+                    <option key={item.purpose} value={item.purpose}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-          <Field
-            label={`Maximum budget (₹${
-              purpose === 'rent' || purpose === 'pg'
-                ? ' / month'
-                : ''
-            })`}
-          >
-            <input
-              type="number"
-              min="0"
-              name="maxPrice"
-              placeholder="Any budget"
-              defaultValue={params.get('maxPrice') || ''}
-            />
-          </Field>
+              <Field
+                label={`Maximum budget (₹${
+                  purpose === 'rent' || purpose === 'pg'
+                    ? ' / month'
+                    : ''
+                })`}
+              >
+                <input
+                  type="number"
+                  min="0"
+                  name="maxPrice"
+                  placeholder="Any budget"
+                  defaultValue={params.get('maxPrice') || ''}
+                />
+              </Field>
+            </>
+          )}
         </div>
 
         {purpose === 'pg' && (
@@ -867,6 +929,26 @@ export default function Listings({
         error={error}
         empty={data?.total === 0}
       />
+
+      {/* Featured Projects Placement (Step 12) */}
+      {projects && !loading && data?.items?.some(item => item.featured) && (
+        <div className="mb-10 p-6 rounded-2xl bg-gradient-to-r from-forest/10 via-forest/5 to-transparent border border-forest/20">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="eyebrow !text-forest !mb-1 flex items-center gap-1 font-bold">
+                <Sparkles size={14} className="text-forest" /> SPONSORED DEVELOPER SHOWCASES
+              </p>
+              <h2 className="!text-2xl font-bold">Featured Builder Developments</h2>
+            </div>
+            <span className="pill !bg-forest !text-lime text-xs font-semibold">Priority Placements</span>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {data.items.filter(item => item.featured).slice(0, 3).map(item => (
+              <ProjectCard key={`featured-${item._id}`} item={item} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {!loading && (
         viewMode === 'map' && !projects ? (

@@ -262,7 +262,9 @@ export async function seed() {
         { name: '3 BHK', area: 1640, price: Math.round(starting * 1.4), plan: '/images/plan-2.svg' },
         { name: '4 BHK', area: 2150, price: Math.round(starting * 1.8), plan: '/images/plan-3.svg' }
       ],
-      status: 'approved'
+      status: 'approved',
+      featured: j < 3,
+      address: `Sector ${j + 10}, ${item.locality}, ${item.city}`
     });
     projects.push(project);
   }

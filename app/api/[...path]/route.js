@@ -13,6 +13,8 @@ async function dispatch(req, context) {
     return originalHandle(req, context);
   }
 
+  let body = undefined;
+
   try {
     const params = await context?.params;
     const pathSegments = params?.path || [];
@@ -24,7 +26,6 @@ async function dispatch(req, context) {
     headers.delete('host');
     headers.delete('connection');
 
-    let body = undefined;
     if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
       const contentType = req.headers.get('content-type') || '';
       const contentLength = req.headers.get('content-length');
@@ -67,6 +68,25 @@ async function dispatch(req, context) {
     });
   } catch (error) {
     console.warn(`[Proxy Notice] Express backend unreachable (${error.message}). Falling back to Next.js API...`);
+    if (body !== undefined) {
+      try {
+        const fallbackReq = new Request(req.url, {
+          method: req.method,
+          headers: req.headers,
+          body: body,
+          duplex: 'half'
+        });
+        try {
+          const text = new TextDecoder().decode(body);
+          if (text) {
+            fallbackReq.parsedBody = JSON.parse(text);
+          }
+        } catch {}
+        return originalHandle(fallbackReq, context);
+      } catch (fallbackErr) {
+        console.error('[Proxy Fallback Error]', fallbackErr);
+      }
+    }
     return originalHandle(req, context);
   }
 }

@@ -2,7 +2,7 @@
 import { designImage } from '@/lib/media';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -27,7 +27,9 @@ import {
 import { useData } from './providers';
 import { PropertyCard, ProjectCard, SectionTitle, State, Image } from './ui';
 import { CityCards } from './city-discovery';
-import { categories, categoryFor } from '@/lib/catalog';
+import { categories, categoryFor, searchTabs } from '@/lib/catalog';
+import { serviceCategories } from '@/lib/serviceCategories';
+import CategoryIcon from './CategoryIcon';
 import ExploreCategories from './ExploreCategories';
 import BuilderProjectsBanner from './BuilderProjectsBanner';
 import VerifiedPropertiesCarousel from './VerifiedPropertiesCarousel';
@@ -39,6 +41,43 @@ export default function HomePage() {
   const [purpose, setPurpose] = useState('buy');
   const [featuredPurpose, setFeaturedPurpose] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCity, setSearchCity] = useState('Bengaluru');
+  const closeTimeoutRef = useRef(null);
+
+  function handleServicesMouseEnter() {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setServicesOpen(true);
+  }
+
+  function handleServicesMouseLeave() {
+    closeTimeoutRef.current = setTimeout(() => {
+      setServicesOpen(false);
+    }, 200);
+  }
+
+  function handleSelectService(cat) {
+    setPurpose('services');
+    setSearchQuery(cat.label);
+    setServicesOpen(false);
+  }
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (!e.target.closest?.('.search-tabs')) {
+        setServicesOpen(false);
+      }
+    }
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
 
   const featured = useData(`properties?featured=true&limit=3${featuredPurpose ? '&purpose=' + featuredPurpose : ''}`);
   const verified = useData('properties?verified=true&limit=12');
@@ -52,11 +91,40 @@ export default function HomePage() {
     const form = new FormData(event.currentTarget);
     const params = new URLSearchParams();
 
-    const city = form.get('city');
+    const city = form.get('city') || searchCity || 'Bengaluru';
     if (city) params.set('city', city);
 
-    const q = form.get('q');
+    const q = (form.get('q') || searchQuery || '').trim();
     if (q) params.set('q', q);
+
+    if (purpose === 'services') {
+      const qLower = q.toLowerCase();
+      const matchedCat = serviceCategories.find(c =>
+        c.label.toLowerCase() === qLower ||
+        c.slug.toLowerCase() === qLower ||
+        c.shortTitle?.toLowerCase() === qLower ||
+        c.label.toLowerCase().includes(qLower) ||
+        qLower.includes(c.slug.replace(/-/g, ' ')) ||
+        (c.shortTitle && qLower.includes(c.shortTitle.toLowerCase()))
+      );
+
+      if (matchedCat) {
+        if (matchedCat.slug === 'interior-designers') {
+          router.push(`/interiors?city=${encodeURIComponent(city)}`);
+        } else {
+          router.push(`/categories/${matchedCat.slug}?city=${encodeURIComponent(city)}`);
+        }
+        return;
+      }
+
+      router.push(`/categories?${params}`);
+      return;
+    }
+
+    if (purpose === 'projects') {
+      router.push(`/projects?${params}`);
+      return;
+    }
 
     router.push(`${categoryFor(purpose).path}?${params}`);
   }
@@ -110,63 +178,181 @@ export default function HomePage() {
 
   return <>
     {/* Hero Section */}
-    <section className="hero">
-      <div className="wrap hero-grid">
-        <div className="hero-copy">
-          <p className="eyebrow flex items-center gap-2">
-            <span className="w-2 h-2 bg-forest rounded-full" />
-            DIRECT OWNERS. MORE POSSIBILITIES.
+    <section className="hero !bg-white !pt-12 sm:!pt-16 !pb-0 border-b border-[#e6e8e1] relative">
+      <div className="wrap grid md:grid-cols-12 gap-8 lg:gap-10 items-center">
+        {/* Left Copy matching user design */}
+        <div className="hero-copy md:col-span-5 lg:col-span-5 !py-4">
+          <p className="text-[12px] sm:text-[13px] font-bold tracking-[0.22em] text-forest uppercase mb-4">
+            PROPERTIES. INTERIORS. HOME SERVICES.
           </p>
-          <h1>Every space.<br />Every <em>next chapter.</em></h1>
-          <p className="hero-sub">
-            Buy a home. Find a rental. Share a place. Build your business.<br className="hidden lg:block" />
-            Your next move starts here, directly with owners.
+
+          <h1 className="!text-4xl sm:!text-5xl lg:!text-6xl font-serif font-bold text-forest tracking-tight !leading-[1.12]">
+            Your home.<br />
+            Your style.<br />
+            Your everyday care.
+          </h1>
+
+          <p className="text-stone-600 text-base sm:text-lg leading-relaxed mt-5 max-w-xl">
+            Discover builder properties, beautiful interiors, and home services—all in one place.
           </p>
-          <div className="hero-proof">
-            <span className="flex -space-x-2">
-              {['A', 'R', 'S', 'M'].map((value, i) => (
-                <span key={value} className={`avatar avatar-${i}`}>{value}</span>
-              ))}
-            </span>
-            <span>
-              <strong>Find the space that fits your life.</strong><br />
-              <span className="text-xs muted">Properties, new communities and thoughtful interiors.</span>
-            </span>
-          </div>
         </div>
 
-        <div className="flex items-center justify-center">
-          <img 
-            src="/images/home-hero.png" 
-            alt="UrbanFindr properties, interiors and home services"
-            className="w-full max-w-[540px] h-auto object-contain" 
-          />
+        {/* Right Family Visual matching user design - medium-large sizing */}
+        <div className="md:col-span-7 lg:col-span-7 flex items-center justify-center relative w-full">
+          {/* Decorative soft sage accent corner behind image */}
+          <div className="absolute -top-4 -right-4 w-44 h-44 sm:w-56 sm:h-56 lg:w-68 lg:h-68 bg-[#eef3e6] rounded-[30px] pointer-events-none" />
+
+          {/* Family photo container */}
+          <div className="relative z-10 w-full max-w-[580px] lg:max-w-[620px] rounded-3xl overflow-hidden shadow-xl border border-stone-200/60 bg-stone-50">
+            <img 
+              src="/images/family.png" 
+              alt="Your home. Your style. Your everyday care. Family together at home"
+              className="w-full h-auto object-cover block max-h-[420px] lg:max-h-[450px]" 
+            />
+            {/* Tag matching mockup: A home for every new beginning */}
+            <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-white/95 backdrop-blur-sm px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-xs font-medium text-stone-800 shadow-md border border-stone-200/60 pointer-events-none">
+              A home for every new beginning.
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Property Search Panel */}
-      <form className="search-panel wrap" onSubmit={search}>
-        <div className="search-tabs" role="tablist" aria-label="What are you looking for?">
-          {categories.map(item => (
-            <button
-              role="tab"
-              aria-selected={purpose === item.purpose}
-              key={item.purpose}
-              type="button"
-              className={purpose === item.purpose ? 'active' : ''}
-              onClick={() => setPurpose(item.purpose)}
-            >
-              {item.label}
-            </button>
-          ))}
+      {/* Property Search Panel: Half in hero section, half outside */}
+      <form className="search-panel wrap !mt-12 sm:!mt-16 lg:!mt-20 !mb-[-68px] sm:!mb-[-72px] relative z-20 shadow-2xl rounded-2xl border border-stone-200/80 bg-white" onSubmit={search}>
+        <div className="search-tabs relative" role="tablist" aria-label="What are you looking for?">
+          {searchTabs.map(item => {
+            if (item.purpose === 'services') {
+              return (
+                <div
+                  key={item.purpose}
+                  className="relative inline-flex items-center"
+                  onMouseEnter={handleServicesMouseEnter}
+                  onMouseLeave={handleServicesMouseLeave}
+                >
+                  <button
+                    role="tab"
+                    aria-selected={purpose === item.purpose}
+                    type="button"
+                    className={`inline-flex items-center gap-1.5 transition-colors ${purpose === item.purpose ? 'active' : ''}`}
+                    onClick={() => {
+                      setPurpose(item.purpose);
+                      setServicesOpen(prev => !prev);
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`transition-transform duration-200 ${servicesOpen ? 'rotate-180 text-forest' : 'text-stone-400'}`}
+                    />
+                  </button>
+
+                  {/* Services Hover Dropdown */}
+                  {servicesOpen && (
+                    <div
+                      className="absolute top-full right-0 sm:left-0 sm:right-auto mt-2 w-[330px] sm:w-[560px] md:w-[620px] bg-white rounded-2xl shadow-2xl border border-stone-200/90 z-50 p-4 sm:p-5 transition-all duration-150 animate-in fade-in"
+                      onMouseEnter={handleServicesMouseEnter}
+                      onMouseLeave={handleServicesMouseLeave}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between pb-3 mb-3 border-b border-stone-100">
+                        <div>
+                          <div className="text-xs font-bold uppercase tracking-wider text-forest">
+                            Services & Home Experts
+                          </div>
+                          <p className="text-xs text-stone-500 mt-0.5">
+                            Verified professionals, repairs & design partners
+                          </p>
+                        </div>
+                        <Link
+                          href="/categories"
+                          onClick={() => setServicesOpen(false)}
+                          className="text-xs font-semibold text-forest hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>View all</span>
+                          <ArrowRight size={13} />
+                        </Link>
+                      </div>
+
+                      {/* Grid of services from existing serviceCategories */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-[350px] overflow-y-auto pr-1">
+                        {serviceCategories
+                          .filter(cat => cat.slug !== 'properties')
+                          .map(cat => (
+                            <button
+                              key={cat.slug}
+                              type="button"
+                              onClick={() => handleSelectService(cat)}
+                              className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-200/80 transition-all duration-150 group text-left w-full cursor-pointer"
+                            >
+                              <div
+                                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform"
+                                style={{
+                                  backgroundColor: cat.bgTint || '#f5f5f5',
+                                  borderColor: cat.borderTint || '#e5e5e5',
+                                  borderWidth: '1px',
+                                  color: cat.accentColor || '#163e35',
+                                }}
+                              >
+                                <CategoryIcon name={cat.iconName} size={16} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-semibold text-stone-800 group-hover:text-forest truncate">
+                                  {cat.label}
+                                </div>
+                                <div className="text-[10px] text-stone-400 truncate">
+                                  {cat.tagline || cat.shortTitle}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                      </div>
+
+                      {/* Footer Link */}
+                      <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-600 bg-stone-50/70 -mx-4 -mb-4 sm:-mx-5 sm:-mb-5 px-4 py-2.5 rounded-b-2xl">
+                        <span className="flex items-center gap-1.5 text-stone-600">
+                          <Sparkles size={13} className="text-forest" />
+                          Direct contact with verified specialists
+                        </span>
+                        <Link
+                          href="/categories"
+                          onClick={() => setServicesOpen(false)}
+                          className="font-semibold text-forest hover:underline inline-flex items-center gap-1"
+                        >
+                          Explore all 13+ categories →
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <button
+                role="tab"
+                aria-selected={purpose === item.purpose}
+                key={item.purpose}
+                type="button"
+                className={purpose === item.purpose ? 'active' : ''}
+                onClick={() => setPurpose(item.purpose)}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Search Inputs: City, Locality, Search Button */}
+        {/* Search Inputs: City, Locality/Service, Search Button */}
         <div className="search-inputs">
           <label className="flex gap-3 items-center">
             <MapPin size={19} className="text-forest" />
-            <select name="city" defaultValue="Bengaluru" aria-label="City">
-              {cities.map(city => <option key={city}>{city}</option>)}
+            <select
+              name="city"
+              value={searchCity}
+              onChange={e => setSearchCity(e.target.value)}
+              aria-label="City"
+            >
+              {cities.map(city => <option key={city} value={city}>{city}</option>)}
             </select>
           </label>
 
@@ -174,15 +360,27 @@ export default function HomePage() {
             <Search size={19} className="muted" />
             <input
               name="q"
-              aria-label="Locality or property"
-              placeholder="Search localities (comma-separated for multiple), landmarks, or projects"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              aria-label={purpose === 'services' ? 'Service or provider' : 'Locality or property'}
+              placeholder={
+                purpose === 'services'
+                  ? 'Search services (e.g. Electrician, Plumbing, Cleaning, AC, Painting) or provider'
+                  : 'Search localities (comma-separated for multiple), landmarks, or projects'
+              }
               maxLength={100}
             />
           </label>
 
           <button className="btn">
             <Search size={17} />
-            {purpose === 'pg' ? 'Find my PG' : purpose === 'commercial' ? 'Find my space' : 'Find my home'}
+            {purpose === 'services'
+              ? 'Find services'
+              : purpose === 'pg'
+              ? 'Find my PG'
+              : purpose === 'commercial'
+              ? 'Find my space'
+              : 'Find my home'}
           </button>
         </div>
       </form>

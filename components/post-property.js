@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 import { categories, categoryFor } from '@/lib/catalog';
 import { cities } from '@/lib/format';
@@ -149,6 +150,23 @@ export default function PostProperty() {
           </span>
         </div>
       </div>
+
+      {user?.role === 'builder' && (
+        <div className="bg-amber-50 border border-amber-200/80 p-5 rounded-2xl mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0">
+              <Building2 size={22} />
+            </div>
+            <div>
+              <strong className="text-amber-900 text-sm block font-bold">Builder &amp; Real Estate Developer Account</strong>
+              <p className="text-xs text-amber-800 mt-0.5">Looking to publish multi-tower projects, unit configurations, and architectural floor plans?</p>
+            </div>
+          </div>
+          <Link href="/dashboard/properties" className="btn !text-xs !py-2 !px-4 whitespace-nowrap shrink-0">
+            Manage Projects &amp; Towers
+          </Link>
+        </div>
+      )}
 
       {/* Main NoBroker-Style Card */}
       <div className="nb-card">

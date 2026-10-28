@@ -491,17 +491,24 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useState, Fragment } from 'react';
+import React, { useState, useRef, useEffect, Fragment } from 'react';
 import {
   Menu,
   X,
   ArrowUpRight,
   House,
+  User,
+  LayoutDashboard,
+  LogOut,
+  ChevronDown,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 
 import { useApp } from './providers';
 import { cityGuides } from '@/lib/catalog';
 import { serviceCategories } from '@/lib/serviceCategories';
+import CategoryIcon from './CategoryIcon';
 
 function CityPickerModal({ onClose }) {
   const router = useRouter();
@@ -564,8 +571,58 @@ export function Header() {
 
   const [open, setOpen] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuTimeoutRef = useRef(null);
+
+  const [servicesLauncherOpen, setServicesLauncherOpen] = useState(false);
+  const launcherTimeoutRef = useRef(null);
 
   const pathname = usePathname();
+
+  function handleUserMouseEnter() {
+    if (userMenuTimeoutRef.current) {
+      clearTimeout(userMenuTimeoutRef.current);
+      userMenuTimeoutRef.current = null;
+    }
+    setUserMenuOpen(true);
+  }
+
+  function handleUserMouseLeave() {
+    userMenuTimeoutRef.current = setTimeout(() => {
+      setUserMenuOpen(false);
+    }, 200);
+  }
+
+  function handleLauncherMouseEnter() {
+    if (launcherTimeoutRef.current) {
+      clearTimeout(launcherTimeoutRef.current);
+      launcherTimeoutRef.current = null;
+    }
+    setServicesLauncherOpen(true);
+  }
+
+  function handleLauncherMouseLeave() {
+    launcherTimeoutRef.current = setTimeout(() => {
+      setServicesLauncherOpen(false);
+    }, 200);
+  }
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (!e.target.closest?.('.user-menu-wrap')) {
+        setUserMenuOpen(false);
+      }
+      if (!e.target.closest?.('.services-launcher-wrap')) {
+        setServicesLauncherOpen(false);
+      }
+    }
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
+      if (launcherTimeoutRef.current) clearTimeout(launcherTimeoutRef.current);
+    };
+  }, []);
 
   // Main navbar links
   const links = [
@@ -636,44 +693,70 @@ export function Header() {
         {/* Right-side actions: User Account & Role Badge */}
         <div className="flex gap-3 items-center">
           {user ? (
-            <div className="flex items-center gap-2">
-              <Link
-                className="account-btn flex items-center gap-2"
-                href="/dashboard"
-                title={`${user.name} (${roleMeta?.label || 'Account'})`}
-              >
-                <span>{user.name.split(' ')[0]}</span>
-                {roleMeta && (
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      background: roleMeta.bgColor,
-                      color: roleMeta.color,
-                      border: `1px solid ${roleMeta.borderColor}`,
-                    }}
-                  >
-                    {roleMeta.shortLabel}
-                  </span>
-                )}
-              </Link>
+            <div
+              className="relative user-menu-wrap"
+              onMouseEnter={handleUserMouseEnter}
+              onMouseLeave={handleUserMouseLeave}
+            >
               <button
                 type="button"
-                onClick={logout}
-                className="text-xs text-muted hover:text-forest hidden sm:inline-block px-1"
-                title="Log out"
+                onClick={() => setUserMenuOpen((prev) => !prev)}
+                className="w-10 h-10 rounded-full bg-forest text-white font-bold text-base flex items-center justify-center hover:opacity-90 hover:ring-2 hover:ring-forest/30 transition-all cursor-pointer shadow-sm select-none"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="true"
+                title={user.name}
               >
-                Sign out
+                <span>{(user.name || 'U').trim().charAt(0).toUpperCase()}</span>
               </button>
+
+              {/* User Dropdown Menu */}
+              {userMenuOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-stone-200/90 z-50 p-2 transition-all duration-150 animate-in fade-in"
+                  onMouseEnter={handleUserMouseEnter}
+                  onMouseLeave={handleUserMouseLeave}
+                >
+                  {/* User Profile Info - Only the user's name */}
+                  <div className="px-3 py-2.5 bg-stone-50 rounded-xl mb-1 border border-stone-100">
+                    <div className="font-bold text-stone-900 text-sm truncate">
+                      {user.name}
+                    </div>
+                  </div>
+
+                  {/* Dashboard Link */}
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-colors"
+                  >
+                    <LayoutDashboard size={16} className="text-forest" />
+                    <span>Dashboard</span>
+                  </Link>
+
+                  <div className="h-px bg-stone-100 my-1" />
+
+                  {/* Logout Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors text-left cursor-pointer"
+                  >
+                    <LogOut size={16} className="text-red-600" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <Link
               href="/login"
-              className="text-sm font-medium hidden sm:block"
+              className="account-btn flex items-center gap-1.5 text-sm font-semibold text-forest hover:bg-stone-100 transition-colors"
             >
-              Log in
+              <User size={16} />
+              <span>Log in</span>
             </Link>
           )}
 
@@ -683,6 +766,111 @@ export function Header() {
               FREE
             </span>
           </Link>
+
+          {/* Google-style 9-Dots (Waffle) Services App Launcher */}
+          <div
+            className="relative services-launcher-wrap flex items-center"
+            onMouseEnter={handleLauncherMouseEnter}
+            onMouseLeave={handleLauncherMouseLeave}
+          >
+            <button
+              type="button"
+              onClick={() => setServicesLauncherOpen((prev) => !prev)}
+              aria-label="UrbanFindr Services & Solutions"
+              aria-expanded={servicesLauncherOpen}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                servicesLauncherOpen
+                  ? 'bg-stone-200 text-forest shadow-inner'
+                  : 'text-stone-600 hover:text-forest hover:bg-stone-100'
+              }`}
+              title="Services & Directory"
+            >
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <circle cx="5" cy="5" r="2.4" />
+                <circle cx="12" cy="5" r="2.4" />
+                <circle cx="19" cy="5" r="2.4" />
+                <circle cx="5" cy="12" r="2.4" />
+                <circle cx="12" cy="12" r="2.4" />
+                <circle cx="19" cy="12" r="2.4" />
+                <circle cx="5" cy="19" r="2.4" />
+                <circle cx="12" cy="19" r="2.4" />
+                <circle cx="19" cy="19" r="2.4" />
+              </svg>
+            </button>
+
+            {/* Google-style Services Popup Grid */}
+            {servicesLauncherOpen && (
+              <div
+                className="absolute right-0 top-full mt-2 w-[320px] sm:w-[350px] bg-white rounded-3xl shadow-2xl border border-stone-200/90 z-50 p-3 sm:p-4 transition-all duration-150 animate-in fade-in"
+                onMouseEnter={handleLauncherMouseEnter}
+                onMouseLeave={handleLauncherMouseLeave}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-2 pt-1 pb-2.5 mb-1.5 border-b border-stone-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-stone-900 tracking-tight">
+                      All Services
+                    </span>
+                    <span className="text-[10px] font-bold text-forest bg-forest/10 px-1.5 py-0.5 rounded-full">
+                      {serviceCategories.length}
+                    </span>
+                  </div>
+                  <Link
+                    href="/categories"
+                    onClick={() => setServicesLauncherOpen(false)}
+                    className="text-xs font-semibold text-forest hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>Directory</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+
+                {/* 3-Column Apps Grid matching Google Waffle menu */}
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2 max-h-[380px] overflow-y-auto p-1 pr-1.5">
+                  {serviceCategories.map((cat) => (
+                    <Link
+                      key={cat.slug}
+                      href={cat.href}
+                      onClick={() => setServicesLauncherOpen(false)}
+                      className="flex flex-col items-center p-2 rounded-2xl hover:bg-stone-50 transition-all duration-150 group text-center"
+                    >
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs group-hover:scale-105 group-hover:shadow transition-transform"
+                        style={{
+                          backgroundColor: cat.bgTint || '#f5f5f5',
+                          borderColor: cat.borderTint || '#e5e5e5',
+                          borderWidth: '1px',
+                          color: cat.accentColor || '#163e35',
+                        }}
+                      >
+                        <CategoryIcon name={cat.iconName} size={22} />
+                      </div>
+                      <span className="text-[11px] font-medium text-stone-700 group-hover:text-forest mt-1.5 leading-tight line-clamp-1 w-full">
+                        {cat.shortTitle || cat.label}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Bottom Promo Card matching Google Gemini callout */}
+                <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-forest/5 via-lime/10 to-transparent border border-forest/10 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-stone-700">
+                    <Sparkles size={15} className="text-forest shrink-0" />
+                    <span className="font-medium text-[11px] leading-tight">
+                      Explore 13+ verified home solutions
+                    </span>
+                  </div>
+                  <Link
+                    href="/categories"
+                    onClick={() => setServicesLauncherOpen(false)}
+                    className="font-bold text-forest text-xs hover:underline whitespace-nowrap ml-2"
+                  >
+                    View →
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             className="mobile-menu"
@@ -793,17 +981,6 @@ export function Header() {
 
         <Link href="/#latest-listings">
           Latest listings
-        </Link>
-
-        <span>
-          List directly. Find your next match.
-        </span>
-
-        <Link
-          href="/post-property"
-          className="text-forest font-semibold"
-        >
-          Post property <ArrowUpRight size={13} />
         </Link>
       </nav>
 

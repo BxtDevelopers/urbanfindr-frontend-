@@ -391,24 +391,8 @@ export default function AuthPage({ register = false }) {
       {/* Left Showcase Side */}
       <div className="w-full lg:w-1/2 p-8 sm:p-12 lg:p-14 flex flex-col justify-between bg-white border-r border-stone-200/70">
         <div>
-          {/* Brand Logo & Sub-tagline */}
-          <Link href="/" className="inline-flex items-center gap-3 group">
-            <span className="w-10 h-10 rounded-xl bg-[#163e35] text-[#d8edb3] flex items-center justify-center shadow-md group-hover:bg-[#1f5247] transition-colors">
-              <House size={22} />
-            </span>
-            <div>
-              <span className="text-2xl font-bold tracking-tight text-[#163e35] leading-none">
-                urban<span className="text-[#749546]">findr</span>
-                <span className="text-[#749546]">.</span>
-              </span>
-              <p className="text-[11px] text-stone-500 font-medium leading-none mt-1">
-                Find. Connect. Build Your Life.
-              </p>
-            </div>
-          </Link>
-
           {/* Headline & Subtitle */}
-          <div className="my-6 sm:my-8">
+          <div className="mb-6 sm:mb-8">
             <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-stone-900 leading-[1.15] tracking-tight">
               Your next chapter <br />
               <span className="text-[#163e35]">starts here</span>
