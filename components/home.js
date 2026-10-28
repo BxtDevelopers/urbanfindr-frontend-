@@ -81,18 +81,18 @@ export default function HomePage() {
       role: 'Home Buyers in Pune',
       rating: 5,
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-      text: 'Finding an independent house without aggressive brokers seemed impossible until UrbanFinder. Verified listings gave us confidence and peace of mind.'
+      text: 'Finding an independent house without aggressive brokers seemed impossible until UrbanFindr. Verified listings gave us confidence and peace of mind.'
     }
   ];
 
   const faqs = [
     {
-      q: 'How does UrbanFinder connect you directly with owners?',
-      a: 'UrbanFinder connects genuine buyers and tenants directly with verified property owners and builder project coordinators with transparent contact details and zero middleman friction.'
+      q: 'How does UrbanFindr connect you directly with owners?',
+      a: 'UrbanFindr connects genuine buyers and tenants directly with verified property owners and builder project coordinators with transparent contact details and zero middleman friction.'
     },
     {
       q: 'How are properties verified before going live?',
-      a: 'Every property posted on UrbanFinder is reviewed by our administration team to check property ownership details, pricing authenticity, images, and locality information before being marked as a Reviewed Listing.'
+      a: 'Every property posted on UrbanFindr is reviewed by our administration team to check property ownership details, pricing authenticity, images, and locality information before being marked as a Reviewed Listing.'
     },
     {
       q: 'Can I search multiple localities at once?',
@@ -138,7 +138,7 @@ export default function HomePage() {
         <div className="flex items-center justify-center">
           <img 
             src="/images/home-hero.png" 
-            alt="UrbanFinder properties, interiors and home services"
+            alt="UrbanFindr properties, interiors and home services"
             className="w-full max-w-[540px] h-auto object-contain" 
           />
         </div>
@@ -308,7 +308,7 @@ export default function HomePage() {
           alt="Sunlit living room with comfortable seating and natural materials"
         />
         <div className="interior-banner-copy">
-          <p className="eyebrow">URBANFINDER HOME INTERIORS</p>
+          <p className="eyebrow">URBANFINDR HOME INTERIORS</p>
           <h2>A home you found.<br />A home you make.</h2>
           <p className="muted my-5">
             Personalise every corner. Explore full-home designs, modular kitchens, bedrooms, wardrobes, furniture and painting renovations.
@@ -358,7 +358,7 @@ export default function HomePage() {
         <SectionTitle
           eyebrow="REAL EXPERIENCES"
           title="Loved by thousands of movers & owners"
-          description="See why renters, buyers and landlords choose UrbanFinder to connect directly without middlemen."
+          description="See why renters, buyers and landlords choose UrbanFindr to connect directly without middlemen."
         />
         <div className="grid md:grid-cols-3 gap-6 mt-8">
           {testimonials.map((t, idx) => (

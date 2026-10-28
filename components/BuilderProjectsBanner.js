@@ -39,7 +39,7 @@ const PROPERTIES = [
     id: 'prop-2',
     badge: 'Premium Waterfront Tower',
     title: 'Aura Marina Spire',
-    builder: 'Sobha Developers & UrbanFinder Verified',
+    builder: 'Sobha Developers & UrbanFindr Verified',
     location: 'Financial District, Hyderabad',
     price: '₹ 9.40 Cr',
     pricePerSqFt: '₹ 19,800 / sq.ft',

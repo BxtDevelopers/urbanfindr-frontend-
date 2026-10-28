@@ -8,8 +8,6 @@ import {
   X,
   ArrowUpRight,
   House,
-  ShieldCheck,
-  
 } from 'lucide-react';
 
 import { useApp } from './providers';
@@ -73,7 +71,7 @@ function CityPickerModal({ onClose }) {
 }
 
 export function Header() {
-  const { user } = useApp();
+  const { user, roleMeta, logout } = useApp();
 
   const [open, setOpen] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
@@ -94,11 +92,18 @@ export function Header() {
     <>
       {/* Main navbar */}
       <header className="header">
-        <Link href="/" className="brand">
-          <span className="brand-icon">
+        <Link href="/" className="brand flex items-center gap-2.5 group">
+          <span className="brand-icon shrink-0">
             <House size={22} />
           </span>
-          <span className="brand-text">urban<span className="brand-finder">finder</span><span className="brand-dot">.</span></span>
+          <div className="flex flex-col justify-center">
+            <span className="brand-text leading-none">
+              urban<span className="brand-finder">findr</span><span className="brand-dot">.</span>
+            </span>
+            <span className="text-[10px] sm:text-[11px] font-medium tracking-normal text-stone-500 leading-none mt-1">
+              Find. Connect. Build Your Life.
+            </span>
+          </div>
         </Link>
 
         <nav className="desktop-nav">
@@ -139,22 +144,61 @@ export function Header() {
           </div>
         </nav>
 
-        {/* Right-side actions: Compare and Notifications removed */}
+        {/* Right-side actions: User Account & Role Badge */}
         <div className="flex gap-3 items-center">
           {user ? (
             user.role === 'admin' ? (
-              <Link
-                className="account-btn !bg-forest !text-white flex items-center gap-1.5 font-semibold text-xs py-1.5 px-3 rounded-md shadow-sm hover:!bg-[#24564a] transition-all"
-                href="/admin"
-                title="Go to Admin Command Center"
-              >
-                <ShieldCheck size={14} className="text-lime" />
-                <span>Admin: {(user.name || 'Admin').split(' ')[0]}</span>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  className="account-btn !bg-forest !text-white flex items-center gap-1.5 font-semibold text-xs py-1.5 px-3 rounded-md shadow-sm hover:!bg-[#24564a] transition-all"
+                  href="/admin"
+                  title="Go to Admin Command Center"
+                >
+                  <ShieldCheck size={14} className="text-lime" />
+                  <span>Admin: {(user.name || 'Admin').split(' ')[0]}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="text-xs text-muted hover:text-forest hidden sm:inline-block px-1"
+                  title="Log out"
+                >
+                  Sign out
+                </button>
+              </div>
             ) : (
-              <Link className="account-btn" href="/dashboard">
-                {(user.name || 'Account').split(' ')[0]}
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  className="account-btn flex items-center gap-2"
+                  href="/dashboard"
+                  title={`${user.name} (${roleMeta?.label || 'Account'})`}
+                >
+                  <span>{(user.name || 'Account').split(' ')[0]}</span>
+                  {roleMeta && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: roleMeta.bgColor,
+                        color: roleMeta.color,
+                        border: `1px solid ${roleMeta.borderColor}`,
+                      }}
+                    >
+                      {roleMeta.shortLabel}
+                    </span>
+                  )}
+                </Link>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="text-xs text-muted hover:text-forest hidden sm:inline-block px-1"
+                  title="Log out"
+                >
+                  Sign out
+                </button>
+              </div>
             )
           ) : (
             <Link
@@ -249,14 +293,52 @@ export function Header() {
                 >
                   User Portal View
                 </Link>
+                <button
+                  style={{
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    padding: 0,
+                    fontSize: 16,
+                    color: '#991b1b',
+                  }}
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                >
+                  Sign out
+                </button>
               </>
             ) : (
-              <Link
-                href="/dashboard"
-                onClick={() => setOpen(false)}
-              >
-                My dashboard
-              </Link>
+              <>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setOpen(false)}
+                >
+                  {`My dashboard (${roleMeta?.shortLabel || 'Account'})`}
+                </Link>
+                <button
+                  style={{
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    padding: 0,
+                    fontSize: 16,
+                    color: '#991b1b',
+                  }}
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                >
+                  Sign out
+                </button>
+              </>
             )
           ) : (
             <Link
@@ -322,7 +404,7 @@ export function Footer() {
             className="brand !text-white flex items-center gap-2 mb-4"
           >
             <House size={24} />
-            <span className="brand-text">urban<span className="brand-finder">finder</span><span className="brand-dot">.</span></span>
+            <span className="brand-text">urban<span className="brand-finder">findr</span><span className="brand-dot">.</span></span>
           </Link>
 
           <p className="max-w-sm text-sm text-white/70 mt-4 leading-7">
@@ -474,7 +556,7 @@ export function Footer() {
 
       <div className="wrap border-t border-white/20 py-4 text-xs text-white/40 flex flex-col sm:flex-row justify-between items-center mx-auto">
         <span>
-          © {new Date().getFullYear()} UrbanFinder. Built for better living.
+          © {new Date().getFullYear()} UrbanFindr. Built for better living.
         </span>
 
         <span className="flex items-center">
@@ -487,8 +569,7 @@ export function Footer() {
 }
 
 export function Guard({ children, roles }) {
-  const { user, ready } = useApp();
-  const pathname = usePathname();
+  const { user, ready, hasRole } = useApp();
 
   if (!ready) {
     return (
@@ -498,47 +579,40 @@ export function Guard({ children, roles }) {
     );
   }
 
-  const isAdminRoute = roles && roles.includes('admin');
-
   if (!user) {
     return (
       <div className="wrap py-20">
-        <div className="panel max-w-xl mx-auto p-10 text-center space-y-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center text-forest mb-2">
-            {isAdminRoute ? <ShieldCheck size={26} /> : <House size={26} />}
-          </div>
-          <h2>{isAdminRoute ? 'Administrator Access' : 'Your next chapter starts here'}</h2>
-          <p className="muted leading-relaxed">
-            {isAdminRoute
-              ? 'Log in with your administrator credentials to access platform controls, user management, and property moderation.'
-              : 'Log in to manage your homes, conversations and appointments.'}
+        <div className="panel max-w-xl mx-auto p-10 text-center">
+          <h2>Your next chapter starts here</h2>
+
+          <p className="muted my-5">
+            Log in to manage your homes, conversations and appointments.
           </p>
-          <div className="pt-2">
-            <Link
-              className="btn"
-              href={`/login?next=${encodeURIComponent(pathname || (isAdminRoute ? '/admin' : '/dashboard'))}`}
-            >
-              {isAdminRoute ? 'Admin Log in' : 'Log in'}
-            </Link>
-          </div>
+
+          <Link className="btn" href="/login">
+            Log in
+          </Link>
         </div>
       </div>
     );
   }
 
-  if (roles && !roles.includes(user.role)) {
+  if (roles && !hasRole(roles)) {
     return (
       <div className="wrap py-20">
-        <div className="panel max-w-xl mx-auto p-10 text-center space-y-4">
-          <h2>Administrative Access Required</h2>
-          <p className="muted leading-relaxed">
-            This command center requires an Administrator account. You are currently logged in as {user.name} ({user.role}).
-          </p>
-          <div className="pt-2">
-            <Link href="/dashboard" className="btn">
-              Go to Your Dashboard
-            </Link>
-          </div>
+        <h2>This area requires additional access.</h2>
+
+        <p className="muted my-5">
+          This feature requires an account with {Array.isArray(roles) ? roles.join(' or ') : roles} access. Your current account role is &ldquo;{user.role}&rdquo;.
+        </p>
+
+        <div className="flex gap-4 items-center">
+          <Link href="/dashboard" className="btn">
+            Your dashboard
+          </Link>
+          <Link href="/dashboard/profile" className="btn-outline">
+            Account settings &amp; roles
+          </Link>
         </div>
       </div>
     );

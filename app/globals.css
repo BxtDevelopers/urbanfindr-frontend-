@@ -1250,7 +1250,8 @@ table{font-size:15px}td,th{padding:15px}.check-label{font-size:15px;line-height:
   color: #ffffff;
   font-weight: 600;
 }
-.brand-finder {
+.brand-finder,
+.brand-findr {
   color: #749546;
 }
 .brand-dot {

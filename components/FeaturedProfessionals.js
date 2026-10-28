@@ -199,7 +199,7 @@ export default function FeaturedProfessionals() {
                   />
                   {pro.verified && (
                     <span
-                      title="Verified by UrbanFinder"
+                      title="Verified by UrbanFindr"
                       className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-xs"
                     >
                       <CheckCircle2 size={15} className="text-forest fill-white" />
@@ -378,7 +378,7 @@ export default function FeaturedProfessionals() {
                   </a>
 
                   <a
-                    href={`https://wa.me/91${(activeContactModal.phone || '').replace(/[^0-9]/g, '').slice(-10)}?text=${encodeURIComponent(`Hi ${activeContactModal.name}, I found your profile on UrbanFinder and would like to inquire about your services.`)}`}
+                    href={`https://wa.me/91${(activeContactModal.phone || '').replace(/[^0-9]/g, '').slice(-10)}?text=${encodeURIComponent(`Hi ${activeContactModal.name}, I found your profile on UrbanFindr and would like to inquire about your services.`)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition shadow-xs"

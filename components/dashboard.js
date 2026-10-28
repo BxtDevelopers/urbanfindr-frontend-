@@ -15,15 +15,22 @@ import {
   Search,
   ExternalLink,
   Trash2,
+  Briefcase,
+  Building2,
+  Wrench,
   ShieldCheck,
+  User as UserIcon,
+  Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
-import { api, useApp, useData } from './providers';
+import { api, useApp, useData, getRoleMeta } from './providers';
 import { Image, Field, Pagination, State, Submit } from './ui';
 import { money, date } from '@/lib/format';
+import { serviceCategories } from '@/lib/serviceCategories';
 import Listings from './listings';
 
 export default function Dashboard({ section = '' }) {
-  const { user, setUser, toast } = useApp(),
+  const { user, setUser, toast, roleMeta, logout } = useApp(),
     router = useRouter();
   const searchParams = useSearchParams();
   const isUserView = searchParams?.get('view') === 'user';
@@ -35,34 +42,85 @@ export default function Dashboard({ section = '' }) {
       router.replace('/admin');
     }
   }, [user, section, isUserView, router]);
+
+  const isCustomer = !user || user.role === 'customer' || user.role === 'user';
+  const isOwner = user?.role === 'owner';
+  const isBroker = user?.role === 'broker';
+  const isBuilder = user?.role === 'builder';
+  const isServiceProvider = user?.role === 'service_provider' || user?.role === 'service-provider';
+  const isAdmin = user?.role === 'admin';
+
   const nav = [
     ['Overview', ''],
-    ['Saved homes', 'favorites'],
-    ['Saved searches & alerts', 'saved-searches'],
-    ...(user?.role && user.role !== 'user' ? [['My properties', 'properties']] : []),
+    ...(isCustomer
+      ? [
+          ['Saved homes', 'favorites'],
+          ['Saved searches & alerts', 'saved-searches'],
+          ['Site visits', 'visits'],
+          ['Consultations & enquiries', 'leads'],
+        ]
+      : []),
+    ...(isOwner
+      ? [
+          ['My properties', 'properties'],
+          ['Tenant enquiries', 'leads'],
+          ['Site visits', 'visits'],
+          ['Saved homes', 'favorites'],
+        ]
+      : []),
+    ...(isBroker
+      ? [
+          ['Client properties', 'properties'],
+          ['Buyer leads & enquiries', 'leads'],
+          ['Client visits', 'visits'],
+          ['Saved homes', 'favorites'],
+        ]
+      : []),
+    ...(isBuilder
+      ? [
+          ['Projects & towers', 'properties'],
+          ['Project enquiries', 'leads'],
+          ['Site visits', 'visits'],
+        ]
+      : []),
+    ...(isServiceProvider
+      ? [
+          ['Service leads & quotes', 'leads'],
+          ['Consultations', 'visits'],
+        ]
+      : []),
     ['Messages', 'messages'],
-    ['Site visits', 'visits'],
-    ['Enquiries & interiors', 'leads'],
     ['Notifications', 'notifications'],
-    ['Professional profile', 'profile'],
-    ...(user?.role === 'admin' ? [['Administration', 'admin']] : []),
+    ['Account profile', 'profile'],
+    ...(isAdmin ? [['Administration', 'admin']] : []),
   ];
-
-  async function logout() {
-    try {
-      await api('auth/logout', { method: 'POST' });
-      setUser(null);
-      router.push('/');
-    } catch (e) {
-      toast(e.message);
-    }
-  }
 
   return (
     <div className="wrap py-10 pb-20">
       <div className="dashboard-grid">
         <aside className="dashboard-nav">
-          <p className="eyebrow px-4 hidden sm:block">YOUR URBANFINDER</p>
+          <div className="px-4 pb-3 border-b border-line mb-2 hidden sm:block">
+            <p className="eyebrow mb-1">YOUR ACCOUNT</p>
+            <div className="font-semibold text-forest text-sm truncate">{user?.name}</div>
+            {roleMeta && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  background: roleMeta.bgColor,
+                  color: roleMeta.color,
+                  border: `1px solid ${roleMeta.borderColor}`,
+                  marginTop: '4px',
+                }}
+              >
+                {roleMeta.label}
+              </span>
+            )}
+          </div>
+
           {nav.map(([label, value]) => (
             <Link
               className={section === value ? 'active' : ''}
@@ -72,7 +130,7 @@ export default function Dashboard({ section = '' }) {
               {label}
             </Link>
           ))}
-          <button className="muted" onClick={logout}>
+          <button className="muted hover:text-red-700 text-left" onClick={logout}>
             Log out
           </button>
         </aside>
@@ -114,51 +172,375 @@ export default function Dashboard({ section = '' }) {
 }
 
 function Overview() {
-  const { user } = useApp();
+  const { user, roleMeta } = useApp();
   const { data, error, loading } = useData('dashboard');
+
+  const role = user?.role || 'customer';
+  const isCustomer = role === 'customer' || role === 'user';
+  const isOwner = role === 'owner';
+  const isBroker = role === 'broker';
+  const isBuilder = role === 'builder';
+  const isServiceProvider = role === 'service_provider' || role === 'service-provider';
+  const isAdmin = role === 'admin';
+
   return (
     <>
-      <p className="eyebrow">GOOD TO HAVE YOU HERE</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <p className="eyebrow !mb-0">GOOD TO HAVE YOU HERE</p>
+        {roleMeta && (
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              padding: '3px 10px',
+              borderRadius: '6px',
+              background: roleMeta.bgColor,
+              color: roleMeta.color,
+              border: `1px solid ${roleMeta.borderColor}`,
+            }}
+          >
+            {roleMeta.label}
+          </span>
+        )}
+      </div>
+
       <h1 className="!text-4xl">Hello, {user?.name ? user.name.split(' ')[0] : 'there'}.</h1>
-      <p className="muted mt-4 mb-7">Your homes, conversations and next steps, all in one place.</p>
+      <p className="muted mt-2 mb-7">
+        {isCustomer && 'Find your next home, book property inspections, and request interior services.'}
+        {isOwner && 'Manage your direct property listings, review prospective tenants, and schedule visits.'}
+        {isBroker && 'Manage your client property portfolio, track buyer inquiries, and coordinate inspections.'}
+        {isBuilder && 'Showcase your real estate projects, track unit inquiries, and share verified brochures.'}
+        {isServiceProvider && 'Receive service consultation requests, showcase your craft, and grow your client base.'}
+        {isAdmin && 'Oversee listings, review submissions, and manage platform verifications.'}
+      </p>
+
       <State loading={loading} error={error} />
+
       {data && (
         <div className="summary-grid">
-          {[
-            [Heart, data.favorites, 'Saved homes', 'favorites'],
-            [Bell, data.savedSearches ?? 0, 'Saved searches', 'saved-searches'],
-            [CalendarDays, data.visits, 'Upcoming visits', 'visits'],
-            [MessageCircle, data.messages, 'Conversations', 'messages'],
-            [ClipboardList, data.enquiries, 'Enquiries', 'leads'],
-            ...(user?.role && user.role !== 'user'
-              ? [
-                  [House, data.properties, 'Your properties', 'properties'],
-                  [Bell, data.pending, 'Awaiting review', 'properties'],
-                ]
-              : []),
-          ].map(([Icon, value, label, href]) => (
-            <Link key={label} className="stat" href={`/dashboard/${href}`}>
-              <div className="flex justify-between">
-                <Icon size={20} />
-                <ArrowUpRight size={15} />
-              </div>
-              <strong>{value}</strong>
-              <span className="text-xs muted">{label}</span>
-            </Link>
-          ))}
+          {/* Customer stats */}
+          {isCustomer && (
+            <>
+              <Link className="stat" href="/dashboard/favorites">
+                <div className="flex justify-between">
+                  <Heart size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.favorites ?? 0}</strong>
+                <span className="text-xs muted">Saved homes</span>
+              </Link>
+              <Link className="stat" href="/dashboard/saved-searches">
+                <div className="flex justify-between">
+                  <Bell size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.savedSearches ?? 0}</strong>
+                <span className="text-xs muted">Saved searches &amp; alerts</span>
+              </Link>
+              <Link className="stat" href="/dashboard/visits">
+                <div className="flex justify-between">
+                  <CalendarDays size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.visits ?? 0}</strong>
+                <span className="text-xs muted">Upcoming site visits</span>
+              </Link>
+              <Link className="stat" href="/dashboard/leads">
+                <div className="flex justify-between">
+                  <ClipboardList size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.enquiries ?? 0}</strong>
+                <span className="text-xs muted">Consultation requests</span>
+              </Link>
+              <Link className="stat" href="/dashboard/messages">
+                <div className="flex justify-between">
+                  <MessageCircle size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.messages ?? 0}</strong>
+                <span className="text-xs muted">Active conversations</span>
+              </Link>
+            </>
+          )}
+
+          {/* Owner stats */}
+          {isOwner && (
+            <>
+              <Link className="stat" href="/dashboard/properties">
+                <div className="flex justify-between">
+                  <House size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.properties ?? 0}</strong>
+                <span className="text-xs muted">Your properties</span>
+              </Link>
+              <Link className="stat" href="/dashboard/properties">
+                <div className="flex justify-between">
+                  <Bell size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.pending ?? 0}</strong>
+                <span className="text-xs muted">Awaiting review</span>
+              </Link>
+              <Link className="stat" href="/dashboard/leads">
+                <div className="flex justify-between">
+                  <ClipboardList size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.enquiries ?? 0}</strong>
+                <span className="text-xs muted">Tenant enquiries</span>
+              </Link>
+              <Link className="stat" href="/dashboard/visits">
+                <div className="flex justify-between">
+                  <CalendarDays size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.visits ?? 0}</strong>
+                <span className="text-xs muted">Scheduled visits</span>
+              </Link>
+              <Link className="stat" href="/dashboard/messages">
+                <div className="flex justify-between">
+                  <MessageCircle size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.messages ?? 0}</strong>
+                <span className="text-xs muted">Messages</span>
+              </Link>
+            </>
+          )}
+
+          {/* Broker stats */}
+          {isBroker && (
+            <>
+              <Link className="stat" href="/dashboard/properties">
+                <div className="flex justify-between">
+                  <Briefcase size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.properties ?? 0}</strong>
+                <span className="text-xs muted">Managed properties</span>
+              </Link>
+              <Link className="stat" href="/dashboard/leads">
+                <div className="flex justify-between">
+                  <ClipboardList size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.enquiries ?? 0}</strong>
+                <span className="text-xs muted">Buyer enquiries</span>
+              </Link>
+              <Link className="stat" href="/dashboard/visits">
+                <div className="flex justify-between">
+                  <CalendarDays size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.visits ?? 0}</strong>
+                <span className="text-xs muted">Client visits</span>
+              </Link>
+              <Link className="stat" href="/dashboard/messages">
+                <div className="flex justify-between">
+                  <MessageCircle size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.messages ?? 0}</strong>
+                <span className="text-xs muted">Client messages</span>
+              </Link>
+            </>
+          )}
+
+          {/* Builder stats */}
+          {isBuilder && (
+            <>
+              <Link className="stat" href="/dashboard/properties">
+                <div className="flex justify-between">
+                  <Building2 size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.properties ?? 0}</strong>
+                <span className="text-xs muted">Projects &amp; towers</span>
+              </Link>
+              <Link className="stat" href="/dashboard/leads">
+                <div className="flex justify-between">
+                  <ClipboardList size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.enquiries ?? 0}</strong>
+                <span className="text-xs muted">Project inquiries</span>
+              </Link>
+              <Link className="stat" href="/dashboard/visits">
+                <div className="flex justify-between">
+                  <CalendarDays size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.visits ?? 0}</strong>
+                <span className="text-xs muted">Site visits</span>
+              </Link>
+              <Link className="stat" href="/dashboard/messages">
+                <div className="flex justify-between">
+                  <MessageCircle size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.messages ?? 0}</strong>
+                <span className="text-xs muted">Conversations</span>
+              </Link>
+            </>
+          )}
+
+          {/* Service Provider stats */}
+          {isServiceProvider && (
+            <>
+              <Link className="stat" href="/dashboard/leads">
+                <div className="flex justify-between">
+                  <ClipboardList size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.enquiries ?? 0}</strong>
+                <span className="text-xs muted">Service requests</span>
+              </Link>
+              <Link className="stat" href="/dashboard/visits">
+                <div className="flex justify-between">
+                  <CalendarDays size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.visits ?? 0}</strong>
+                <span className="text-xs muted">Consultations</span>
+              </Link>
+              <Link className="stat" href="/dashboard/messages">
+                <div className="flex justify-between">
+                  <MessageCircle size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.messages ?? 0}</strong>
+                <span className="text-xs muted">Client messages</span>
+              </Link>
+            </>
+          )}
+
+          {/* Admin stats */}
+          {isAdmin && (
+            <>
+              <Link className="stat" href="/dashboard/properties">
+                <div className="flex justify-between">
+                  <House size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.properties ?? 0}</strong>
+                <span className="text-xs muted">Total properties</span>
+              </Link>
+              <Link className="stat" href="/admin">
+                <div className="flex justify-between">
+                  <Bell size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.pending ?? 0}</strong>
+                <span className="text-xs muted">Pending reviews</span>
+              </Link>
+              <Link className="stat" href="/dashboard/leads">
+                <div className="flex justify-between">
+                  <ClipboardList size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.enquiries ?? 0}</strong>
+                <span className="text-xs muted">Total leads</span>
+              </Link>
+              <Link className="stat" href="/dashboard/messages">
+                <div className="flex justify-between">
+                  <MessageCircle size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.messages ?? 0}</strong>
+                <span className="text-xs muted">Messages</span>
+              </Link>
+            </>
+          )}
         </div>
       )}
-      <div className="owner-banner mt-8 !p-7">
-        <div>
-          <h3>Every next chapter starts somewhere.</h3>
-          <p className="muted text-sm mt-3">
-            Explore a new neighbourhood or make your current home your own.
-          </p>
+
+      {/* Role-specific action banners */}
+      {isCustomer && (
+        <div className="owner-banner mt-8 !p-7">
+          <div>
+            <h3>Own a home or want to offer services?</h3>
+            <p className="muted text-sm mt-2">
+              Upgrade your account anytime to list rental properties or register as a certified service professional.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Link className="btn" href="/post-property">
+              Post property
+            </Link>
+            <Link className="btn-outline" href="/dashboard/profile">
+              Upgrade account
+            </Link>
+          </div>
         </div>
-        <Link className="btn" href="/properties">
-          Explore homes
-        </Link>
-      </div>
+      )}
+
+      {isOwner && (
+        <div className="owner-banner mt-8 !p-7">
+          <div>
+            <h3>Reach verified tenants with zero middleman fees.</h3>
+            <p className="muted text-sm mt-2">
+              Add photos, set rental or sale prices, and connect directly with tenants looking in your locality.
+            </p>
+          </div>
+          <Link className="btn" href="/post-property">
+            Post new property
+          </Link>
+        </div>
+      )}
+
+      {isBroker && (
+        <div className="owner-banner mt-8 !p-7">
+          <div>
+            <h3>Manage your client listings and RERA accreditation.</h3>
+            <p className="muted text-sm mt-2">
+              Keep your agency license active to display verified badges across all your client property listings.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Link className="btn" href="/post-property">
+              Add client property
+            </Link>
+            <Link className="btn-outline" href="/dashboard/profile">
+              Agency profile
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {isBuilder && (
+        <div className="owner-banner mt-8 !p-7">
+          <div>
+            <h3>Showcase upcoming towers and luxury developments.</h3>
+            <p className="muted text-sm mt-2">
+              Upload architectural plans, manage configurations, and track prospective buyer leads across cities.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Link className="btn" href="/post-property">
+              Publish project
+            </Link>
+            <Link className="btn-outline" href="/dashboard/profile">
+              Developer details
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {isServiceProvider && (
+        <div className="owner-banner mt-8 !p-7">
+          <div>
+            <h3>Grow your interior &amp; home services business.</h3>
+            <p className="muted text-sm mt-2">
+              Receive verified consultation requests from homeowners in your service cities.
+            </p>
+          </div>
+          <Link className="btn" href="/dashboard/profile">
+            Update service profile
+          </Link>
+        </div>
+      )}
     </>
   );
 }
@@ -555,7 +937,7 @@ function Visits() {
       <State loading={loading} error={error} empty={data?.total === 0} />
       <div className="space-y-4">
         {data?.items?.map(v => {
-          const manager = user?.role === 'admin' || v.owner?._id === user?._id;
+          const manager = user.role === 'admin' || v.owner?._id === user._id;
           const active = ['requested', 'confirmed'].includes(v.status);
           return (
             <article className="panel" key={v._id}>
@@ -683,7 +1065,7 @@ export function Leads() {
               ))}
             </div>
             {v.note && <p className="text-sm muted mt-5 whitespace-pre-wrap">{v.note}</p>}
-            {(user?.role === 'admin' || String(v.manager) === user?._id) && (
+            {(user.role === 'admin' || String(v.manager) === user._id) && (
               <form
                 className="mt-5 border-t pt-5 space-y-4"
                 onSubmit={e => update(e, v._id)}
@@ -779,8 +1161,16 @@ function Notifications() {
 }
 
 function Profile() {
-  const { user, setUser, toast } = useApp();
+  const { user, setUser, toast, roleMeta } = useApp();
   const [busy, setBusy] = useState(false);
+  const [upgradeBusy, setUpgradeBusy] = useState('');
+
+  const role = user?.role || 'customer';
+  const isCustomer = role === 'customer' || role === 'user';
+  const isOwner = role === 'owner';
+  const isBroker = role === 'broker';
+  const isBuilder = role === 'builder';
+  const isServiceProvider = role === 'service_provider' || role === 'service-provider';
 
   async function saveProfile(e) {
     e.preventDefault();
@@ -789,7 +1179,7 @@ function Profile() {
       const data = Object.fromEntries(new FormData(e.currentTarget));
       const res = await api('auth/profile', { method: 'PATCH', body: data });
       setUser(res.user);
-      toast('Professional profile updated successfully.');
+      toast('Profile details updated successfully.');
     } catch (err) {
       toast(err.message);
     } finally {
@@ -797,15 +1187,150 @@ function Profile() {
     }
   }
 
+  async function handleRoleUpgrade(targetRole) {
+    setUpgradeBusy(targetRole);
+    try {
+      // Allow switching or upgrading account role
+      const res = await api('auth/profile', {
+        method: 'PATCH',
+        body: { role: targetRole },
+      });
+      setUser(res.user);
+      toast(`Congratulations! Your account role has been updated to ${targetRole}.`);
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setUpgradeBusy('');
+    }
+  }
+
+  const providerServices = serviceCategories.filter((c) => c.slug !== 'properties');
+
   return (
     <>
       <div className="section-title">
         <div>
-          <p className="eyebrow">YOUR PROFESSIONAL IDENTITY</p>
-          <h2>Professional profile</h2>
+          <p className="eyebrow">YOUR SHARED IDENTITY</p>
+          <h2>Account &amp; profile settings</h2>
         </div>
       </div>
+
+      {/* Identity Summary Card */}
+      <div className="panel p-6 mb-6 flex flex-wrap items-center justify-between gap-4 border-l-4 border-forest">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-forest text-lime flex items-center justify-center font-bold text-xl uppercase">
+            {user?.name ? user.name[0] : 'U'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="!text-xl font-semibold">{user?.name}</h3>
+              {roleMeta && (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    background: roleMeta.bgColor,
+                    color: roleMeta.color,
+                    border: `1px solid ${roleMeta.borderColor}`,
+                  }}
+                >
+                  {roleMeta.label}
+                </span>
+              )}
+            </div>
+            <p className="text-sm muted mt-1 flex items-center gap-2">
+              <span>{user?.email}</span>
+              <span>•</span>
+              <span>{user?.phone || 'No phone set'}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="text-right text-xs muted">
+          <p>Role permissions: <strong className="text-forest capitalize">{user?.role}</strong></p>
+          <p className="mt-0.5">{roleMeta?.description}</p>
+        </div>
+      </div>
+
+      {/* Customer Upgrade Prompt */}
+      {isCustomer && (
+        <div className="panel mb-6 p-6 bg-lime/10 border-forest/20">
+          <div className="flex items-center gap-2 text-forest font-bold text-sm uppercase tracking-wider mb-2">
+            <Sparkles size={16} /> Upgrade or Switch Account Role
+          </div>
+          <p className="text-sm muted mb-4">
+            Need to list properties, manage client portfolios, or offer professional home services? Upgrade your account in one click:
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 bg-white rounded-lg border border-line flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-sm text-forest mb-1">
+                  <House size={16} /> Property Owner
+                </div>
+                <p className="text-xs muted leading-relaxed">
+                  Post and manage your direct residential or commercial listings with zero brokerage.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn text-xs !py-1.5 mt-3 w-full"
+                disabled={upgradeBusy === 'owner'}
+                onClick={() => handleRoleUpgrade('owner')}
+              >
+                {upgradeBusy === 'owner' ? 'Updating…' : 'Switch to Owner'}
+              </button>
+            </div>
+
+            <div className="p-3.5 bg-white rounded-lg border border-line flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-sm text-sky-800 mb-1">
+                  <Briefcase size={16} /> Licensed Broker
+                </div>
+                <p className="text-xs muted leading-relaxed">
+                  Manage multiple client properties and inquiries with broker badge.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-outline text-xs !py-1.5 mt-3 w-full"
+                disabled={upgradeBusy === 'broker'}
+                onClick={() => handleRoleUpgrade('broker')}
+              >
+                {upgradeBusy === 'broker' ? 'Updating…' : 'Switch to Broker'}
+              </button>
+            </div>
+
+            <div className="p-3.5 bg-white rounded-lg border border-line flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-sm text-purple-800 mb-1">
+                  <Wrench size={16} /> Service Pro
+                </div>
+                <p className="text-xs muted leading-relaxed">
+                  Offer interior designing, painting, cleaning, or home renovation.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-outline text-xs !py-1.5 mt-3 w-full"
+                disabled={upgradeBusy === 'service_provider'}
+                onClick={() => handleRoleUpgrade('service_provider')}
+              >
+                {upgradeBusy === 'service_provider' ? 'Updating…' : 'Switch to Service Pro'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Edit Form */}
       <form onSubmit={saveProfile} className="panel space-y-5 max-w-2xl">
+        <h3 className="font-semibold text-base border-b border-line pb-2">
+          Personal Information
+        </h3>
+
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Full name">
             <input name="name" defaultValue={user?.name || ''} required />
@@ -816,42 +1341,164 @@ function Profile() {
               defaultValue={user?.phone || ''}
               required
               pattern="\+?[0-9\s-]{10,16}"
+              placeholder="10-digit mobile number"
             />
           </Field>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Company / Agency name">
-            <input
-              name="company"
-              defaultValue={user?.company || ''}
-              placeholder="e.g. Skyline Realty, Apex Homes"
-            />
-          </Field>
-          <Field label="RERA / Agent license number">
-            <input
-              name="reraId"
-              defaultValue={user?.reraId || ''}
-              placeholder="e.g. PRM/KA/RERA/..."
-            />
-          </Field>
-        </div>
-        <Field label="Years of experience">
+
+        <Field label="Email address" hint="Email cannot be changed directly for security">
           <input
-            name="experience"
-            defaultValue={user?.experience || ''}
-            placeholder="e.g. 5+ years"
+            name="email"
+            defaultValue={user?.email || ''}
+            disabled
+            className="bg-stone-50 cursor-not-allowed"
           />
         </Field>
-        <Field label="Professional bio / About yourself">
+
+        {/* Broker Specific Fields */}
+        {isBroker && (
+          <>
+            <h3 className="font-semibold text-base border-b border-line pb-2 pt-2 text-sky-900">
+              Brokerage &amp; Accreditation
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Agency / Company name">
+                <input
+                  name="company"
+                  defaultValue={user?.company || ''}
+                  placeholder="e.g. Skyline Realty, Apex Homes"
+                />
+              </Field>
+              <Field label="RERA Agent License ID">
+                <input
+                  name="reraId"
+                  defaultValue={user?.reraId || ''}
+                  placeholder="e.g. PRM/KA/RERA/..."
+                />
+              </Field>
+            </div>
+            <Field label="Years in real estate">
+              <input
+                name="experience"
+                defaultValue={user?.experience || ''}
+                placeholder="e.g. 8+ years"
+              />
+            </Field>
+          </>
+        )}
+
+        {/* Builder Specific Fields */}
+        {isBuilder && (
+          <>
+            <h3 className="font-semibold text-base border-b border-line pb-2 pt-2 text-amber-900">
+              Developer &amp; Enterprise Info
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Developer / Firm name">
+                <input
+                  name="company"
+                  defaultValue={user?.company || ''}
+                  placeholder="e.g. Prestige Urban Developers"
+                />
+              </Field>
+              <Field label="Corporate RERA Registration">
+                <input
+                  name="reraId"
+                  defaultValue={user?.reraId || ''}
+                  placeholder="e.g. PRM/KA/RERA/DEV-1002"
+                />
+              </Field>
+            </div>
+            <Field label="Experience / Industry presence">
+              <input
+                name="experience"
+                defaultValue={user?.experience || ''}
+                placeholder="e.g. 15+ years in residential construction"
+              />
+            </Field>
+          </>
+        )}
+
+        {/* Service Provider Specific Fields */}
+        {isServiceProvider && (
+          <>
+            <h3 className="font-semibold text-base border-b border-line pb-2 pt-2 text-purple-900">
+              Service Offering &amp; Rates
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Primary service category">
+                <select
+                  name="serviceCategory"
+                  defaultValue={user?.serviceCategory || 'interior-designers'}
+                >
+                  {providerServices.map((cat) => (
+                    <option key={cat.slug} value={cat.slug}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Specialist title">
+                <input
+                  name="specialist"
+                  defaultValue={user?.specialist || ''}
+                  placeholder="e.g. Turnkey Modular Interior Designer"
+                />
+              </Field>
+            </div>
+            <Field label="Years of experience">
+              <input
+                name="experience"
+                defaultValue={user?.experience || ''}
+                placeholder="e.g. 6+ years"
+              />
+            </Field>
+          </>
+        )}
+
+        {/* Owner Specific Fields */}
+        {isOwner && (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Preferred contact hours">
+              <input
+                name="experience"
+                defaultValue={user?.experience || ''}
+                placeholder="e.g. 10 AM – 7 PM"
+              />
+            </Field>
+            <Field label="Property localities">
+              <input
+                name="company"
+                defaultValue={user?.company || ''}
+                placeholder="e.g. Whitefield, Koramangala"
+              />
+            </Field>
+          </div>
+        )}
+
+        {/* Bio / Description for all */}
+        <Field
+          label="Professional bio / About yourself"
+          hint="Visible to prospective clients, tenants, and visitors"
+        >
           <textarea
             name="bio"
             rows={4}
             defaultValue={user?.bio || ''}
             maxLength={1000}
-            placeholder="Tell prospective clients about your property portfolio, localities of expertise, and services..."
+            placeholder={
+              isServiceProvider
+                ? 'Describe your expertise, past projects, warranties, and scope of service…'
+                : isBuilder
+                ? 'Describe your developer portfolio, ongoing projects, and architectural highlights…'
+                : isBroker
+                ? 'Tell prospective buyers about your property portfolio and localities of expertise…'
+                : 'Share details about your listings or what you are looking for in a home…'
+            }
           />
         </Field>
-        <Submit busy={busy}>Save profile</Submit>
+
+        <Submit busy={busy}>Save profile changes</Submit>
       </form>
     </>
   );

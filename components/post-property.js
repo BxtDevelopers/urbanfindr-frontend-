@@ -449,8 +449,8 @@ function AuthGate({ params }) {
       {/* Why Post on UrbanFinder */}
       <div className="mt-12">
         <div className="text-center mb-6">
-          <p className="eyebrow">WHY POST ON URBANFINDER</p>
-          <h2 className="!text-3xl font-semibold">How UrbanFinder helps you rent or sell faster</h2>
+          <p className="eyebrow">WHY POST ON URBANFINDR</p>
+          <h2 className="!text-3xl font-semibold">How UrbanFindr helps you rent or sell faster</h2>
         </div>
 
         <div className="nb-why-grid">
