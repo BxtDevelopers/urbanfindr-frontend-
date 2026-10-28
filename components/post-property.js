@@ -2,26 +2,23 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Check,
   ArrowRight,
-  MapPin,
-  Search,
   User,
   Mail,
   Phone,
   Lock,
   House,
-  KeyRound,
-  BedDouble,
   BriefcaseBusiness,
   ShieldCheck,
   CheckCircle2,
   Sparkles,
+  LogOut,
+  Handshake,
 } from 'lucide-react';
-import { categories, categoryFor } from '@/lib/catalog';
-import { cities } from '@/lib/format';
+import { categoryFor } from '@/lib/catalog';
 import { useApp, api } from './providers';
 import PropertyEditor from './property-editor';
 
@@ -29,94 +26,118 @@ export default function PostProperty() {
   const { user, ready, refresh, setUser, toast } = useApp();
   const params = useSearchParams();
 
-  const [step, setStep] = useState(1);
+  // If user is already authenticated, bypass step 1 and show the dynamic PropertyEditor directly!
+  if (user) {
+    return (
+      <div className="nb-post-wrap">
+        {/* Logged in status banner */}
+        <div className="flex items-center justify-between bg-[#edf3e2] text-forest border border-[#d2dfc4] px-4 py-3 rounded-xl text-sm mb-6 flex-wrap gap-2">
+          <div className="flex items-center gap-2 font-medium">
+            <CheckCircle2 size={18} className="text-forest flex-shrink-0" />
+            <span>
+              Signed in as <strong>{user.name}</strong> ({user.email}) • Role:{' '}
+              <strong className="capitalize">{user.role}</strong>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await api('auth/logout', { method: 'POST' });
+                setUser(null);
+                toast('Logged out successfully.');
+              } catch (e) {
+                toast(e.message);
+              }
+            }}
+            className="text-xs text-forest/80 hover:text-forest underline font-semibold flex items-center gap-1"
+          >
+            <LogOut size={13} />
+            Switch Account
+          </button>
+        </div>
+
+        <PropertyEditor
+          initialPurpose={categoryFor(params.get('purpose'))?.purpose || 'rent'}
+          initialCity={params.get('city') || 'Bengaluru'}
+          initialLocality={params.get('locality') || params.get('q') || ''}
+          initialOwnership={
+            user.role === 'channel_partner'
+              ? 'channel_partner'
+              : user.role === 'broker'
+              ? 'broker'
+              : user.role === 'builder'
+              ? 'builder'
+              : 'owner'
+          }
+        />
+      </div>
+    );
+  }
+
+  // If user is NOT logged in, show the clean Auth Gate
+  return <AuthGate params={params} />;
+}
+
+function AuthGate({ params }) {
+  const { setUser, toast } = useApp();
+  const [isRegister, setIsRegister] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [isRegister, setIsRegister] = useState(true);
 
-  // Property type / purpose (Buy, Rent, PG, Commercial)
-  const initialPurpose = categoryFor(params.get('purpose'))?.purpose || 'rent';
-  const [purpose, setPurpose] = useState(initialPurpose);
-
-  // Location search bar fields
-  const [city, setCity] = useState(params.get('city') || 'Bengaluru');
-  const [locality, setLocality] = useState(params.get('locality') || params.get('q') || '');
-
-  // Contact details
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone || '');
+  // Contact / Auth fields
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [ownership, setOwnership] = useState('owner');
+  const [company, setCompany] = useState('');
+  const [reraId, setReraId] = useState('');
 
-  // Update contact fields when user loads
-  useEffect(() => {
-    if (user) {
-      if (!name) setName(user.name || '');
-      if (!email) setEmail(user.email || '');
-      if (!phone) setPhone(user.phone || '');
-    }
-  }, [user]);
-
-  async function handleSubmit(e) {
+  async function handleAuth(e) {
     e.preventDefault();
     setBusy(true);
     setError('');
 
     try {
-      if (!locality.trim()) {
-        throw new Error('Please enter a locality, landmark or society name in the search bar.');
+      if (isRegister && ownership === 'channel_partner') {
+        if (!company.trim()) {
+          throw new Error('Please enter your Channel Partner Agency / Firm Name.');
+        }
+        if (!reraId.trim()) {
+          throw new Error('Please enter your CP RERA Registration ID.');
+        }
       }
 
-      if (!user) {
-        // Register or login as owner
-        const payload = isRegister
-          ? { name, email, phone, password, role: 'owner' }
-          : { email, password };
+      const payload = isRegister
+        ? {
+            name: name.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            password,
+            role: ownership,
+            company: company.trim(),
+            reraId: reraId.trim(),
+          }
+        : { email: email.trim(), password };
 
-        const data = await api(`auth/${isRegister ? 'register' : 'login'}`, {
-          method: 'POST',
-          body: payload,
-        });
-        setUser(data.user);
-        toast(
-          isRegister
-            ? 'Account created! Now add your property details.'
-            : 'Welcome back! Now add your property details.'
-        );
-      } else if (user.role === 'user') {
-        const res = await api('auth/become-owner', { method: 'POST', body: {} });
-        if (res?.user) setUser(res.user);
-        else await refresh();
-        toast('Owner account activated! Now add your property details.');
-      }
+      const data = await api(`auth/${isRegister ? 'register' : 'login'}`, {
+        method: 'POST',
+        body: payload,
+      });
 
-      setStep(2);
+      setUser(data.user);
+      toast(
+        isRegister
+          ? 'Account created! Now add your property details.'
+          : 'Welcome back! Now add your property details.'
+      );
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
     }
   }
-
-  // If in Step 2, render the PropertyEditor with pre-filled basic details
-  if (step === 2) {
-    return (
-      <PropertyEditor
-        initialPurpose={purpose}
-        initialCity={city}
-        initialLocality={locality}
-        onBack={() => setStep(1)}
-      />
-    );
-  }
-
-  // Category tab icons
-  const tabIcons = {
-    buy: House,
-    rent: KeyRound,
-    pg: BedDouble,
-    commercial: BriefcaseBusiness,
-  };
 
   return (
     <div className="nb-post-wrap">
@@ -133,8 +154,8 @@ export default function PostProperty() {
           </em>
         </h1>
         <p className="nb-hero-sub">
-          Sell or Rent your home, commercial space, or PG directly to genuine seekers.
-          Connect directly with verified inquiries.
+          Sell or Rent your home, PG, or commercial space directly to genuine seekers.
+          Zero brokerage, direct buyer &amp; tenant calls.
         </p>
 
         <div className="nb-trust-strip">
@@ -150,38 +171,40 @@ export default function PostProperty() {
         </div>
       </div>
 
-      {/* Main NoBroker-Style Card */}
-      <div className="nb-card">
-        {/* Property Type Selection Bar (Tabs same as Home Page) */}
-        <div className="nb-tabs" role="tablist" aria-label="Select property type">
-          {categories.map((item) => {
-            const Icon = tabIcons[item.purpose] || House;
-            const isActive = purpose === item.purpose;
-            return (
-              <button
-                key={item.purpose}
-                role="tab"
-                aria-selected={isActive}
-                type="button"
-                className={`nb-tab-btn ${isActive ? 'active' : ''}`}
-                onClick={() => setPurpose(item.purpose)}
-              >
-                <Icon size={18} />
-                <span>
-                  {item.purpose === 'buy'
-                    ? 'Buy / Resale'
-                    : item.purpose === 'rent'
-                    ? 'Rent'
-                    : item.purpose === 'pg'
-                    ? 'PG / Hostel'
-                    : 'Commercial'}
-                </span>
-              </button>
-            );
-          })}
+      {/* Main Auth Gate Card */}
+      <div className="nb-card max-w-xl mx-auto">
+        {/* Toggle Login / Register */}
+        <div className="grid grid-cols-2 p-1.5 bg-[#f4f6ef] border-b border-[#dce4d5]">
+          <button
+            type="button"
+            className={`py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
+              isRegister
+                ? 'bg-white text-forest shadow-sm'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+            onClick={() => {
+              setIsRegister(true);
+              setError('');
+            }}
+          >
+            Create Free Account
+          </button>
+          <button
+            type="button"
+            className={`py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
+              !isRegister
+                ? 'bg-white text-forest shadow-sm'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+            onClick={() => {
+              setIsRegister(false);
+              setError('');
+            }}
+          >
+            Sign In to Existing Account
+          </button>
         </div>
 
-        {/* Card Body */}
         <div className="nb-card-body">
           {error && (
             <div role="alert" className="error mb-6 whitespace-pre-line">
@@ -189,58 +212,25 @@ export default function PostProperty() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            {/* Search Bar: Select City + Locality Search (matching Home Page) */}
-            <div className="mb-6">
-              <label className="block text-xs font-bold uppercase tracking-wider text-forest mb-2">
-                Property Location
-              </label>
+          <div className="mb-5">
+            <h2 className="!text-xl font-bold text-stone-900">
+              {isRegister ? 'Start with a free account' : 'Welcome back'}
+            </h2>
+            <p className="text-xs text-stone-500 mt-1">
+              {isRegister
+                ? 'Sign up in 30 seconds to manage your listing, respond to inquiries, and track views.'
+                : 'Sign in to access your properties and post a new listing.'}
+            </p>
+          </div>
 
-              <div className="nb-search-bar">
-                {/* Select City Dropdown */}
-                <div className="nb-search-city">
-                  <MapPin size={19} className="text-forest flex-shrink-0" />
-                  <select
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    aria-label="Select City"
-                    required
-                  >
-                    {cities.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Locality / Landmark Search Bar */}
-                <div className="nb-search-locality">
-                  <Search size={19} className="text-forest/60 flex-shrink-0" />
-                  <input
-                    type="text"
-                    value={locality}
-                    onChange={(e) => setLocality(e.target.value)}
-                    placeholder="Search locality, landmark or property name (e.g. Indiranagar, Whitefield)"
-                    maxLength={100}
-                    required
-                    aria-label="Locality or property"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Owner Contact Information */}
-            <div className="nb-contact-section">
-              <h3 className="nb-contact-heading">
-                <User size={19} className="text-forest" />
-                Contact Details
-              </h3>
-
-              <div className="nb-contact-grid">
-                {/* Name */}
+          <form onSubmit={handleAuth} className="space-y-4">
+            {isRegister && (
+              <>
+                {/* Full Name */}
                 <div className="nb-field">
-                  <label>Your Full Name</label>
+                  <label>
+                    Your Full Name <span className="text-red-500 font-bold">*</span>
+                  </label>
                   <div className="nb-input-box">
                     <User size={17} className="nb-input-icon" />
                     <input
@@ -250,120 +240,198 @@ export default function PostProperty() {
                       required
                       minLength={2}
                       maxLength={80}
-                      placeholder="Enter your full name"
+                      placeholder="e.g. Rahul Sharma"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                     />
                   </div>
                 </div>
 
-                {/* Email */}
-                <div className="nb-field">
-                  <label>Email Address</label>
-                  <div className="nb-input-box">
-                    <Mail size={17} className="nb-input-icon" />
-                    <input
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      maxLength={200}
-                      placeholder="Enter your email address"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
+                {/* You are listing as */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-forest mb-2">
+                    You Are Listing As <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOwnership('owner')}
+                      className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                        ownership === 'owner'
+                          ? 'border-forest bg-[#edf3e2] text-stone-900 font-bold shadow-sm'
+                          : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <House
+                          size={16}
+                          className={ownership === 'owner' ? 'text-forest' : 'text-stone-400'}
+                        />
+                        <span className="text-xs font-bold">Owner</span>
+                      </div>
+                      <span className="text-[10px] text-stone-500 leading-tight">Direct owner</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setOwnership('broker')}
+                      className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                        ownership === 'broker'
+                          ? 'border-forest bg-[#edf3e2] text-stone-900 font-bold shadow-sm'
+                          : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <BriefcaseBusiness
+                          size={16}
+                          className={ownership === 'broker' ? 'text-forest' : 'text-stone-400'}
+                        />
+                        <span className="text-xs font-bold">Broker</span>
+                      </div>
+                      <span className="text-[10px] text-stone-500 leading-tight">Agent / Broker</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setOwnership('channel_partner')}
+                      className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                        ownership === 'channel_partner'
+                          ? 'border-forest bg-[#edf3e2] text-stone-900 font-bold shadow-sm'
+                          : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Handshake
+                          size={16}
+                          className={
+                            ownership === 'channel_partner' ? 'text-forest' : 'text-stone-400'
+                          }
+                        />
+                        <span className="text-xs font-bold">Channel Partner</span>
+                      </div>
+                      <span className="text-[10px] text-stone-500 leading-tight">Project mandate / CP</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Mobile Number */}
-                <div className="nb-field">
-                  <label>Mobile Number</label>
-                  <div className="nb-input-box">
-                    <Phone size={17} className="nb-input-icon" />
-                    <span className="nb-phone-prefix">+91</span>
-                    <input
-                      name="phone"
-                      type="tel"
-                      autoComplete="tel"
-                      required
-                      pattern="\+?[0-9\s-]{10,16}"
-                      placeholder="10-digit mobile number"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                  </div>
-                </div>
+                {/* Channel Partner Agency Details (REQUIRED when CP is selected) */}
+                {ownership === 'channel_partner' && (
+                  <div className="p-3 bg-[#f4f7ee] rounded-xl border border-[#d2dfc4] space-y-3">
+                    <div className="nb-field">
+                      <label>
+                        Channel Partner Agency / Firm Name <span className="text-red-500 font-bold">*</span>
+                      </label>
+                      <div className="nb-input-box">
+                        <Handshake size={17} className="nb-input-icon" />
+                        <input
+                          name="company"
+                          type="text"
+                          required
+                          placeholder="e.g. Apex Realty Partners"
+                          value={company}
+                          onChange={(e) => setCompany(e.target.value)}
+                        />
+                      </div>
+                    </div>
 
-                {/* Password field if not logged in */}
-                {!user && (
-                  <div className="nb-field">
-                    <label>
-                      {isRegister ? 'Set Password (min 10 chars)' : 'Account Password'}
-                    </label>
-                    <div className="nb-input-box">
-                      <Lock size={17} className="nb-input-icon" />
-                      <input
-                        name="password"
-                        type="password"
-                        autoComplete={isRegister ? 'new-password' : 'current-password'}
-                        required
-                        minLength={isRegister ? 10 : 1}
-                        maxLength={100}
-                        placeholder={
-                          isRegister ? 'Create secure password' : 'Enter your password'
-                        }
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
+                    <div className="nb-field">
+                      <label>
+                        CP RERA Registration ID <span className="text-red-500 font-bold">*</span>
+                      </label>
+                      <div className="nb-input-box">
+                        <ShieldCheck size={17} className="nb-input-icon" />
+                        <input
+                          name="reraId"
+                          type="text"
+                          required
+                          placeholder="e.g. PRM/KA/RERA/1251/..."
+                          value={reraId}
+                          onChange={(e) => setReraId(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
+              </>
+            )}
+
+            {/* Email Address */}
+            <div className="nb-field">
+              <label>
+                Email Address <span className="text-red-500 font-bold">*</span>
+              </label>
+              <div className="nb-input-box">
+                <Mail size={17} className="nb-input-icon" />
+                <input
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  maxLength={200}
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
-
-              {/* Logged in indicator */}
-              {user && (
-                <div className="flex items-center gap-2 bg-[#edf3e2] text-forest px-4 py-2.5 rounded-lg text-sm mb-6 font-medium">
-                  <CheckCircle2 size={17} className="text-forest flex-shrink-0" />
-                  <span>
-                    Posting as <strong>{user.name}</strong> ({user.email}) • Owner tools ready
-                  </span>
-                </div>
-              )}
-
-              {/* Toggle Login / Register when logged out */}
-              {!user && (
-                <div className="flex items-center justify-between text-sm muted mb-6">
-                  <span>
-                    {isRegister ? 'Already registered on UrbanFinder?' : 'New property owner?'}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-link font-semibold underline underline-offset-4"
-                    onClick={() => {
-                      setIsRegister(!isRegister);
-                      setError('');
-                    }}
-                  >
-                    {isRegister ? 'Log in with existing account' : 'Create new owner account'}
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* CTA Button */}
-            <button type="submit" disabled={busy} className="nb-cta-btn">
+            {/* Phone (Only for registration) */}
+            {isRegister && (
+              <div className="nb-field">
+                <label>
+                  Mobile Number (for buyer / tenant calls) <span className="text-red-500 font-bold">*</span>
+                </label>
+                <div className="nb-input-box">
+                  <Phone size={17} className="nb-input-icon" />
+                  <span className="nb-phone-prefix">+91</span>
+                  <input
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    required
+                    pattern="\+?[0-9\s-]{10,16}"
+                    placeholder="10-digit mobile number"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Password */}
+            <div className="nb-field">
+              <label>
+                {isRegister ? 'Set Password (min 10 characters)' : 'Your Password'}{' '}
+                <span className="text-red-500 font-bold">*</span>
+              </label>
+              <div className="nb-input-box">
+                <Lock size={17} className="nb-input-icon" />
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete={isRegister ? 'new-password' : 'current-password'}
+                  required
+                  minLength={isRegister ? 10 : 1}
+                  maxLength={100}
+                  placeholder={
+                    isRegister ? 'Create secure password' : 'Enter your password'
+                  }
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button type="submit" disabled={busy} className="nb-cta-btn !mt-6">
               {busy ? (
                 'Processing…'
               ) : (
                 <>
                   <span>
-                    {purpose === 'rent'
-                      ? 'Post Rental Property FREE'
-                      : purpose === 'buy'
-                      ? 'Post Property for Sale FREE'
-                      : purpose === 'pg'
-                      ? 'Post PG / Co-living FREE'
-                      : 'Post Commercial Property FREE'}
+                    {isRegister
+                      ? 'Create Account & Continue to Post'
+                      : 'Sign In & Continue to Post'}
                   </span>
                   <ArrowRight size={18} />
                 </>
@@ -372,14 +440,14 @@ export default function PostProperty() {
 
             <p className="text-xs text-center text-muted mt-3 flex items-center justify-center gap-1.5">
               <ShieldCheck size={14} className="text-forest" />
-              Direct Owner Listing • No Middlemen • Verified Leads
+              100% Free • Verified Direct Contacts • Privacy Protected
             </p>
           </form>
         </div>
       </div>
 
-      {/* Why Post with Us / Value Props */}
-      <div className="mt-8">
+      {/* Why Post on UrbanFinder */}
+      <div className="mt-12">
         <div className="text-center mb-6">
           <p className="eyebrow">WHY POST ON URBANFINDER</p>
           <h2 className="!text-3xl font-semibold">How UrbanFinder helps you rent or sell faster</h2>
@@ -392,8 +460,7 @@ export default function PostProperty() {
             </div>
             <h3>100% Free Listing</h3>
             <p>
-              List your property at zero cost. Keep 100% of your rental or sale
-              proceeds.
+              List your property at zero cost. Keep 100% of your rental or sale proceeds without middleman commissions.
             </p>
           </div>
 
@@ -403,8 +470,7 @@ export default function PostProperty() {
             </div>
             <h3>Verified Direct Leads</h3>
             <p>
-              Connect directly with genuine buyers, tenants, and co-living seekers with verified phone
-              numbers.
+              Connect directly with genuine buyers, tenants, and co-living seekers with verified phone numbers.
             </p>
           </div>
 
@@ -414,8 +480,7 @@ export default function PostProperty() {
             </div>
             <h3>3-Minute Fast Listing</h3>
             <p>
-              Fill basic details, showcase high-res photos, and publish your listing with our simple
-              2-step flow.
+              Fill specifications, showcase high-res photos, and publish your listing with our streamlined dynamic flow.
             </p>
           </div>
         </div>
@@ -423,8 +488,8 @@ export default function PostProperty() {
         {/* 3 Simple Steps */}
         <div className="grid sm:grid-cols-3 gap-6 mt-10">
           {[
-            ['01', 'Choose Property & Location', 'Select Buy/Rent/PG/Commercial, pick your city and enter your locality.'],
-            ['02', 'Add Details & Photos', 'Provide BHK configuration, pricing, amenities and upload property pictures.'],
+            ['01', 'Sign in & Choose Category', 'Select Buy/Rent/PG/Commercial, pick your city and property specifications.'],
+            ['02', 'Add Details & Photos', 'Provide BHK configuration, pricing, amenities, and upload property pictures.'],
             ['03', 'Direct Calls & Close Deal', 'Receive direct calls and inquiries from genuine seekers without intermediaries.'],
           ].map(([num, heading, desc]) => (
             <div className="panel" key={num}>

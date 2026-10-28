@@ -15,6 +15,7 @@ import {
   Search,
   ExternalLink,
   Trash2,
+  ShieldCheck,
 } from 'lucide-react';
 import { api, useApp, useData } from './providers';
 import { Image, Field, Pagination, State, Submit } from './ui';
@@ -24,17 +25,27 @@ import Listings from './listings';
 export default function Dashboard({ section = '' }) {
   const { user, setUser, toast } = useApp(),
     router = useRouter();
+  const searchParams = useSearchParams();
+  const isUserView = searchParams?.get('view') === 'user';
+
+  // Smart Admin Routing: If an administrator accesses root /dashboard without ?view=user,
+  // route them directly to their primary admin command center
+  useEffect(() => {
+    if (user && user.role === 'admin' && !section && !isUserView) {
+      router.replace('/admin');
+    }
+  }, [user, section, isUserView, router]);
   const nav = [
     ['Overview', ''],
     ['Saved homes', 'favorites'],
     ['Saved searches & alerts', 'saved-searches'],
-    ...(user.role !== 'user' ? [['My properties', 'properties']] : []),
+    ...(user?.role && user.role !== 'user' ? [['My properties', 'properties']] : []),
     ['Messages', 'messages'],
     ['Site visits', 'visits'],
     ['Enquiries & interiors', 'leads'],
     ['Notifications', 'notifications'],
     ['Professional profile', 'profile'],
-    ...(user.role === 'admin' ? [['Administration', 'admin']] : []),
+    ...(user?.role === 'admin' ? [['Administration', 'admin']] : []),
   ];
 
   async function logout() {
@@ -66,6 +77,17 @@ export default function Dashboard({ section = '' }) {
           </button>
         </aside>
         <main className="min-w-0">
+          {user && user.role === 'admin' && (
+            <div className="panel bg-[#f7f8f3] border-stone-300 !p-3 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                <ShieldCheck size={15} className="text-forest" />
+                Viewing User Portal as Administrator
+              </span>
+              <Link href="/admin" className="text-link !text-xs font-semibold">
+                Return to Admin Command Center →
+              </Link>
+            </div>
+          )}
           {section === 'favorites' ? (
             <Listings favorites />
           ) : section === 'saved-searches' ? (
@@ -97,7 +119,7 @@ function Overview() {
   return (
     <>
       <p className="eyebrow">GOOD TO HAVE YOU HERE</p>
-      <h1 className="!text-4xl">Hello, {user.name.split(' ')[0]}.</h1>
+      <h1 className="!text-4xl">Hello, {user?.name ? user.name.split(' ')[0] : 'there'}.</h1>
       <p className="muted mt-4 mb-7">Your homes, conversations and next steps, all in one place.</p>
       <State loading={loading} error={error} />
       {data && (
@@ -108,7 +130,7 @@ function Overview() {
             [CalendarDays, data.visits, 'Upcoming visits', 'visits'],
             [MessageCircle, data.messages, 'Conversations', 'messages'],
             [ClipboardList, data.enquiries, 'Enquiries', 'leads'],
-            ...(user.role !== 'user'
+            ...(user?.role && user.role !== 'user'
               ? [
                   [House, data.properties, 'Your properties', 'properties'],
                   [Bell, data.pending, 'Awaiting review', 'properties'],
@@ -533,7 +555,7 @@ function Visits() {
       <State loading={loading} error={error} empty={data?.total === 0} />
       <div className="space-y-4">
         {data?.items?.map(v => {
-          const manager = user.role === 'admin' || v.owner?._id === user._id;
+          const manager = user?.role === 'admin' || v.owner?._id === user?._id;
           const active = ['requested', 'confirmed'].includes(v.status);
           return (
             <article className="panel" key={v._id}>
@@ -661,7 +683,7 @@ export function Leads() {
               ))}
             </div>
             {v.note && <p className="text-sm muted mt-5 whitespace-pre-wrap">{v.note}</p>}
-            {(user.role === 'admin' || String(v.manager) === user._id) && (
+            {(user?.role === 'admin' || String(v.manager) === user?._id) && (
               <form
                 className="mt-5 border-t pt-5 space-y-4"
                 onSubmit={e => update(e, v._id)}
