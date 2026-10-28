@@ -51,8 +51,18 @@ table{font-size:15px}td,th{padding:15px}.check-label{font-size:15px;line-height:
 .card-image img{height:100%;width:100%;object-fit:cover;transition:transform .35s cubic-bezier(.16,1,.3,1)}
 .property-card:hover .card-image img{transform:scale(1.04)}
 .card-title{font-weight:600;font-size:17px;line-height:1.4;color:var(--forest);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:48px}
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+.no-scrollbar,
+.hide-scrollbar {
+  -ms-overflow-style: none !important; /* IE and legacy Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
 @media(min-width:1025px){
   .city-discovery-sidebar{position:sticky;top:85px;max-height:calc(100vh - 100px);overflow-y:auto;padding-right:4px}
   .city-discovery-sidebar::-webkit-scrollbar{width:4px}

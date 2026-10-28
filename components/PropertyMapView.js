@@ -691,7 +691,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             role="dialog"
             aria-modal="true"
             aria-label={`Properties in ${activeCluster.locality}`}
-            className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-4xl max-h-[100vh] flex flex-col gap-y-6 overflow-hidden no-scrollbar animate-in zoom-in-95 duration-200"
           >
             {/* 1. Modal Header */}
             <div className="p-5 sm:p-6 bg-gradient-to-r from-[#163e35] via-[#1b4a40] to-[#205347] text-white flex items-center justify-between shrink-0 shadow-sm">
@@ -809,7 +809,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             )}
 
             {/* 4. Spacious, Uncluttered Property Cards List */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-5 bg-[#fbfcf9]">
+            <div className="p-5 sm:p-6 overflow-y-auto no-scrollbar space-y-5 bg-[#fbfcf9]">
               {activeCluster.properties
                 .filter(
                   (p) => clusterPurposeFilter === 'all' || p.purpose === clusterPurposeFilter
