@@ -16,10 +16,18 @@ import {
   Sparkles,
   Building,
   Home,
+  X,
+  Compass,
+  Info,
 } from 'lucide-react';
 import { money } from '@/lib/format';
 import { propertyImages } from '@/lib/media';
-import { getCoordinatesForProperty, getCityCenter } from '@/lib/geo';
+import {
+  getCoordinatesForProperty,
+  getCityCenter,
+  getTileSources,
+  groupPropertiesByLocality,
+} from '@/lib/geo';
 
 export default function PropertyMapView({ properties = [], city = 'Bengaluru' }) {
   const mapContainerRef = useRef(null);
@@ -28,10 +36,15 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
   const tileLayerRef = useRef(null);
 
   const [selectedPropId, setSelectedPropId] = useState(properties[0]?._id || null);
-  const [mapStyle, setMapStyle] = useState('voyager'); // 'voyager' | 'osm' | 'satellite'
+  const [mapStyle, setMapStyle] = useState('voyager'); // 'voyager' | 'osm' | 'satellite' | 'mapbox_streets' | 'maptiler'
   const [purposeFilter, setPurposeFilter] = useState('all');
   const [localityFilter, setLocalityFilter] = useState('all');
   const [isMapReady, setIsMapReady] = useState(false);
+  const [activeCluster, setActiveCluster] = useState(null);
+  const [clusterPurposeFilter, setClusterPurposeFilter] = useState('all');
+
+  // Tile sources (supports optional Mapbox / MapTiler keys from .env.local while defaulting to free Carto/OSM)
+  const tileSources = useMemo(() => getTileSources(), []);
 
   // Filter properties according to local purpose & locality filters
   const filteredProperties = useMemo(() => {
@@ -41,6 +54,11 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
       return matchPurpose && matchLocality;
     });
   }, [properties, purposeFilter, localityFilter]);
+
+  // Group properties into locality clusters so multiple properties in same locality don't overlap
+  const clusters = useMemo(() => {
+    return groupPropertiesByLocality(filteredProperties, city);
+  }, [filteredProperties, city]);
 
   // Unique localities present in current properties list
   const availableLocalities = useMemo(() => {
@@ -61,27 +79,18 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
     );
   }, [selectedPropId, filteredProperties, properties]);
 
-  // Tile sources
-  const tileSources = {
-    voyager: {
-      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      attrib: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    },
-    osm: {
-      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attrib: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-      subdomains: 'abc',
-    },
-    satellite: {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      attrib: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      maxZoom: 18,
-      subdomains: '',
-    },
-  };
+  // Close active cluster modal on ESC key
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        setActiveCluster(null);
+      }
+    }
+    if (activeCluster) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [activeCluster]);
 
   // 1. Initialize Leaflet Map
   useEffect(() => {
@@ -108,7 +117,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
       const map = L.map(mapContainerRef.current, {
         center: initialCenter,
         zoom: initialZoom,
-        zoomControl: false, // We supply custom styled zoom controls
+        zoomControl: false, // Custom styled zoom controls
         attributionControl: false,
       });
 
@@ -156,9 +165,9 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
       }).addTo(mapInstanceRef.current);
       tileLayerRef.current = newLayer;
     });
-  }, [mapStyle]);
+  }, [mapStyle, tileSources]);
 
-  // 3. Render Markers on Map whenever filteredProperties or selectedPropId change
+  // 3. Render Markers on Map whenever clusters or selectedPropId change
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapReady) return;
 
@@ -170,57 +179,94 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
       markersRef.current.forEach((m) => map.removeLayer(m));
       markersRef.current = [];
 
-      if (!filteredProperties.length) return;
+      if (!clusters.length) return;
 
       const bounds = L.latLngBounds([]);
 
-      filteredProperties.forEach((prop, index) => {
-        const coords = getCoordinatesForProperty(prop, city, index);
-        const latLng = [coords.lat, coords.lng];
+      clusters.forEach((item) => {
+        const latLng = [item.lat, item.lng];
         bounds.extend(latLng);
 
-        const isSelected = selectedProp?._id === prop._id;
-        const purposeClass =
-          prop.purpose === 'rent'
-            ? 'rent'
-            : prop.purpose === 'pg'
-            ? 'pg'
-            : prop.purpose === 'commercial'
-            ? 'commercial'
-            : 'buy';
+        if (item.type === 'single') {
+          // Single property in this locality: render direct price pill
+          const prop = item.property;
+          const isSelected = selectedProp?._id === prop._id;
+          const purposeClass =
+            prop.purpose === 'rent'
+              ? 'rent'
+              : prop.purpose === 'pg'
+              ? 'pg'
+              : prop.purpose === 'commercial'
+              ? 'commercial'
+              : 'buy';
 
-        const priceLabel = money(prop.price);
-        const markerHtml = `
-          <div class="uf-marker-pill ${purposeClass} ${isSelected ? 'selected' : ''}">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-            <span>${priceLabel}</span>
-          </div>
-        `;
+          const priceLabel = money(prop.price);
+          const markerHtml = `
+            <div class="uf-marker-pill ${purposeClass} ${isSelected ? 'selected' : ''}" title="${prop.title}">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>${priceLabel}</span>
+            </div>
+          `;
 
-        const customIcon = L.divIcon({
-          className: 'uf-marker-container',
-          html: markerHtml,
-          iconSize: [85, 30],
-          iconAnchor: [42, 15],
-          popupAnchor: [0, -18],
-        });
+          const customIcon = L.divIcon({
+            className: 'uf-marker-container',
+            html: markerHtml,
+            iconSize: [85, 30],
+            iconAnchor: [42, 15],
+            popupAnchor: [0, -18],
+          });
 
-        const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
+          const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
 
-        // Click handler: select property & smooth pan
-        marker.on('click', () => {
-          setSelectedPropId(prop._id);
-          map.panTo(latLng, { animate: true, duration: 0.6 });
-        });
+          marker.on('click', () => {
+            setSelectedPropId(prop._id);
+            map.panTo(latLng, { animate: true, duration: 0.5 });
+          });
 
-        markersRef.current.push(marker);
+          markersRef.current.push(marker);
+        } else {
+          // Clustered 2 or more properties in the same locality
+          const minPriceLabel = money(item.minPrice);
+          const clusterHtml = `
+            <div class="uf-cluster-pill" title="Click to inspect all ${item.count} properties in ${item.locality}">
+              <span class="uf-cluster-count">${item.count}</span>
+              <div class="uf-cluster-body">
+                <span class="uf-cluster-locality">${item.locality}</span>
+                <span class="uf-cluster-price">from ${minPriceLabel}</span>
+              </div>
+            </div>
+          `;
+
+          const clusterIcon = L.divIcon({
+            className: 'uf-cluster-container',
+            html: clusterHtml,
+            iconSize: [120, 36],
+            iconAnchor: [60, 18],
+            popupAnchor: [0, -20],
+          });
+
+          const marker = L.marker(latLng, { icon: clusterIcon }).addTo(map);
+
+          marker.bindTooltip(
+            `<strong>${item.count} Properties</strong> in ${item.locality}<br/><span style="color:#163e35;font-weight:600">Click to view all</span>`,
+            { direction: 'top', offset: [0, -18], opacity: 0.95 }
+          );
+
+          marker.on('click', () => {
+            setActiveCluster(item);
+            setClusterPurposeFilter('all');
+            map.panTo(latLng, { animate: true, duration: 0.5 });
+          });
+
+          markersRef.current.push(marker);
+        }
       });
 
-      // Fit bounds if we have valid property coordinates
-      if (bounds.isValid() && filteredProperties.length > 0) {
+      // Fit bounds if we have valid coordinates
+      if (bounds.isValid() && clusters.length > 0) {
         map.fitBounds(bounds, {
           padding: [50, 50],
           maxZoom: 15,
@@ -228,16 +274,15 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
         });
       }
     });
-  }, [filteredProperties, selectedProp?._id, isMapReady, city]);
+  }, [clusters, selectedProp?._id, isMapReady, city]);
 
   // Recenter / Fit All
   function handleFitAll() {
-    if (!mapInstanceRef.current || !filteredProperties.length) return;
+    if (!mapInstanceRef.current || !clusters.length) return;
     import('leaflet').then((L) => {
       const bounds = L.latLngBounds([]);
-      filteredProperties.forEach((p, idx) => {
-        const coords = getCoordinatesForProperty(p, city, idx);
-        bounds.extend([coords.lat, coords.lng]);
+      clusters.forEach((item) => {
+        bounds.extend([item.lat, item.lng]);
       });
       if (bounds.isValid()) {
         mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
@@ -292,7 +337,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                 key={tab.id}
                 type="button"
                 onClick={() => setPurposeFilter(tab.id)}
-                className={`px-2.5 py-1 rounded-md transition ${
+                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                   purposeFilter === tab.id
                     ? 'bg-white text-forest shadow-2xs font-semibold'
                     : 'text-stone-600 hover:text-stone-900'
@@ -311,46 +356,74 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             <button
               type="button"
               onClick={() => setMapStyle('voyager')}
-              className={`px-2.5 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                 mapStyle === 'voyager'
                   ? 'bg-white text-forest shadow-2xs font-semibold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
-              title="CartoDB Voyager - Clean high-res road map"
+              title="CartoDB Voyager - Clean high-res road map (Free OpenStreetMap)"
             >
               Streets
             </button>
             <button
               type="button"
               onClick={() => setMapStyle('osm')}
-              className={`px-2.5 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                 mapStyle === 'osm'
                   ? 'bg-white text-forest shadow-2xs font-semibold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
-              title="Standard OpenStreetMap Carto"
+              title="Standard OpenStreetMap Carto (Free OpenStreetMap)"
             >
               OSM
             </button>
             <button
               type="button"
               onClick={() => setMapStyle('satellite')}
-              className={`px-2.5 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                 mapStyle === 'satellite'
                   ? 'bg-white text-forest shadow-2xs font-semibold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
-              title="Satellite High-Resolution Imagery"
+              title="Satellite High-Resolution Imagery (Esri World Imagery)"
             >
               Satellite
             </button>
+            {tileSources.mapbox_streets && (
+              <button
+                type="button"
+                onClick={() => setMapStyle('mapbox_streets')}
+                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                  mapStyle === 'mapbox_streets'
+                    ? 'bg-white text-forest shadow-2xs font-semibold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="Mapbox Streets (Using NEXT_PUBLIC_MAPBOX_TOKEN)"
+              >
+                Mapbox
+              </button>
+            )}
+            {tileSources.maptiler && (
+              <button
+                type="button"
+                onClick={() => setMapStyle('maptiler')}
+                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                  mapStyle === 'maptiler'
+                    ? 'bg-white text-forest shadow-2xs font-semibold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="MapTiler Streets (Using NEXT_PUBLIC_MAPTILER_KEY)"
+              >
+                MapTiler
+              </button>
+            )}
           </div>
 
           {/* Reset / Fit Bounds Button */}
           <button
             type="button"
             onClick={handleFitAll}
-            className="p-1.5 bg-white border border-stone-200 rounded-lg text-stone-700 hover:text-forest hover:bg-stone-50 transition shadow-2xs"
+            className="p-1.5 bg-white border border-stone-200 rounded-lg text-stone-700 hover:text-forest hover:bg-stone-50 transition shadow-2xs cursor-pointer"
             title="Fit all properties into view"
           >
             <Maximize2 size={15} />
@@ -367,7 +440,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           <button
             type="button"
             onClick={() => setLocalityFilter('all')}
-            className={`px-2.5 py-0.5 rounded-full text-xs shrink-0 transition ${
+            className={`px-2.5 py-0.5 rounded-full text-xs shrink-0 transition cursor-pointer ${
               localityFilter === 'all'
                 ? 'bg-forest text-white font-semibold'
                 : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -386,7 +459,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                   const firstInLoc = properties.find((p) => p.locality === loc);
                   if (firstInLoc) handlePanToSelected(firstInLoc);
                 }}
-                className={`px-2.5 py-0.5 rounded-full text-xs shrink-0 flex items-center gap-1 transition ${
+                className={`px-2.5 py-0.5 rounded-full text-xs shrink-0 flex items-center gap-1 transition cursor-pointer ${
                   localityFilter === loc
                     ? 'bg-forest text-white font-semibold'
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -410,7 +483,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           <div className="absolute top-4 left-4 z-400 flex flex-col gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-stone-200/80 p-1">
             <button
               type="button"
-              className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
+              className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition cursor-pointer"
               onClick={() => mapInstanceRef.current?.zoomIn()}
               aria-label="Zoom in"
             >
@@ -418,7 +491,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             </button>
             <button
               type="button"
-              className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
+              className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition cursor-pointer"
               onClick={() => mapInstanceRef.current?.zoomOut()}
               aria-label="Zoom out"
             >
@@ -426,8 +499,8 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             </button>
           </div>
 
-          {/* Floating Map Legend (Bottom Left) */}
-          <div className="absolute bottom-4 left-4 z-400 flex items-center gap-3 bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-200/80 shadow-md">
+          {/* Floating Map Legend & Cluster Hint (Bottom Left) */}
+          <div className="absolute bottom-4 left-4 z-400 flex flex-wrap items-center gap-3 bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-200/80 shadow-md">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] inline-block shadow-2xs" /> Buy
             </span>
@@ -439,6 +512,10 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] inline-block shadow-2xs" /> Commercial
+            </span>
+            <span className="flex items-center gap-1.5 border-l border-stone-200 pl-2.5 text-stone-600 font-normal">
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#d4e844] text-[#0d2620] text-[10px] font-bold">2+</span>
+              <span>Locality Cluster (Click to open list)</span>
             </span>
           </div>
         </div>
@@ -478,7 +555,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                   <button
                     type="button"
                     onClick={() => handleNextProperty(-1)}
-                    className="p-1 rounded hover:bg-stone-100 text-stone-600 transition"
+                    className="p-1 rounded hover:bg-stone-100 text-stone-600 transition cursor-pointer"
                     title="Previous home on map"
                   >
                     <ChevronLeft size={16} />
@@ -486,7 +563,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                   <button
                     type="button"
                     onClick={() => handleNextProperty(1)}
-                    className="p-1 rounded hover:bg-stone-100 text-stone-600 transition"
+                    className="p-1 rounded hover:bg-stone-100 text-stone-600 transition cursor-pointer"
                     title="Next home on map"
                   >
                     <ChevronRight size={16} />
@@ -583,6 +660,224 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           </div>
         </div>
       </div>
+
+      {/* ── LOCALITY PROPERTIES MODAL (When 2+ properties in same locality are clicked) ── */}
+      {activeCluster && (
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActiveCluster(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Properties in ${activeCluster.locality}`}
+            className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-[#163e35] to-[#205347] text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 text-[#d4e844]">
+                  <Building size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg sm:text-xl font-bold tracking-tight">
+                      {activeCluster.locality}
+                    </h2>
+                    <span className="bg-[#d4e844] text-[#0d2620] text-xs font-black px-2 py-0.5 rounded-full shadow-2xs">
+                      {activeCluster.count} Properties
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-200 flex items-center gap-1.5 mt-0.5">
+                    <span>{activeCluster.city} Metro Region</span>
+                    <span>&bull;</span>
+                    <span>
+                      Starting from <strong>{money(activeCluster.minPrice)}</strong>
+                      {activeCluster.maxPrice > activeCluster.minPrice
+                        ? ` up to ${money(activeCluster.maxPrice)}`
+                        : ''}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveCluster(null)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+                aria-label="Close cluster dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Internal Filter Tabs if multi-purpose */}
+            {activeCluster.purposes?.length > 1 && (
+              <div className="px-5 py-2.5 bg-stone-50 border-b border-stone-200 flex items-center gap-2 text-xs">
+                <span className="text-stone-500 font-semibold uppercase text-[11px] tracking-wider">
+                  Filter:
+                </span>
+                {['all', ...activeCluster.purposes].map((pId) => (
+                  <button
+                    key={pId}
+                    type="button"
+                    onClick={() => setClusterPurposeFilter(pId)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold capitalize transition cursor-pointer ${
+                      clusterPurposeFilter === pId
+                        ? 'bg-[#163e35] text-white shadow-2xs'
+                        : 'bg-stone-200/80 text-stone-700 hover:bg-stone-300'
+                    }`}
+                  >
+                    {pId === 'all' ? 'All Types' : pId}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Property Cards List */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 divide-y divide-stone-100">
+              {activeCluster.properties
+                .filter(
+                  (p) => clusterPurposeFilter === 'all' || p.purpose === clusterPurposeFilter
+                )
+                .map((prop) => {
+                  const pImages = propertyImages(prop);
+                  const isSelected = selectedPropId === prop._id;
+                  return (
+                    <div
+                      key={prop._id}
+                      className={`pt-3.5 first:pt-0 flex flex-col sm:flex-row gap-4 p-3 rounded-xl transition border ${
+                        isSelected
+                          ? 'bg-emerald-50/70 border-emerald-300'
+                          : 'bg-white hover:bg-stone-50/80 border-stone-200/80'
+                      }`}
+                    >
+                      {/* Thumbnail */}
+                      <div className="sm:w-44 h-32 rounded-lg overflow-hidden relative shrink-0 bg-stone-100 border border-stone-200">
+                        <img
+                          src={
+                            pImages[0] ||
+                            'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80'
+                          }
+                          alt={prop.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <span
+                          className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs uppercase tracking-wider ${
+                            prop.purpose === 'rent'
+                              ? 'bg-amber-500 text-white'
+                              : prop.purpose === 'buy'
+                              ? 'bg-emerald-700 text-white'
+                              : prop.purpose === 'pg'
+                              ? 'bg-purple-700 text-white'
+                              : 'bg-teal-700 text-white'
+                          }`}
+                        >
+                          {prop.purpose}
+                        </span>
+                        {prop.verified && (
+                          <span className="absolute bottom-2 left-2 bg-white/95 backdrop-blur text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs">
+                            <Check size={11} className="text-emerald-600" /> Verified
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-bold text-stone-900 text-sm sm:text-base line-clamp-1">
+                              {prop.title}
+                            </h3>
+                            <div className="text-right shrink-0">
+                              <span className="text-base sm:text-lg font-extrabold text-[#163e35]">
+                                {money(prop.price)}
+                              </span>
+                              {(prop.purpose === 'rent' || prop.purpose === 'pg') && (
+                                <span className="text-[11px] text-stone-500 block">/ month</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
+                            <MapPin size={12} className="text-forest shrink-0" />
+                            <span>
+                              {prop.locality}, {prop.city}
+                            </span>
+                          </p>
+
+                          {/* Quick Specs */}
+                          <div className="flex items-center gap-3 text-xs text-stone-600 mt-2 flex-wrap">
+                            <span className="bg-stone-100 px-2 py-0.5 rounded font-medium">
+                              {prop.bedrooms ? `${prop.bedrooms} BHK` : prop.type || 'Standard'}
+                            </span>
+                            {prop.area && (
+                              <span className="bg-stone-100 px-2 py-0.5 rounded font-medium">
+                                {prop.area.toLocaleString()} sq ft
+                              </span>
+                            )}
+                            {prop.furnishing && (
+                              <span className="bg-stone-100 px-2 py-0.5 rounded font-medium capitalize">
+                                {prop.furnishing}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-stone-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedPropId(prop._id);
+                              if (mapInstanceRef.current) {
+                                const coords = getCoordinatesForProperty(prop, city);
+                                mapInstanceRef.current.panTo([coords.lat, coords.lng], {
+                                  animate: true,
+                                  duration: 0.5,
+                                });
+                                mapInstanceRef.current.setZoom(15);
+                              }
+                              setActiveCluster(null);
+                            }}
+                            className="px-3 py-1.5 rounded-lg border border-stone-200 text-stone-700 hover:text-forest hover:bg-stone-100 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                          >
+                            <Navigation size={13} className="text-forest" />
+                            <span>Select on Map</span>
+                          </button>
+
+                          <Link
+                            href={`/properties/${prop._id}`}
+                            className="px-3 py-1.5 rounded-lg bg-[#163e35] hover:bg-[#205347] text-white text-xs font-semibold flex items-center gap-1.5 transition ml-auto"
+                          >
+                            <span>View Details</span>
+                            <ExternalLink size={12} />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 sm:p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs text-stone-500">
+              <span>
+                Click <strong>Select on Map</strong> to center the map on that property.
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveCluster(null)}
+                className="px-3 py-1 rounded-md bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold cursor-pointer transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
