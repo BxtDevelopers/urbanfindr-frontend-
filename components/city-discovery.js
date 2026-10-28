@@ -18,7 +18,10 @@ import {
   ChevronDown,
   ChevronUp,
   Car,
+  LayoutGrid,
+  Map as MapIcon,
 } from 'lucide-react';
+import PropertyMapView from './PropertyMapView';
 
 import { useData } from './providers';
 import {
@@ -90,6 +93,7 @@ export default function CityDiscovery({ slug }) {
   const [showAmenities, setShowAmenities] = useState(false);
   const [minPriceInput, setMinPriceInput] = useState(params.get('minPrice') || '');
   const [maxPriceInput, setMaxPriceInput] = useState(params.get('maxPrice') || '');
+  const [viewMode, setViewMode] = useState('grid');
 
   const city = cityFor(slug);
 
@@ -1019,6 +1023,14 @@ export default function CityDiscovery({ slug }) {
             />
 
             {!displayLoading && displayData?.items?.length > 0 && (
+              viewMode === 'map' && !isProjects ? (
+                <div className="mb-8">
+                  <PropertyMapView
+                    properties={displayData.items}
+                    city={city.name}
+                  />
+                </div>
+              ) : (
               <div className="city-properties-grid">
                 {displayData.items.map((item) =>
                   isProjects ? (
@@ -1032,12 +1044,15 @@ export default function CityDiscovery({ slug }) {
                   )
                 )}
               </div>
+              )
             )}
 
-            <Pagination
-              data={displayData}
-              onChange={handlePageChange}
-            />
+            {viewMode !== 'map' && (
+              <Pagination
+                data={displayData}
+                onChange={handlePageChange}
+              />
+            )}
 
             {/* CURATED CITY SECTIONS (Shown when exploring all properties) */}
             {!isProjects && !currentBedrooms && !currentType && !displayLoading && (

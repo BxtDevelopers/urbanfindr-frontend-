@@ -1,228 +1,588 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { MapPin, Navigation, ZoomIn, ZoomOut, Maximize2, ExternalLink, BedDouble, Check } from 'lucide-react';
+import {
+  MapPin,
+  Navigation,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  ExternalLink,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  Sparkles,
+  Building,
+  Home,
+} from 'lucide-react';
 import { money } from '@/lib/format';
 import { propertyImages } from '@/lib/media';
+import { getCoordinatesForProperty, getCityCenter } from '@/lib/geo';
 
 export default function PropertyMapView({ properties = [], city = 'Bengaluru' }) {
-  const [selectedProp, setSelectedProp] = useState(properties[0] || null);
-  const [zoom, setZoom] = useState(1);
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
+  const tileLayerRef = useRef(null);
 
-  // Fallback city coordinates
-  const cityCenters = {
-    'Bengaluru': { lat: 12.9716, lng: 77.5946 },
-    'Hyderabad': { lat: 17.4065, lng: 78.4772 },
-    'Mumbai': { lat: 19.0760, lng: 72.8777 },
-    'Pune': { lat: 18.5204, lng: 73.8567 },
-    'Delhi': { lat: 28.6139, lng: 77.2090 },
-    'Gurugram': { lat: 28.4595, lng: 77.0266 },
-    'Chennai': { lat: 13.0827, lng: 80.2707 },
-    'Delhi NCR': { lat: 28.5355, lng: 77.3910 }
+  const [selectedPropId, setSelectedPropId] = useState(properties[0]?._id || null);
+  const [mapStyle, setMapStyle] = useState('voyager'); // 'voyager' | 'osm' | 'satellite'
+  const [purposeFilter, setPurposeFilter] = useState('all');
+  const [localityFilter, setLocalityFilter] = useState('all');
+  const [isMapReady, setIsMapReady] = useState(false);
+
+  // Filter properties according to local purpose & locality filters
+  const filteredProperties = useMemo(() => {
+    return properties.filter((p) => {
+      const matchPurpose = purposeFilter === 'all' || p.purpose === purposeFilter;
+      const matchLocality = localityFilter === 'all' || p.locality === localityFilter;
+      return matchPurpose && matchLocality;
+    });
+  }, [properties, purposeFilter, localityFilter]);
+
+  // Unique localities present in current properties list
+  const availableLocalities = useMemo(() => {
+    const set = new Set();
+    properties.forEach((p) => {
+      if (p.locality) set.add(p.locality);
+    });
+    return Array.from(set).sort();
+  }, [properties]);
+
+  // Selected property object
+  const selectedProp = useMemo(() => {
+    return (
+      filteredProperties.find((p) => p._id === selectedPropId) ||
+      properties.find((p) => p._id === selectedPropId) ||
+      filteredProperties[0] ||
+      null
+    );
+  }, [selectedPropId, filteredProperties, properties]);
+
+  // Tile sources
+  const tileSources = {
+    voyager: {
+      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      attrib: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+      maxZoom: 19,
+      subdomains: 'abcd',
+    },
+    osm: {
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attrib: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+      subdomains: 'abc',
+    },
+    satellite: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attrib: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      maxZoom: 18,
+      subdomains: '',
+    },
   };
 
-  const center = cityCenters[city] || cityCenters['Bengaluru'];
+  // 1. Initialize Leaflet Map
+  useEffect(() => {
+    let isMounted = true;
 
-  // Project lat/lng to SVG percentage coordinates (50% is center)
-  // 1 degree lat is approx 111km, 1 degree lng is approx 100km
-  const spread = 0.25 / zoom;
+    async function initMap() {
+      if (typeof window === 'undefined' || !mapContainerRef.current) return;
 
-  const pins = useMemo(() => {
-    return properties.map((prop, idx) => {
-      const lat = prop.coordinates?.lat || (center.lat + (Math.sin(idx * 1.3) * 0.05));
-      const lng = prop.coordinates?.lng || (center.lng + (Math.cos(idx * 1.3) * 0.05));
+      // Dynamically import Leaflet so SSR does not fail
+      const L = await import('leaflet');
 
-      // Calculate relative position within SVG viewport (0% to 100%)
-      const x = 50 + ((lng - center.lng) / spread) * 40;
-      const y = 50 - ((lat - center.lat) / spread) * 40;
+      if (!isMounted || !mapContainerRef.current) return;
 
-      return {
-        ...prop,
-        x: Math.max(8, Math.min(92, x)),
-        y: Math.max(8, Math.min(92, y))
-      };
+      // Clean up previous instance if exists
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+
+      const cityCenter = getCityCenter(city);
+      const initialCenter = [cityCenter.lat, cityCenter.lng];
+      const initialZoom = cityCenter.zoom || 12;
+
+      const map = L.map(mapContainerRef.current, {
+        center: initialCenter,
+        zoom: initialZoom,
+        zoomControl: false, // We supply custom styled zoom controls
+        attributionControl: false,
+      });
+
+      // Add Attribution in bottom-right
+      L.control
+        .attribution({ position: 'bottomright', prefix: false })
+        .addAttribution('OpenStreetMap &bull; UrbanFindr')
+        .addTo(map);
+
+      // Add Base Tile Layer
+      const baseSource = tileSources[mapStyle] || tileSources.voyager;
+      const tileLayer = L.tileLayer(baseSource.url, {
+        attribution: baseSource.attrib,
+        maxZoom: baseSource.maxZoom,
+        subdomains: baseSource.subdomains,
+      }).addTo(map);
+
+      tileLayerRef.current = tileLayer;
+      mapInstanceRef.current = map;
+      setIsMapReady(true);
+    }
+
+    initMap();
+
+    return () => {
+      isMounted = false;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [city]);
+
+  // 2. Switch Tile Layer when style changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+    import('leaflet').then((L) => {
+      if (!mapInstanceRef.current) return;
+      mapInstanceRef.current.removeLayer(tileLayerRef.current);
+      const nextSource = tileSources[mapStyle] || tileSources.voyager;
+      const newLayer = L.tileLayer(nextSource.url, {
+        attribution: nextSource.attrib,
+        maxZoom: nextSource.maxZoom,
+        subdomains: nextSource.subdomains,
+      }).addTo(mapInstanceRef.current);
+      tileLayerRef.current = newLayer;
     });
-  }, [properties, center, spread]);
+  }, [mapStyle]);
+
+  // 3. Render Markers on Map whenever filteredProperties or selectedPropId change
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isMapReady) return;
+
+    import('leaflet').then((L) => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+
+      // Clear existing markers
+      markersRef.current.forEach((m) => map.removeLayer(m));
+      markersRef.current = [];
+
+      if (!filteredProperties.length) return;
+
+      const bounds = L.latLngBounds([]);
+
+      filteredProperties.forEach((prop, index) => {
+        const coords = getCoordinatesForProperty(prop, city, index);
+        const latLng = [coords.lat, coords.lng];
+        bounds.extend(latLng);
+
+        const isSelected = selectedProp?._id === prop._id;
+        const purposeClass =
+          prop.purpose === 'rent'
+            ? 'rent'
+            : prop.purpose === 'pg'
+            ? 'pg'
+            : prop.purpose === 'commercial'
+            ? 'commercial'
+            : 'buy';
+
+        const priceLabel = money(prop.price);
+        const markerHtml = `
+          <div class="uf-marker-pill ${purposeClass} ${isSelected ? 'selected' : ''}">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span>${priceLabel}</span>
+          </div>
+        `;
+
+        const customIcon = L.divIcon({
+          className: 'uf-marker-container',
+          html: markerHtml,
+          iconSize: [85, 30],
+          iconAnchor: [42, 15],
+          popupAnchor: [0, -18],
+        });
+
+        const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
+
+        // Click handler: select property & smooth pan
+        marker.on('click', () => {
+          setSelectedPropId(prop._id);
+          map.panTo(latLng, { animate: true, duration: 0.6 });
+        });
+
+        markersRef.current.push(marker);
+      });
+
+      // Fit bounds if we have valid property coordinates
+      if (bounds.isValid() && filteredProperties.length > 0) {
+        map.fitBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 15,
+          animate: true,
+        });
+      }
+    });
+  }, [filteredProperties, selectedProp?._id, isMapReady, city]);
+
+  // Recenter / Fit All
+  function handleFitAll() {
+    if (!mapInstanceRef.current || !filteredProperties.length) return;
+    import('leaflet').then((L) => {
+      const bounds = L.latLngBounds([]);
+      filteredProperties.forEach((p, idx) => {
+        const coords = getCoordinatesForProperty(p, city, idx);
+        bounds.extend([coords.lat, coords.lng]);
+      });
+      if (bounds.isValid()) {
+        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      }
+    });
+  }
+
+  // Pan to selected property
+  function handlePanToSelected(prop) {
+    if (!mapInstanceRef.current || !prop) return;
+    const coords = getCoordinatesForProperty(prop, city);
+    mapInstanceRef.current.panTo([coords.lat, coords.lng], { animate: true, duration: 0.5 });
+    setSelectedPropId(prop._id);
+  }
+
+  // Next / Previous navigation in preview panel
+  function handleNextProperty(direction) {
+    if (!filteredProperties.length) return;
+    const currentIndex = filteredProperties.findIndex((p) => p._id === selectedProp?._id);
+    let nextIndex = currentIndex + direction;
+    if (nextIndex < 0) nextIndex = filteredProperties.length - 1;
+    if (nextIndex >= filteredProperties.length) nextIndex = 0;
+    const target = filteredProperties[nextIndex];
+    if (target) {
+      handlePanToSelected(target);
+    }
+  }
+
+  const imgList = selectedProp ? propertyImages(selectedProp) : [];
 
   return (
-    <div className="grid lg:grid-cols-12 gap-6 my-6 min-h-[550px] bg-stone-50 border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
-      {/* MAP CANVAS (8 cols) */}
-      <div className="lg:col-span-8 relative bg-[#eef1eb] overflow-hidden min-h-[420px] lg:min-h-[550px] flex items-center justify-center select-none">
-        {/* Subtle grid background simulating map blocks */}
-        <div
-          className="absolute inset-0 opacity-40 pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(#2d5038 0.75px, transparent 0.75px), linear-gradient(to right, #e2e6de 1px, transparent 1px), linear-gradient(to bottom, #e2e6de 1px, transparent 1px)`,
-            backgroundSize: `24px 24px, 48px 48px, 48px 48px`
-          }}
-        />
+    <div className="my-6 bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
+      {/* ── TOP MAP CONTROLS & LOCALITY STRIP ── */}
+      <div className="p-3.5 bg-stone-50/80 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3">
+        {/* Left: Region Info & Purpose Filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-stone-200 rounded-lg shadow-2xs text-xs font-semibold text-stone-800">
+            <Navigation size={13} className="text-forest" />
+            <span>{city} Metro Region</span>
+            <span className="text-forest font-bold">({filteredProperties.length} mapped)</span>
+          </div>
 
-        {/* City Water & Park features visualization */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-25" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <path d="M0,35 Q30,42 60,30 T100,45 L100,55 Q70,40 40,55 T0,45 Z" fill="#9bc4db" />
-          <circle cx="28" cy="72" r="14" fill="#a4cfb0" />
-          <circle cx="78" cy="22" r="16" fill="#a4cfb0" />
-        </svg>
-
-        {/* Map Center City Label */}
-        <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-stone-200 flex items-center gap-2">
-          <Navigation size={15} className="text-forest" />
-          <span className="font-semibold text-xs text-stone-800">{city} Metro Region</span>
-          <span className="text-[11px] muted">({properties.length} homes mapped)</span>
-        </div>
-
-        {/* Zoom Controls */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-1 bg-white rounded-lg shadow-sm border border-stone-200 p-1">
-          <button
-            type="button"
-            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
-            onClick={() => setZoom(z => Math.min(2.5, z + 0.3))}
-            aria-label="Zoom in"
-          >
-            <ZoomIn size={16} />
-          </button>
-          <button
-            type="button"
-            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
-            onClick={() => setZoom(z => Math.max(0.6, z - 0.3))}
-            aria-label="Zoom out"
-          >
-            <ZoomOut size={16} />
-          </button>
-          <button
-            type="button"
-            className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
-            onClick={() => setZoom(1)}
-            aria-label="Reset view"
-          >
-            <Maximize2 size={16} />
-          </button>
-        </div>
-
-        {/* Interactive Property Pins */}
-        <div className="absolute inset-0">
-          {pins.map((pin) => {
-            const isSelected = selectedProp?._id === pin._id;
-            const isRent = pin.purpose === 'rent';
-            const isPg = pin.purpose === 'pg';
-
-            const bgClass = isRent
-              ? 'bg-amber-600'
-              : isPg
-              ? 'bg-purple-700'
-              : 'bg-forest';
-
-            return (
-              <div
-                key={pin._id}
-                className="absolute transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 hover:z-30"
-                style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-                onClick={() => setSelectedProp(pin)}
+          {/* Quick Purpose Filter Chips */}
+          <div className="flex items-center gap-1 bg-stone-200/60 p-0.5 rounded-lg text-xs font-medium">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'buy', label: 'Buy' },
+              { id: 'rent', label: 'Rent' },
+              { id: 'pg', label: 'PG / Co-living' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setPurposeFilter(tab.id)}
+                className={`px-2.5 py-1 rounded-md transition ${
+                  purposeFilter === tab.id
+                    ? 'bg-white text-forest shadow-2xs font-semibold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
               >
-                {/* Price Pill Pin */}
-                <div
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full shadow-md text-[11px] font-bold text-white transition-transform ${bgClass} ${
-                    isSelected ? 'ring-4 ring-white scale-110 z-40' : 'hover:scale-105'
-                  }`}
-                >
-                  <MapPin size={11} />
-                  <span>{money(pin.price)}</span>
-                </div>
-              </div>
-            );
-          })}
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Bottom Legend */}
-        <div className="absolute bottom-3 left-4 z-10 flex items-center gap-3 bg-white/90 backdrop-blur px-3 py-1 rounded-md text-[11px] font-medium border border-stone-200">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-forest inline-block" /> Buy
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block" /> Rent
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-700 inline-block" /> PG
-          </span>
+        {/* Right: Map Style Switcher & Fit View */}
+        <div className="flex items-center gap-2">
+          {/* Layer Switcher */}
+          <div className="flex items-center gap-1 bg-stone-200/60 p-0.5 rounded-lg text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setMapStyle('voyager')}
+              className={`px-2.5 py-1 rounded-md transition ${
+                mapStyle === 'voyager'
+                  ? 'bg-white text-forest shadow-2xs font-semibold'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+              title="CartoDB Voyager - Clean high-res road map"
+            >
+              Streets
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle('osm')}
+              className={`px-2.5 py-1 rounded-md transition ${
+                mapStyle === 'osm'
+                  ? 'bg-white text-forest shadow-2xs font-semibold'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+              title="Standard OpenStreetMap Carto"
+            >
+              OSM
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle('satellite')}
+              className={`px-2.5 py-1 rounded-md transition ${
+                mapStyle === 'satellite'
+                  ? 'bg-white text-forest shadow-2xs font-semibold'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+              title="Satellite High-Resolution Imagery"
+            >
+              Satellite
+            </button>
+          </div>
+
+          {/* Reset / Fit Bounds Button */}
+          <button
+            type="button"
+            onClick={handleFitAll}
+            className="p-1.5 bg-white border border-stone-200 rounded-lg text-stone-700 hover:text-forest hover:bg-stone-50 transition shadow-2xs"
+            title="Fit all properties into view"
+          >
+            <Maximize2 size={15} />
+          </button>
         </div>
       </div>
 
-      {/* SELECTED PROPERTY PREVIEW PANEL (4 cols) */}
-      <div className="lg:col-span-4 p-5 flex flex-col justify-between bg-white border-t lg:border-t-0 lg:border-l border-stone-200">
-        {selectedProp ? (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                selectedProp.purpose === 'rent'
-                  ? 'bg-amber-100 text-amber-800'
-                  : selectedProp.purpose === 'buy'
-                  ? 'bg-forest/10 text-forest'
-                  : 'bg-purple-100 text-purple-800'
-              }`}>
-                {selectedProp.purpose === 'rent' ? 'For Rent' : selectedProp.purpose === 'buy' ? 'For Buy' : 'PG / Co-living'}
-              </span>
-              {selectedProp.verified && (
-                <span className="text-xs text-forest font-semibold flex items-center gap-1">
-                  <Check size={13} /> Verified Listing
-                </span>
-              )}
-            </div>
+      {/* ── LOCALITY QUICK JUMP CHIPS (if available) ── */}
+      {availableLocalities.length > 1 && (
+        <div className="px-3.5 py-2 bg-[#fdfdfc] border-b border-stone-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+          <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider shrink-0 mr-1">
+            Localities:
+          </span>
+          <button
+            type="button"
+            onClick={() => setLocalityFilter('all')}
+            className={`px-2.5 py-0.5 rounded-full text-xs shrink-0 transition ${
+              localityFilter === 'all'
+                ? 'bg-forest text-white font-semibold'
+                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            All Localities
+          </button>
+          {availableLocalities.map((loc) => {
+            const count = properties.filter((p) => p.locality === loc).length;
+            return (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => {
+                  setLocalityFilter(loc);
+                  const firstInLoc = properties.find((p) => p.locality === loc);
+                  if (firstInLoc) handlePanToSelected(firstInLoc);
+                }}
+                className={`px-2.5 py-0.5 rounded-full text-xs shrink-0 flex items-center gap-1 transition ${
+                  localityFilter === loc
+                    ? 'bg-forest text-white font-semibold'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                <span>{loc}</span>
+                <span className="text-[10px] opacity-75">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-            <div className="relative rounded-xl overflow-hidden aspect-[16/10] mb-3 bg-stone-100">
-              <img
-                src={propertyImages(selectedProp)[0]}
-                alt={selectedProp.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
+      {/* ── MAP CANVAS & SIDE PREVIEW ── */}
+      <div className="grid lg:grid-cols-12 min-h-[580px] relative">
+        {/* MAP CONTAINER (8 cols on desktop, full on mobile) */}
+        <div className="lg:col-span-8 relative min-h-[460px] lg:min-h-[580px] bg-[#eef1eb]">
+          <div ref={mapContainerRef} className="w-full h-full min-h-[460px] lg:min-h-[580px]" />
 
-            <h3 className="font-bold text-base line-clamp-2 text-stone-900 leading-snug">
-              {selectedProp.title}
-            </h3>
-
-            <p className="muted text-xs flex items-center gap-1 mt-1.5">
-              <MapPin size={13} className="text-forest shrink-0" />
-              {selectedProp.locality}, {selectedProp.city}
-            </p>
-
-            <div className="my-3 py-2 border-y border-stone-100 flex items-center justify-between text-xs text-stone-700">
-              <span><strong>{selectedProp.bedrooms ? `${selectedProp.bedrooms} BHK` : selectedProp.type}</strong></span>
-              <span><strong>{selectedProp.area}</strong> sq ft</span>
-              <span><strong>{selectedProp.furnishing?.replace('furnished', 'furn.')}</strong></span>
-            </div>
-
-            <div className="mb-4">
-              <span className="text-2xl font-extrabold text-forest">
-                {money(selectedProp.price)}
-              </span>
-              {selectedProp.purpose === 'rent' || selectedProp.purpose === 'pg' ? (
-                <span className="text-xs muted ml-1">/ month</span>
-              ) : null}
-            </div>
-
-            <Link
-              href={`/properties/${selectedProp._id}`}
-              className="btn w-full text-center py-2.5 text-sm flex items-center justify-center gap-1.5"
+          {/* Floating Map Zoom Controls (Top Left) */}
+          <div className="absolute top-4 left-4 z-400 flex flex-col gap-1 bg-white/95 backdrop-blur rounded-lg shadow-md border border-stone-200/80 p-1">
+            <button
+              type="button"
+              className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
+              onClick={() => mapInstanceRef.current?.zoomIn()}
+              aria-label="Zoom in"
             >
-              View Full Details
-              <ExternalLink size={14} />
-            </Link>
+              <ZoomIn size={16} />
+            </button>
+            <button
+              type="button"
+              className="p-1.5 hover:bg-stone-100 rounded text-stone-700 transition"
+              onClick={() => mapInstanceRef.current?.zoomOut()}
+              aria-label="Zoom out"
+            >
+              <ZoomOut size={16} />
+            </button>
           </div>
-        ) : (
-          <div className="text-center py-16 muted text-sm">
-            <MapPin size={28} className="mx-auto mb-2 text-stone-300" />
-            Click on any map pin to preview property details
-          </div>
-        )}
 
-        <div className="mt-4 pt-3 border-t border-stone-100 text-center">
-          <p className="text-[11px] muted">
-            Map pins reflect actual locality coordinates. All listings direct from owners.
-          </p>
+          {/* Floating Map Legend (Bottom Left) */}
+          <div className="absolute bottom-4 left-4 z-400 flex items-center gap-3 bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-200/80 shadow-md">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] inline-block shadow-2xs" /> Buy
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] inline-block shadow-2xs" /> Rent
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce] inline-block shadow-2xs" /> PG
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] inline-block shadow-2xs" /> Commercial
+            </span>
+          </div>
+        </div>
+
+        {/* ── SELECTED PROPERTY PREVIEW PANEL (4 cols on desktop) ── */}
+        <div className="lg:col-span-4 p-5 flex flex-col justify-between bg-white border-t lg:border-t-0 lg:border-l border-stone-200">
+          {selectedProp ? (
+            <div className="space-y-4">
+              {/* Header with Purpose Badge & Navigation Buttons */}
+              <div className="flex items-center justify-between">
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                    selectedProp.purpose === 'rent'
+                      ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                      : selectedProp.purpose === 'buy'
+                      ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                      : selectedProp.purpose === 'pg'
+                      ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                      : 'bg-teal-100 text-teal-900 border border-teal-200'
+                  }`}
+                >
+                  {selectedProp.purpose === 'rent'
+                    ? 'For Rent'
+                    : selectedProp.purpose === 'buy'
+                    ? 'For Buy'
+                    : selectedProp.purpose === 'pg'
+                    ? 'PG / Co-living'
+                    : 'Commercial Space'}
+                </span>
+
+                {/* Prev / Next controls */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-stone-400 font-mono mr-1">
+                    {filteredProperties.findIndex((p) => p._id === selectedProp._id) + 1} of{' '}
+                    {filteredProperties.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleNextProperty(-1)}
+                    className="p-1 rounded hover:bg-stone-100 text-stone-600 transition"
+                    title="Previous home on map"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleNextProperty(1)}
+                    className="p-1 rounded hover:bg-stone-100 text-stone-600 transition"
+                    title="Next home on map"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Photo Showcase */}
+              <div className="relative rounded-xl overflow-hidden aspect-[16/10] bg-stone-100 border border-stone-200 group">
+                <img
+                  src={imgList[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'}
+                  alt={selectedProp.title}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                {selectedProp.verified && (
+                  <span className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur text-forest text-[11px] font-bold px-2 py-0.5 rounded shadow-sm flex items-center gap-1 border border-stone-200">
+                    <Check size={12} className="text-emerald-700" /> Direct Verified
+                  </span>
+                )}
+                <span className="absolute bottom-2.5 right-2.5 bg-black/60 text-white text-[11px] font-mono px-2 py-0.5 rounded">
+                  {imgList.length} photos
+                </span>
+              </div>
+
+              {/* Title & Locality */}
+              <div>
+                <h3 className="font-bold text-base line-clamp-2 text-stone-900 leading-snug">
+                  {selectedProp.title}
+                </h3>
+                <p className="text-stone-500 text-xs flex items-center gap-1 mt-1 font-medium">
+                  <MapPin size={13} className="text-forest shrink-0" />
+                  <span>
+                    {selectedProp.locality}, {selectedProp.city}
+                  </span>
+                </p>
+              </div>
+
+              {/* Specs Metric Strip */}
+              <div className="py-2.5 px-3 bg-[#f8faf6] rounded-lg border border-stone-200/80 grid grid-cols-3 gap-2 text-center text-xs text-stone-700">
+                <div>
+                  <span className="text-[10px] text-stone-400 block uppercase font-bold">Layout</span>
+                  <strong className="text-stone-900 block mt-0.5">
+                    {selectedProp.bedrooms ? `${selectedProp.bedrooms} BHK` : selectedProp.type || '1 Unit'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-stone-400 block uppercase font-bold">Area</span>
+                  <strong className="text-stone-900 block mt-0.5">
+                    {selectedProp.area ? `${selectedProp.area.toLocaleString()} sq ft` : 'Spacious'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-stone-400 block uppercase font-bold">Furnishing</span>
+                  <strong className="text-stone-900 block mt-0.5 capitalize truncate">
+                    {selectedProp.furnishing?.replace('furnished', 'furn.') || 'Standard'}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Price & Primary CTA */}
+              <div className="pt-1">
+                <div className="flex items-baseline gap-1 mb-3">
+                  <span className="text-2xl font-extrabold text-forest tracking-tight">
+                    {money(selectedProp.price)}
+                  </span>
+                  {selectedProp.purpose === 'rent' || selectedProp.purpose === 'pg' ? (
+                    <span className="text-xs text-stone-500 font-medium">/ month</span>
+                  ) : null}
+                </div>
+
+                <Link
+                  href={`/properties/${selectedProp._id}`}
+                  className="btn w-full text-center py-2.5 text-sm font-semibold flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  View Full Details
+                  <ExternalLink size={14} />
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-20 text-stone-400 space-y-2">
+              <MapPin size={32} className="mx-auto text-stone-300" />
+              <p className="text-sm font-semibold text-stone-600">No properties mapped</p>
+              <p className="text-xs text-stone-400">Try adjusting your locality or purpose filter.</p>
+            </div>
+          )}
+
+          {/* Footer note */}
+          <div className="pt-4 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
+            <span>Powered by OpenStreetMap &amp; CARTO</span>
+            <span className="flex items-center gap-1 text-forest font-semibold">
+              <Sparkles size={11} /> Real GPS Coordinates
+            </span>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
