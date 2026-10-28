@@ -230,12 +230,16 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
         } else {
           // Clustered 2 or more properties in the same locality
           const minPriceLabel = money(item.minPrice);
+          const dotsHtml = item.purposes?.length
+            ? `<div class="uf-cluster-dots">${item.purposes.map((p) => `<span class="uf-cluster-dot ${p}"></span>`).join('')}</div>`
+            : '';
           const clusterHtml = `
             <div class="uf-cluster-pill" title="Click to inspect all ${item.count} properties in ${item.locality}">
               <span class="uf-cluster-count">${item.count}</span>
               <div class="uf-cluster-body">
                 <span class="uf-cluster-locality">${item.locality}</span>
                 <span class="uf-cluster-price">from ${minPriceLabel}</span>
+                ${dotsHtml}
               </div>
             </div>
           `;
@@ -243,8 +247,8 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           const clusterIcon = L.divIcon({
             className: 'uf-cluster-container',
             html: clusterHtml,
-            iconSize: [120, 36],
-            iconAnchor: [60, 18],
+            iconSize: [120, 38],
+            iconAnchor: [60, 19],
             popupAnchor: [0, -20],
           });
 
@@ -515,21 +519,21 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
 
           {/* Floating Map Legend & Cluster Hint (Bottom Left) */}
           <div className="absolute bottom-4 left-4 z-400 flex flex-wrap items-center gap-3 bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-200/80 shadow-md">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] inline-block shadow-2xs" /> Buy
+            <span className="flex items-center gap-1.5" title="Dark Green pin = For Buy / Sale">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] inline-block shadow-2xs" /> Green: Buy
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] inline-block shadow-2xs" /> Rent
+            <span className="flex items-center gap-1.5" title="Orange pin = For Rent">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] inline-block shadow-2xs" /> Orange: Rent
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce] inline-block shadow-2xs" /> PG
+            <span className="flex items-center gap-1.5" title="Purple pin = PG / Co-living">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce] inline-block shadow-2xs" /> Purple: PG
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] inline-block shadow-2xs" /> Commercial
+            <span className="flex items-center gap-1.5" title="Teal pin = Commercial space">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] inline-block shadow-2xs" /> Teal: Commercial
             </span>
             <span className="flex items-center gap-1.5 border-l border-stone-200 pl-2.5 text-stone-600 font-normal">
               <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#d4e844] text-[#0d2620] text-[10px] font-bold">2+</span>
-              <span>Locality Cluster (Click to open list)</span>
+              <span>Cluster (Click to view)</span>
             </span>
           </div>
         </div>
@@ -678,7 +682,7 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
       {/* ── LOCALITY PROPERTIES MODAL (When 2+ properties in same locality are clicked) ── */}
       {activeCluster && (
         <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-md animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setActiveCluster(null);
           }}
@@ -687,24 +691,24 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             role="dialog"
             aria-modal="true"
             aria-label={`Properties in ${activeCluster.locality}`}
-            className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
           >
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-[#163e35] to-[#205347] text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 text-[#d4e844]">
-                  <Building size={20} />
+            {/* 1. Modal Header */}
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-[#163e35] via-[#1b4a40] to-[#205347] text-white flex items-center justify-between shrink-0 shadow-sm">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 text-[#d4e844] shadow-xs">
+                  <Building size={22} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
                       {activeCluster.locality}
                     </h2>
-                    <span className="bg-[#d4e844] text-[#0d2620] text-xs font-black px-2 py-0.5 rounded-full shadow-2xs">
-                      {activeCluster.count} Properties
+                    <span className="bg-[#d4e844] text-[#0d2620] text-xs font-black px-2.5 py-0.5 rounded-full shadow-2xs">
+                      {activeCluster.count} Properties Mapped
                     </span>
                   </div>
-                  <p className="text-xs text-stone-200 flex items-center gap-1.5 mt-0.5">
+                  <p className="text-xs text-stone-200 flex items-center gap-2 mt-1">
                     <span>{activeCluster.city} Metro Region</span>
                     <span>&bull;</span>
                     <span>
@@ -720,38 +724,92 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
               <button
                 type="button"
                 onClick={() => setActiveCluster(null)}
-                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition cursor-pointer"
                 aria-label="Close cluster dialog"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            {/* Internal Filter Tabs if multi-purpose */}
-            {activeCluster.purposes?.length > 1 && (
-              <div className="px-5 py-2.5 bg-stone-50 border-b border-stone-200 flex items-center gap-2 text-xs">
-                <span className="text-stone-500 font-semibold uppercase text-[11px] tracking-wider">
-                  Filter:
+            {/* 2. Map Color Distinction Guide Banner */}
+            <div className="px-5 sm:px-6 py-3 bg-[#f8faf6] border-b border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-stone-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Info size={14} className="text-forest" />
+                  Map Color Key:
                 </span>
-                {['all', ...activeCluster.purposes].map((pId) => (
-                  <button
-                    key={pId}
-                    type="button"
-                    onClick={() => setClusterPurposeFilter(pId)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold capitalize transition cursor-pointer ${
-                      clusterPurposeFilter === pId
-                        ? 'bg-[#163e35] text-white shadow-2xs'
-                        : 'bg-stone-200/80 text-stone-700 hover:bg-stone-300'
-                    }`}
-                  >
-                    {pId === 'all' ? 'All Types' : pId}
-                  </button>
-                ))}
+                <span className="text-stone-500 hidden md:inline">Why pins are different colors on map:</span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] shadow-2xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] shadow-2xs" />
+                  <span>Orange Pin = Rent</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-950 border border-emerald-300 font-bold text-[11px] shadow-2xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#163e35] shadow-2xs" />
+                  <span>Green Pin = Buy / Sale</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-purple-900 border border-purple-300 font-bold text-[11px] shadow-2xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce] shadow-2xs" />
+                  <span>Purple Pin = PG</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 text-teal-900 border border-teal-300 font-bold text-[11px] shadow-2xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#0f766e] shadow-2xs" />
+                  <span>Teal Pin = Commercial</span>
+                </span>
+              </div>
+            </div>
+
+            {/* 3. Purpose Filter Tabs with Color Dots */}
+            {activeCluster.purposes?.length > 1 && (
+              <div className="px-5 sm:px-6 py-2.5 bg-white border-b border-stone-200/70 flex items-center gap-2 text-xs overflow-x-auto no-scrollbar">
+                <span className="text-stone-400 font-bold uppercase text-[10px] tracking-wider shrink-0 mr-1">
+                  Filter by Type:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setClusterPurposeFilter('all')}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
+                    clusterPurposeFilter === 'all'
+                      ? 'bg-stone-900 text-white shadow-2xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  All Properties ({activeCluster.count})
+                </button>
+                {activeCluster.purposes.map((pId) => {
+                  const pCount = activeCluster.properties.filter((p) => p.purpose === pId).length;
+                  const dotColor =
+                    pId === 'rent'
+                      ? 'bg-[#d97706]'
+                      : pId === 'buy'
+                      ? 'bg-[#163e35]'
+                      : pId === 'pg'
+                      ? 'bg-[#7e22ce]'
+                      : 'bg-[#0f766e]';
+                  return (
+                    <button
+                      key={pId}
+                      type="button"
+                      onClick={() => setClusterPurposeFilter(pId)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold capitalize transition cursor-pointer flex items-center gap-1.5 ${
+                        clusterPurposeFilter === pId
+                          ? 'bg-forest text-white shadow-2xs'
+                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+                      <span>{pId === 'rent' ? 'For Rent' : pId === 'buy' ? 'For Sale' : pId}</span>
+                      <span className="opacity-75">({pCount})</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
-            {/* Property Cards List */}
-            <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 divide-y divide-stone-100">
+            {/* 4. Spacious, Uncluttered Property Cards List */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-5 bg-[#fbfcf9]">
               {activeCluster.properties
                 .filter(
                   (p) => clusterPurposeFilter === 'all' || p.purpose === clusterPurposeFilter
@@ -759,116 +817,183 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                 .map((prop) => {
                   const pImages = propertyImages(prop);
                   const isSelected = selectedPropId === prop._id;
+                  const isRent = prop.purpose === 'rent';
+                  const isBuy = prop.purpose === 'buy';
+                  const isPg = prop.purpose === 'pg';
+
                   return (
                     <div
                       key={prop._id}
-                      className={`pt-3.5 first:pt-0 flex flex-col sm:flex-row gap-4 p-3 rounded-xl transition border ${
+                      className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs hover:shadow-md ${
                         isSelected
-                          ? 'bg-emerald-50/70 border-emerald-300'
-                          : 'bg-white hover:bg-stone-50/80 border-stone-200/80'
+                          ? 'ring-2 ring-forest border-transparent'
+                          : 'border-stone-200/90 hover:border-stone-300'
+                      } ${
+                        isRent
+                          ? 'border-l-[6px] border-l-[#d97706]'
+                          : isBuy
+                          ? 'border-l-[6px] border-l-[#163e35]'
+                          : isPg
+                          ? 'border-l-[6px] border-l-[#7e22ce]'
+                          : 'border-l-[6px] border-l-[#0f766e]'
                       }`}
                     >
-                      {/* Thumbnail */}
-                      <div className="sm:w-44 h-32 rounded-lg overflow-hidden relative shrink-0 bg-stone-100 border border-stone-200">
-                        <img
-                          src={
-                            pImages[0] ||
-                            'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80'
-                          }
-                          alt={prop.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <span
-                          className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs uppercase tracking-wider ${
-                            prop.purpose === 'rent'
-                              ? 'bg-amber-500 text-white'
-                              : prop.purpose === 'buy'
-                              ? 'bg-emerald-700 text-white'
-                              : prop.purpose === 'pg'
-                              ? 'bg-purple-700 text-white'
-                              : 'bg-teal-700 text-white'
-                          }`}
-                        >
-                          {prop.purpose}
-                        </span>
-                        {prop.verified && (
-                          <span className="absolute bottom-2 left-2 bg-white/95 backdrop-blur text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs">
-                            <Check size={11} className="text-emerald-600" /> Verified
-                          </span>
-                        )}
-                      </div>
+                      <div className="p-4 sm:p-5 flex flex-col md:flex-row gap-5">
+                        {/* Photo Column */}
+                        <div className="md:w-60 h-48 md:h-auto md:min-h-[170px] rounded-xl overflow-hidden relative shrink-0 bg-stone-100 border border-stone-200/80 group">
+                          <img
+                            src={
+                              pImages[0] ||
+                              'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=500&q=80'
+                            }
+                            alt={prop.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
 
-                      {/* Details */}
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="font-bold text-stone-900 text-sm sm:text-base line-clamp-1">
-                              {prop.title}
-                            </h3>
-                            <div className="text-right shrink-0">
-                              <span className="text-base sm:text-lg font-extrabold text-[#163e35]">
-                                {money(prop.price)}
+                          {/* Map Pin Color Badge directly on image */}
+                          <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
+                            <span
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold uppercase tracking-wider shadow-sm flex items-center gap-1.5 text-white ${
+                                isRent
+                                  ? 'bg-[#d97706]'
+                                  : isBuy
+                                  ? 'bg-[#163e35]'
+                                  : isPg
+                                  ? 'bg-[#7e22ce]'
+                                  : 'bg-[#0f766e]'
+                              }`}
+                            >
+                              <MapPin size={11} className="shrink-0" />
+                              <span>
+                                {isRent
+                                  ? 'Orange Pin • For Rent'
+                                  : isBuy
+                                  ? 'Green Pin • For Sale'
+                                  : isPg
+                                  ? 'Purple Pin • PG'
+                                  : 'Teal Pin • Commercial'}
                               </span>
-                              {(prop.purpose === 'rent' || prop.purpose === 'pg') && (
-                                <span className="text-[11px] text-stone-500 block">/ month</span>
-                              )}
+                            </span>
+
+                            {prop.verified && (
+                              <span className="bg-white/95 backdrop-blur text-forest text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs flex items-center gap-1 border border-stone-200 w-fit">
+                                <Check size={11} className="text-emerald-600" /> Direct Verified
+                              </span>
+                            )}
+                          </div>
+
+                          <span className="absolute bottom-2.5 right-2.5 bg-black/65 text-white text-[10px] font-mono px-2 py-0.5 rounded">
+                            {pImages.length} photos
+                          </span>
+                        </div>
+
+                        {/* Content Column */}
+                        <div className="flex-1 flex flex-col justify-between space-y-4">
+                          <div>
+                            {/* Title & Price Header */}
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <h3 className="font-bold text-stone-900 text-base sm:text-lg leading-snug line-clamp-2">
+                                  {prop.title}
+                                </h3>
+                                <p className="text-xs text-stone-500 flex items-center gap-1.5 font-medium">
+                                  <MapPin size={13} className="text-forest shrink-0" />
+                                  <span>
+                                    {prop.locality}, {prop.city}
+                                  </span>
+                                </p>
+                              </div>
+
+                              {/* Price Display */}
+                              <div className="sm:text-right shrink-0">
+                                <div className="flex sm:flex-col items-baseline sm:items-end gap-1">
+                                  <span
+                                    className={`text-xl sm:text-2xl font-extrabold tracking-tight ${
+                                      isRent
+                                        ? 'text-[#d97706]'
+                                        : isBuy
+                                        ? 'text-[#163e35]'
+                                        : isPg
+                                        ? 'text-[#7e22ce]'
+                                        : 'text-[#0f766e]'
+                                    }`}
+                                  >
+                                    {money(prop.price)}
+                                  </span>
+                                  {(isRent || isPg) && (
+                                    <span className="text-xs text-stone-500 font-medium">/ month</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Specifications Row (Clean metric boxes) */}
+                            <div className="grid grid-cols-3 gap-3 pt-3.5 mt-3 border-t border-stone-100 text-center">
+                              <div className="bg-stone-50/80 p-2.5 rounded-xl border border-stone-100">
+                                <span className="text-[10px] text-stone-400 block uppercase font-bold tracking-wider">
+                                  Layout
+                                </span>
+                                <strong className="text-stone-800 text-xs sm:text-sm block mt-0.5">
+                                  {prop.bedrooms ? `${prop.bedrooms} BHK` : prop.type || 'Standard'}
+                                </strong>
+                              </div>
+                              <div className="bg-stone-50/80 p-2.5 rounded-xl border border-stone-100">
+                                <span className="text-[10px] text-stone-400 block uppercase font-bold tracking-wider">
+                                  Built Area
+                                </span>
+                                <strong className="text-stone-800 text-xs sm:text-sm block mt-0.5">
+                                  {prop.area ? `${prop.area.toLocaleString()} sq ft` : 'Spacious'}
+                                </strong>
+                              </div>
+                              <div className="bg-stone-50/80 p-2.5 rounded-xl border border-stone-100">
+                                <span className="text-[10px] text-stone-400 block uppercase font-bold tracking-wider">
+                                  Furnishing
+                                </span>
+                                <strong className="text-stone-800 text-xs sm:text-sm block mt-0.5 capitalize truncate">
+                                  {prop.furnishing?.replace('furnished', 'furn.') || 'Standard'}
+                                </strong>
+                              </div>
                             </div>
                           </div>
 
-                          <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
-                            <MapPin size={12} className="text-forest shrink-0" />
-                            <span>
-                              {prop.locality}, {prop.city}
-                            </span>
-                          </p>
+                          {/* Actions Row */}
+                          <div className="flex items-center justify-between gap-3 pt-3 border-t border-stone-100">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedPropId(prop._id);
+                                if (mapInstanceRef.current) {
+                                  const coords = getCoordinatesForProperty(prop, city);
+                                  mapInstanceRef.current.panTo([coords.lat, coords.lng], {
+                                    animate: true,
+                                    duration: 0.5,
+                                  });
+                                  mapInstanceRef.current.setZoom(16);
+                                }
+                                setActiveCluster(null);
+                              }}
+                              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border shadow-2xs ${
+                                isRent
+                                  ? 'border-amber-200 bg-amber-50/80 text-amber-900 hover:bg-amber-100'
+                                  : isBuy
+                                  ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900 hover:bg-emerald-100'
+                                  : isPg
+                                  ? 'border-purple-200 bg-purple-50/80 text-purple-900 hover:bg-purple-100'
+                                  : 'border-teal-200 bg-teal-50/80 text-teal-900 hover:bg-teal-100'
+                              }`}
+                            >
+                              <MapPin size={13} className="shrink-0" />
+                              <span>Focus on Map Pin</span>
+                            </button>
 
-                          {/* Quick Specs */}
-                          <div className="flex items-center gap-3 text-xs text-stone-600 mt-2 flex-wrap">
-                            <span className="bg-stone-100 px-2 py-0.5 rounded font-medium">
-                              {prop.bedrooms ? `${prop.bedrooms} BHK` : prop.type || 'Standard'}
-                            </span>
-                            {prop.area && (
-                              <span className="bg-stone-100 px-2 py-0.5 rounded font-medium">
-                                {prop.area.toLocaleString()} sq ft
-                              </span>
-                            )}
-                            {prop.furnishing && (
-                              <span className="bg-stone-100 px-2 py-0.5 rounded font-medium capitalize">
-                                {prop.furnishing}
-                              </span>
-                            )}
+                            <Link
+                              href={`/properties/${prop._id}`}
+                              className="btn !py-2 !px-4 !text-xs !font-semibold flex items-center gap-1.5 shadow-sm"
+                            >
+                              <span>View Listing Details</span>
+                              <ExternalLink size={13} />
+                            </Link>
                           </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-stone-100">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedPropId(prop._id);
-                              if (mapInstanceRef.current) {
-                                const coords = getCoordinatesForProperty(prop, city);
-                                mapInstanceRef.current.panTo([coords.lat, coords.lng], {
-                                  animate: true,
-                                  duration: 0.5,
-                                });
-                                mapInstanceRef.current.setZoom(15);
-                              }
-                              setActiveCluster(null);
-                            }}
-                            className="px-3 py-1.5 rounded-lg border border-stone-200 text-stone-700 hover:text-forest hover:bg-stone-100 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-                          >
-                            <Navigation size={13} className="text-forest" />
-                            <span>Select on Map</span>
-                          </button>
-
-                          <Link
-                            href={`/properties/${prop._id}`}
-                            className="px-3 py-1.5 rounded-lg bg-[#163e35] hover:bg-[#205347] text-white text-xs font-semibold flex items-center gap-1.5 transition ml-auto"
-                          >
-                            <span>View Details</span>
-                            <ExternalLink size={12} />
-                          </Link>
                         </div>
                       </div>
                     </div>
@@ -876,17 +1001,20 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
                 })}
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-3 sm:p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs text-stone-500">
-              <span>
-                Click <strong>Select on Map</strong> to center the map on that property.
+            {/* 5. Modal Footer */}
+            <div className="p-4 sm:p-5 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs text-stone-500">
+              <span className="flex items-center gap-1.5">
+                <Sparkles size={14} className="text-forest" />
+                <span>
+                  Click <strong>Focus on Map Pin</strong> to zoom in directly to that home on the map.
+                </span>
               </span>
               <button
                 type="button"
                 onClick={() => setActiveCluster(null)}
-                className="px-3 py-1 rounded-md bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold cursor-pointer transition"
+                className="px-4 py-1.5 rounded-lg bg-stone-200 hover:bg-stone-300 text-stone-800 font-semibold cursor-pointer transition text-xs"
               >
-                Close
+                Close Dialog
               </button>
             </div>
           </div>

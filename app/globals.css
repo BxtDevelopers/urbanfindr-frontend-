@@ -1418,6 +1418,26 @@ table{font-size:15px}td,th{padding:15px}.check-label{font-size:15px;line-height:
   color: #86efac !important;
 }
 
+.uf-cluster-dots {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3.5px !important;
+  margin-top: 1.5px !important;
+}
+
+.uf-cluster-dot {
+  width: 6.5px !important;
+  height: 6.5px !important;
+  border-radius: 9999px !important;
+  display: inline-block !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.uf-cluster-dot.rent { background: #d97706 !important; }
+.uf-cluster-dot.buy { background: #10b981 !important; }
+.uf-cluster-dot.pg { background: #c084fc !important; }
+.uf-cluster-dot.commercial { background: #2dd4bf !important; }
+
 /* Custom Leaflet Popup */
 .leaflet-popup-content-wrapper {
   padding: 0 !important;
