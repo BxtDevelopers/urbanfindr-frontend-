@@ -127,3 +127,35 @@ test('Channel Partner: Overview replaces huge time tab with compact dropdown and
   assert.ok(cpDashContent.includes('ComposedChart'), 'Must utilize ComposedChart for multi-series inbound/outbound visualization');
   assert.ok(cpDashContent.includes('chartViewType'), 'Must support view switching between Grouped Bars and Trend lines');
 });
+
+test('Channel Partner Admin: lib/api.js provides channel partner stats, channel-partners endpoints, and tier/verification updates', () => {
+  const apiContent = readFileSync(path.resolve('lib/api.js'), 'utf8');
+  assert.ok(apiContent.includes('channelPartnerLeads'), 'lib/api.js stats must compute channelPartnerLeads');
+  assert.ok(apiContent.includes('channelPartnerProperties'), 'lib/api.js stats must compute channelPartnerProperties');
+  assert.ok(apiContent.includes('openTickets'), 'lib/api.js stats must compute openTickets');
+  assert.ok(apiContent.includes("key==='channel-partners'"), 'lib/api.js must provide dedicated admin channel-partners route');
+  assert.ok(apiContent.includes("['Silver','Gold','Platinum'].includes(data.tier)"), 'lib/api.js must validate and update partner tier');
+  assert.ok(apiContent.includes("typeof data.verified==='boolean'"), 'lib/api.js must support updating verified status');
+});
+
+test('Channel Partner Admin: components/admin.js renders Tier & RERA controls, Sales Team Roster, and inventory in inspector modal', () => {
+  const adminContent = readFileSync(path.resolve('components/admin.js'), 'utf8');
+  assert.ok(adminContent.includes('Channel Partner Governance') || adminContent.includes('Institutional Tier:'), 'Modal must render Channel Partner governance controls');
+  assert.ok(adminContent.includes("['Silver', 'Gold', 'Platinum']"), 'Modal must provide Silver, Gold, Platinum tier selector');
+  assert.ok(adminContent.includes('handleToggleVerification'), 'Modal must provide RERA verification toggle');
+  assert.ok(adminContent.includes('Sales Team Roster'), 'Modal must render Sales Team Roster section');
+  assert.ok(adminContent.includes('assignedLeadsCount'), 'Sales Team Roster must display assignedLeadsCount');
+  assert.ok(adminContent.includes('Listed Properties'), 'Modal must display listed active property inventory');
+});
+
+test('Channel Partner Admin: components/admin.js Overview renders CP KPI cards and Enquiries tab renders Touchpoint badges & CP attribution', () => {
+  const adminContent = readFileSync(path.resolve('components/admin.js'), 'utf8');
+  assert.ok(adminContent.includes('Registered Channel Partners'), 'Overview must render Registered Channel Partners KPI');
+  assert.ok(adminContent.includes('Active CP Inventory'), 'Overview must render Active CP Inventory KPI');
+  assert.ok(adminContent.includes('Inbound CP Leads'), 'Overview must render Inbound CP Leads KPI');
+  assert.ok(adminContent.includes('Phone Callback'), 'Enquiries tab must render Phone Callback touchpoint badge');
+  assert.ok(adminContent.includes('Direct Chat'), 'Enquiries tab must render Direct Chat touchpoint badge');
+  assert.ok(adminContent.includes('Property Form'), 'Enquiries tab must render Property Form touchpoint badge');
+  assert.ok(adminContent.includes('Channel Partner Leads'), 'Enquiries tab must provide filter for Channel Partner leads');
+  assert.ok(adminContent.includes('l.assignedTeamMember'), 'Enquiries tab must render advisor attribution');
+});

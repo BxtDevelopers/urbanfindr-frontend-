@@ -30,6 +30,9 @@ import {
   ArrowUpRight,
   Eye,
   Filter,
+  UserCheck,
+  Award,
+  ShieldAlert,
 } from 'lucide-react';
 import { api, useApp, useData } from './providers';
 import { Field, Pagination, State, Submit, Image } from './ui';
@@ -89,7 +92,7 @@ export default function Admin() {
     { id: 'properties', label: 'Properties & Listings', icon: Home, badgeColor: Number(stats.data?.pending) > 0 ? 'bg-amber-500' : null },
     { id: 'enquiries', label: 'Enquiries & Visits', icon: Mail, count: stats.data?.leads || 0 },
     { id: 'notifications', label: 'Notifications', icon: Bell, badgeColor: unreadCount > 0 ? 'bg-red-500' : null },
-    { id: 'support', label: 'Customer Support', icon: LifeBuoy },
+    { id: 'support', label: 'Customer Support', icon: LifeBuoy, count: stats.data?.openTickets || 0, badgeColor: Number(stats.data?.openTickets) > 0 ? 'bg-red-500' : null },
     { id: 'cities', label: 'Operational Cities', icon: MapPin },
   ];
 
@@ -961,7 +964,23 @@ function BuilderProjectDetailModal({ project, onClose, onArchive }) {
 function AgentPartnerDetailModal({ user: agentUser, onClose, onToggleStatus, onReload, onInspectProperty }) {
   const { toast } = useApp();
   const { data: propsData, loading: propsLoading, reload: reloadProps } = useData(`admin/properties?owner=${agentUser._id}`);
+  const isChannelPartner = agentUser?.role === 'channel_partner';
+  const { data: partnerData, reload: reloadPartner } = useData(isChannelPartner ? `admin/channel-partners/${agentUser._id}` : null);
   const [busyPropId, setBusyPropId] = useState(null);
+  const [busyAction, setBusyAction] = useState(false);
+
+  const [currentTier, setCurrentTier] = useState(agentUser?.tier || 'Gold');
+  const [isVerified, setIsVerified] = useState(agentUser?.verified !== undefined ? agentUser.verified : true);
+
+  useEffect(() => {
+    if (partnerData) {
+      if (partnerData.tier) setCurrentTier(partnerData.tier);
+      if (partnerData.verified !== undefined) setIsVerified(partnerData.verified);
+    } else if (agentUser) {
+      if (agentUser.tier) setCurrentTier(agentUser.tier);
+      if (agentUser.verified !== undefined) setIsVerified(agentUser.verified);
+    }
+  }, [partnerData, agentUser]);
 
   if (!agentUser) return null;
 
@@ -979,8 +998,43 @@ function AgentPartnerDetailModal({ user: agentUser, onClose, onToggleStatus, onR
     }
   }
 
-  const roleName = agentUser.role === 'channel_partner' ? 'Channel Partner' : agentUser.role === 'broker' ? 'Authorized Broker' : 'Property Owner';
-  const listedCount = propsData?.total ?? agentUser.propertiesCount ?? 0;
+  async function handleTierChange(newTier) {
+    if (newTier === currentTier || busyAction) return;
+    setBusyAction(true);
+    try {
+      await api(`admin/channel-partners/${agentUser._id}`, { method: 'PATCH', body: { tier: newTier } });
+      setCurrentTier(newTier);
+      toast(`Channel Partner tier updated to ${newTier}!`);
+      reloadPartner?.();
+      onReload?.();
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusyAction(false);
+    }
+  }
+
+  async function handleToggleVerification() {
+    if (busyAction) return;
+    const nextVal = !isVerified;
+    setBusyAction(true);
+    try {
+      await api(`admin/channel-partners/${agentUser._id}`, { method: 'PATCH', body: { verified: nextVal } });
+      setIsVerified(nextVal);
+      toast(`Channel Partner RERA verification set to ${nextVal ? 'Verified' : 'Unverified'}.`);
+      reloadPartner?.();
+      onReload?.();
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusyAction(false);
+    }
+  }
+
+  const roleName = isChannelPartner ? 'Channel Partner' : agentUser.role === 'broker' ? 'Authorized Broker' : 'Property Owner';
+  const listedCount = propsData?.total ?? partnerData?.propertiesCount ?? agentUser.propertiesCount ?? 0;
+  const teamMembers = partnerData?.team || agentUser.team || [];
+  const leadsCount = partnerData?.leadsCount ?? agentUser.leadsCount ?? 0;
 
   return (
     <div role="dialog" aria-modal="true" className="modal" onClick={onClose}>
@@ -994,6 +1048,22 @@ function AgentPartnerDetailModal({ user: agentUser, onClose, onToggleStatus, onR
               <span className="pill text-xs !bg-forest !text-white font-semibold">
                 {roleName}
               </span>
+              {isChannelPartner && (
+                <>
+                  <span className={`pill text-xs font-bold border ${
+                    currentTier === 'Platinum' ? '!bg-purple-100 !text-purple-800 !border-purple-300' :
+                    currentTier === 'Silver' ? '!bg-slate-100 !text-slate-800 !border-slate-300' :
+                    '!bg-amber-100 !text-amber-800 !border-amber-300'
+                  }`}>
+                    ★ {currentTier} Tier
+                  </span>
+                  <span className={`pill text-xs font-semibold ${
+                    isVerified ? '!bg-emerald-100 !text-emerald-800' : '!bg-amber-100 !text-amber-800'
+                  }`}>
+                    {isVerified ? '✓ RERA Verified' : '⚠ Unverified'}
+                  </span>
+                </>
+              )}
               <span className={`pill text-xs ${agentUser.active ? '!bg-emerald-100 !text-emerald-800' : '!bg-red-100 !text-red-800'}`}>
                 {agentUser.active ? 'Active Account' : 'Suspended Account'}
               </span>
@@ -1008,6 +1078,68 @@ function AgentPartnerDetailModal({ user: agentUser, onClose, onToggleStatus, onR
           </button>
         </div>
 
+        {/* Channel Partner Governance & Tier Controls */}
+        {isChannelPartner && (
+          <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="text-xs text-emerald-950 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-emerald-700" />
+                  Channel Partner Governance &amp; Compliance
+                </h4>
+                <p className="text-xs text-stone-600 mt-0.5">
+                  Configure institutional partnership tier and verify RERA accreditation.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={busyAction}
+                onClick={handleToggleVerification}
+                className={`btn-outline !min-h-0 !py-1.5 !px-3 !text-xs font-semibold flex items-center gap-1.5 shrink-0 ${
+                  isVerified ? '!bg-white hover:!bg-amber-50 !border-amber-300 !text-amber-800' : '!bg-emerald-700 !text-white hover:!bg-emerald-800'
+                }`}
+              >
+                {isVerified ? (
+                  <>
+                    <ShieldAlert size={13} className="text-amber-600" />
+                    Revoke Verification
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={13} />
+                    Verify RERA License
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-emerald-200/60 flex-wrap">
+              <span className="text-xs font-bold text-emerald-950 mr-1">Institutional Tier:</span>
+              {['Silver', 'Gold', 'Platinum'].map((tierOption) => (
+                <button
+                  key={tierOption}
+                  type="button"
+                  disabled={busyAction || currentTier === tierOption}
+                  onClick={() => handleTierChange(tierOption)}
+                  className={`pill text-xs font-semibold cursor-pointer transition-all ${
+                    currentTier === tierOption
+                      ? tierOption === 'Platinum'
+                        ? '!bg-purple-700 !text-white !ring-2 !ring-purple-300'
+                        : tierOption === 'Gold'
+                        ? '!bg-amber-600 !text-white !ring-2 !ring-amber-300'
+                        : '!bg-slate-700 !text-white !ring-2 !ring-slate-300'
+                      : '!bg-white !text-stone-700 hover:!bg-stone-100 !border !border-stone-300'
+                  }`}
+                >
+                  {tierOption === currentTier && '✓ '}
+                  {tierOption} Tier
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#f7f8f3] p-4 rounded-lg">
           <div>
             <span className="text-xs muted block">Total Listings</span>
@@ -1016,9 +1148,9 @@ function AgentPartnerDetailModal({ user: agentUser, onClose, onToggleStatus, onR
             </strong>
           </div>
           <div>
-            <span className="text-xs muted block">RERA Registration</span>
-            <strong className="text-xs font-mono block mt-0.5 break-all">
-              {agentUser.reraId || 'PRM/KA/RERA/PENDING'}
+            <span className="text-xs muted block">{isChannelPartner ? 'Inbound CP Leads' : 'RERA Registration'}</span>
+            <strong className="text-base text-forest block mt-0.5">
+              {isChannelPartner ? `${leadsCount} Inquiries` : (agentUser.reraId || 'PRM/KA/RERA/PENDING')}
             </strong>
           </div>
           <div>
@@ -1034,6 +1166,85 @@ function AgentPartnerDetailModal({ user: agentUser, onClose, onToggleStatus, onR
             </strong>
           </div>
         </div>
+
+        {/* Sales Team Roster for Channel Partners */}
+        {isChannelPartner && (
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <h4 className="text-base font-bold text-stone-900 flex items-center gap-2">
+                  Sales Team Roster
+                  <span className="pill text-xs font-semibold !bg-stone-100">
+                    {teamMembers.length} Advisors
+                  </span>
+                </h4>
+                <p className="text-xs muted">
+                  Assigned property advisors and client relationship specialists under this firm.
+                </p>
+              </div>
+            </div>
+
+            {teamMembers.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {teamMembers.map((m, idx) => (
+                  <div
+                    key={m._id || idx}
+                    className="p-3 bg-white border border-stone-200 rounded-lg hover:border-emerald-600 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <strong className="text-sm text-stone-900 block flex items-center gap-1.5">
+                          <UserCheck size={14} className="text-forest shrink-0" />
+                          {m.name}
+                        </strong>
+                        <span className="text-xs muted block mt-0.5">{m.role || 'Property Specialist'}</span>
+                      </div>
+                      <span className={`pill text-[10px] capitalize font-semibold ${
+                        m.status === 'active' ? '!bg-emerald-100 !text-emerald-800' :
+                        m.status === 'on_leave' ? '!bg-amber-100 !text-amber-800' :
+                        '!bg-stone-100 !text-stone-600'
+                      }`}>
+                        {m.status ? m.status.replace('_', ' ') : 'active'}
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-stone-100 text-xs space-y-1">
+                      {m.email && (
+                        <div className="truncate">
+                          <a href={`mailto:${m.email}`} className="muted hover:text-stone-900 flex items-center gap-1">
+                            <Mail size={11} className="shrink-0" /> {m.email}
+                          </a>
+                        </div>
+                      )}
+                      {m.phone && (
+                        <div>
+                          <a href={`tel:${m.phone}`} className="font-mono text-stone-700 hover:text-stone-900 flex items-center gap-1">
+                            <Phone size={11} className="shrink-0" /> {m.phone}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between">
+                      <span className="text-[11px] muted font-medium">Assigned Leads:</span>
+                      <span className="pill text-xs font-bold !bg-emerald-50 !text-emerald-800 !border !border-emerald-200">
+                        {m.assignedLeadsCount || 0} Leads
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="panel text-center py-6 bg-[#fdfdfb]">
+                <Users className="mx-auto mb-2 text-stone-400" size={24} />
+                <h5 className="text-xs font-semibold text-stone-800">No team members registered yet</h5>
+                <p className="text-xs muted mt-0.5">
+                  When this partner registers sales advisors, their roster and assigned lead pipeline will appear here.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <div className="flex justify-between items-center mb-3">
@@ -1197,6 +1408,29 @@ function EnquiryDetailModal({ lead, onClose, onUpdateStatus, onInspectProperty }
               <span className="pill text-xs !bg-forest !text-white font-semibold">
                 {isInterior ? 'Home Interior Consultation' : 'Builder Community Enquiry'}
               </span>
+              {lead.source === 'phone' ? (
+                <span className="pill text-xs !bg-blue-100 !text-blue-800 font-semibold inline-flex items-center gap-1">
+                  <Phone size={11} /> Phone Callback
+                </span>
+              ) : lead.source === 'message' ? (
+                <span className="pill text-xs !bg-indigo-100 !text-indigo-800 font-semibold inline-flex items-center gap-1">
+                  <Mail size={11} /> Direct Chat
+                </span>
+              ) : (
+                <span className="pill text-xs !bg-emerald-100 !text-emerald-800 font-semibold inline-flex items-center gap-1">
+                  <Home size={11} /> Property Form
+                </span>
+              )}
+              {lead.assignedTeamMember && (
+                <span className="pill text-xs !bg-emerald-100 !text-emerald-800 font-semibold inline-flex items-center gap-1">
+                  <UserCheck size={11} /> Advisor: {lead.assignedTeamMember}
+                </span>
+              )}
+              {(lead.manager?.company || lead.property?.owner?.company) && (
+                <span className="pill text-xs !bg-stone-100 !text-stone-800 font-semibold inline-flex items-center gap-1">
+                  <Handshake size={11} /> {lead.manager?.company || lead.property?.owner?.company}
+                </span>
+              )}
               <span className="pill text-xs !bg-amber-100 !text-amber-800 capitalize font-semibold">
                 Status: {currentStatus}
               </span>
@@ -1257,6 +1491,21 @@ function EnquiryDetailModal({ lead, onClose, onUpdateStatus, onInspectProperty }
               </a>
             </div>
           </div>
+
+          {(lead.assignedTeamMember || lead.manager?.company || lead.property?.owner?.company) && (
+            <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 text-stone-700">
+                <Handshake size={13} className="text-forest" />
+                <span>Channel Partner: <strong>{lead.manager?.company || lead.property?.owner?.company || 'Channel Partner Network'}</strong></span>
+              </div>
+              {lead.assignedTeamMember && (
+                <div className="flex items-center gap-1.5 text-emerald-800 font-semibold">
+                  <UserCheck size={13} className="text-emerald-700" />
+                  <span>Assigned Advisor: {lead.assignedTeamMember}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Target Project or Scope Details */}
@@ -1467,18 +1716,81 @@ function VisitDetailModal({ visit, onClose, onUpdateStatus, onInspectProperty })
 }
 
 // ─────────────────────────────────────────────────────────────
-// DETAIL MODAL: CUSTOMER SUPPORT TICKET
+// DETAIL MODAL: CUSTOMER SUPPORT TICKET WITH LIVE THREAD & REPLIES
 // ─────────────────────────────────────────────────────────────
-function SupportTicketModal({ ticket, onClose, onUpdateStatus }) {
+function SupportTicketModal({ ticket, onClose, onUpdated }) {
   const { toast } = useApp();
-  const [currentStatus, setCurrentStatus] = useState(ticket?.status || 'Open');
+  const [currentTicket, setCurrentTicket] = useState(ticket);
+  const [replyText, setReplyText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  if (!ticket) return null;
+  if (!currentTicket) return null;
 
-  function handleStatus(newStatus) {
-    setCurrentStatus(newStatus);
-    toast(`Ticket ${ticket.id} marked as ${newStatus}.`);
-    onUpdateStatus?.(ticket.id, newStatus);
+  const currentStatus = currentTicket.status || 'open';
+  const requester = currentTicket.user || {};
+  const requesterRole =
+    requester.role === 'channel_partner'
+      ? 'Channel Partner'
+      : requester.role === 'owner'
+      ? 'Property Owner'
+      : requester.role === 'broker'
+      ? 'Broker'
+      : 'Platform User';
+
+  const priorityColor =
+    currentTicket.priority === 'urgent'
+      ? '!bg-red-100 !text-red-800 !border-red-300'
+      : currentTicket.priority === 'high'
+      ? '!bg-amber-100 !text-amber-800 !border-amber-300'
+      : currentTicket.priority === 'medium'
+      ? '!bg-sky-100 !text-sky-800 !border-sky-300'
+      : '!bg-stone-100 !text-stone-700 !border-stone-300';
+
+  const statusColor =
+    currentStatus === 'open'
+      ? '!bg-red-100 !text-red-800'
+      : currentStatus === 'in_progress'
+      ? '!bg-amber-100 !text-amber-800'
+      : currentStatus === 'resolved'
+      ? '!bg-emerald-100 !text-emerald-800'
+      : '!bg-stone-100 !text-stone-700';
+
+  async function handleStatusChange(newStatus) {
+    setIsUpdatingStatus(true);
+    try {
+      await api(`support-tickets/${currentTicket._id}`, {
+        method: 'PATCH',
+        body: { status: newStatus }
+      });
+      setCurrentTicket((prev) => ({ ...prev, status: newStatus }));
+      toast(`Ticket status updated to ${newStatus.replace('_', ' ')}.`);
+      onUpdated?.();
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }
+
+  async function handleSendReply(e) {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const updated = await api(`support-tickets/${currentTicket._id}/reply`, {
+        method: 'POST',
+        body: { message: replyText.trim() }
+      });
+      setCurrentTicket(updated);
+      setReplyText('');
+      toast('Official response dispatched to user.');
+      onUpdated?.();
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -1490,20 +1802,21 @@ function SupportTicketModal({ ticket, onClose, onUpdateStatus }) {
         <div className="flex items-start justify-between pb-4 border-b border-stone-200">
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="pill text-xs !bg-forest !text-white font-semibold">
-                Support Desk • {ticket.id}
+              <span className="pill text-xs !bg-forest !text-white font-mono font-bold">
+                {currentTicket.ticketNumber || `TICK-${currentTicket._id?.slice(-6)}`}
               </span>
-              <span className="pill text-xs font-semibold">{ticket.topic}</span>
-              <span className={`pill text-xs font-semibold ${
-                currentStatus === 'Open' ? '!bg-red-100 !text-red-800' :
-                currentStatus === 'In Progress' ? '!bg-amber-100 !text-amber-800' : '!bg-emerald-100 !text-emerald-800'
-              }`}>
-                {currentStatus}
+              <span className="pill text-xs font-semibold">{currentTicket.category}</span>
+              <span className={`pill text-xs font-bold capitalize ${priorityColor}`}>
+                {currentTicket.priority} Priority
+              </span>
+              <span className={`pill text-xs font-bold capitalize ${statusColor}`}>
+                {currentStatus.replace('_', ' ')}
               </span>
             </div>
-            <h3 className="!text-2xl font-bold text-stone-900">{ticket.name}</h3>
+            <h3 className="!text-2xl font-bold text-stone-900">{currentTicket.subject}</h3>
             <p className="text-xs muted mt-1 font-mono">
-              Submitted: {ticket.date} • {ticket.email}
+              Requester: <strong className="text-stone-800">{requester.name || 'Anonymous User'}</strong> ({requesterRole})
+              {requester.company ? ` • ${requester.company}` : ''} • {requester.email || currentTicket.email || 'No email'}
             </p>
           </div>
           <button onClick={onClose} className="muted hover:text-stone-900 p-1" aria-label="Close modal">
@@ -1511,43 +1824,140 @@ function SupportTicketModal({ ticket, onClose, onUpdateStatus }) {
           </button>
         </div>
 
-        {/* Message Inquiry Box */}
+        {/* Linked Property Reference if any */}
+        {currentTicket.property && (
+          <div className="p-3 bg-[#f7f8f3] border border-stone-200 rounded-xl flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <Building2 size={16} className="text-[#163e35]" />
+              <div>
+                <span className="text-stone-500">Linked Property: </span>
+                <strong className="text-stone-900">{currentTicket.property.title}</strong>
+                <span className="text-stone-500"> ({currentTicket.property.locality}, {currentTicket.property.city})</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Original Ticket Description */}
         <div>
-          <h4 className="text-sm font-bold text-stone-900 mb-2">Inquiry &amp; Support Request</h4>
-          <div className="p-4 bg-[#fdfdfb] border border-stone-200 rounded-lg text-sm text-stone-800 leading-relaxed whitespace-pre-line">
-            {ticket.message}
+          <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">Original Inquiry</h4>
+          <div className="p-4 bg-[#fdfdfb] border border-stone-200 rounded-xl text-sm text-stone-800 leading-relaxed whitespace-pre-line">
+            {currentTicket.message}
+          </div>
+          <div className="text-[11px] muted mt-1 text-right">
+            Logged on {date(currentTicket.createdAt)}
           </div>
         </div>
 
-        {/* Fast Action Options */}
-        <div className="p-4 bg-stone-50 border border-stone-200 rounded-lg space-y-3">
-          <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider">
-            Quick Desk Response
+        {/* Conversation Thread / Replies History */}
+        {currentTicket.responses && currentTicket.responses.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider">
+              Desk Conversation Thread ({currentTicket.responses.length})
+            </h4>
+            <div className="space-y-2.5 max-h-60 overflow-y-auto p-1">
+              {currentTicket.responses.map((resp, idx) => {
+                const isAdmin = resp.role === 'admin';
+                return (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-xl border text-xs space-y-1 ${
+                      isAdmin
+                        ? 'bg-emerald-50/70 border-emerald-200 ml-4'
+                        : 'bg-stone-50 border-stone-200 mr-4'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between font-bold text-stone-900">
+                      <span className="flex items-center gap-1.5">
+                        {isAdmin && <ShieldCheck size={14} className="text-[#163e35]" />}
+                        <span>{isAdmin ? 'UrbanFindr Support Desk' : (resp.senderName || 'Requester')}</span>
+                        {isAdmin && (
+                          <span className="text-[10px] bg-[#163e35] text-white px-1.5 py-0.2 rounded font-semibold">
+                            Admin
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[10px] text-stone-400 font-mono font-normal">
+                        {date(resp.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-stone-800 text-xs leading-relaxed whitespace-pre-line">
+                      {resp.message}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Admin Reply Input Composer */}
+        <form onSubmit={handleSendReply} className="space-y-3 pt-2">
+          <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block">
+            Post Official Desk Reply
+          </label>
+          <textarea
+            rows={3}
+            placeholder="Write a clear resolution or follow-up note for the ticket requester..."
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            className="input !text-xs !p-3 resize-none w-full"
+            disabled={isSubmitting}
+          />
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting || !replyText.trim()}
+              className="btn !min-h-0 !py-2 !px-4 !text-xs font-bold shadow-xs flex items-center gap-1.5"
+            >
+              <Mail size={13} />
+              <span>{isSubmitting ? 'Dispatching...' : 'Send Official Response'}</span>
+            </button>
+          </div>
+        </form>
+
+        {/* Quick Status Management Action Panel */}
+        <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2.5">
+          <h4 className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+            Ticket Resolution Status
           </h4>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => handleStatus('In Progress')}
+              disabled={isUpdatingStatus || currentStatus === 'in_progress'}
+              onClick={() => handleStatusChange('in_progress')}
               className={`btn-outline !min-h-0 !py-1.5 !px-3 !text-xs font-semibold ${
-                currentStatus === 'In Progress' ? '!bg-amber-700 !text-white' : ''
+                currentStatus === 'in_progress' ? '!bg-amber-600 !text-white !border-amber-600' : ''
               }`}
             >
               Mark In Progress
             </button>
             <button
               type="button"
-              onClick={() => handleStatus('Resolved')}
+              disabled={isUpdatingStatus || currentStatus === 'resolved'}
+              onClick={() => handleStatusChange('resolved')}
               className={`btn-outline !min-h-0 !py-1.5 !px-3 !text-xs font-semibold ${
-                currentStatus === 'Resolved' ? '!bg-emerald-700 !text-white' : ''
+                currentStatus === 'resolved' ? '!bg-emerald-700 !text-white !border-emerald-700' : ''
               }`}
             >
               Mark Resolved
             </button>
             <button
               type="button"
-              onClick={() => handleStatus('Open')}
+              disabled={isUpdatingStatus || currentStatus === 'closed'}
+              onClick={() => handleStatusChange('closed')}
               className={`btn-outline !min-h-0 !py-1.5 !px-3 !text-xs font-semibold ${
-                currentStatus === 'Open' ? '!bg-red-700 !text-white' : ''
+                currentStatus === 'closed' ? '!bg-stone-700 !text-white !border-stone-700' : ''
+              }`}
+            >
+              Close Ticket
+            </button>
+            <button
+              type="button"
+              disabled={isUpdatingStatus || currentStatus === 'open'}
+              onClick={() => handleStatusChange('open')}
+              className={`btn-outline !min-h-0 !py-1.5 !px-3 !text-xs font-semibold ${
+                currentStatus === 'open' ? '!bg-red-600 !text-white !border-red-600' : ''
               }`}
             >
               Reopen
@@ -1556,15 +1966,10 @@ function SupportTicketModal({ ticket, onClose, onUpdateStatus }) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-stone-200 pt-4 flex flex-wrap justify-between items-center gap-3">
-          <a
-            href={`mailto:${ticket.email}?subject=UrbanFinder Support Ticket [${ticket.id}] - ${ticket.topic}`}
-            className="btn !min-h-0 !py-2 !px-4 !text-xs flex items-center gap-1.5"
-          >
-            <Mail size={14} /> Send Official Email Reply
-          </a>
-          <button type="button" onClick={onClose} className="btn-outline !min-h-0 !py-2 !px-4 !text-xs">
-            Close
+        <div className="border-t border-stone-200 pt-3 flex justify-between items-center text-xs">
+          <span className="text-stone-400 font-mono">ID: {currentTicket._id}</span>
+          <button onClick={onClose} className="btn-outline !min-h-0 !py-1.5 !px-3 !text-xs font-semibold">
+            Close Panel
           </button>
         </div>
       </div>
@@ -1974,6 +2379,72 @@ function OverviewView({ stats, loading, error, onNavigate, onOpenProperty }) {
           </div>
           <strong className="!text-3xl">{stats?.leads || 18}</strong>
           <span className="text-xs muted">Enquiries &amp; site visits</span>
+        </div>
+      </div>
+
+      {/* Channel Partner Network Performance KPIs */}
+      <div className="panel bg-[#fbfcf8] border border-stone-200 !p-5 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-stone-200">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="pill text-xs !bg-emerald-100 !text-emerald-800 font-semibold inline-flex items-center gap-1">
+                <Handshake size={12} /> Strategic Alliances
+              </span>
+              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Institutional Overview</span>
+            </div>
+            <h3 className="!text-lg font-bold text-stone-900 mt-1">Channel partner network performance</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate('channel-partners')}
+            className="btn-outline !min-h-0 !py-1.5 !px-3 !text-xs font-semibold flex items-center gap-1 self-start sm:self-auto"
+          >
+            Manage partners <ArrowUpRight size={13} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div
+            className="p-4 bg-white rounded-lg border border-stone-200 cursor-pointer hover:border-emerald-600 transition-colors"
+            onClick={() => onNavigate('channel-partners')}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs muted font-semibold uppercase tracking-wider">Registered Channel Partners</span>
+              <Users size={16} className="text-emerald-700" />
+            </div>
+            <strong className="text-3xl font-bold text-stone-900 block mt-2">{stats?.channelPartners || 0}</strong>
+            <p className="text-xs text-emerald-800 font-medium mt-1 flex items-center gap-1">
+              <ShieldCheck size={12} /> Verified Enterprise Network
+            </p>
+          </div>
+
+          <div
+            className="p-4 bg-white rounded-lg border border-stone-200 cursor-pointer hover:border-emerald-600 transition-colors"
+            onClick={() => onNavigate('properties')}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs muted font-semibold uppercase tracking-wider">Active CP Inventory</span>
+              <Home size={16} className="text-emerald-700" />
+            </div>
+            <strong className="text-3xl font-bold text-stone-900 block mt-2">{stats?.channelPartnerProperties ?? (stats?.channelPartnerInventory ?? 0)}</strong>
+            <p className="text-xs muted mt-1">
+              Live listings marketed by channel partners
+            </p>
+          </div>
+
+          <div
+            className="p-4 bg-white rounded-lg border border-stone-200 cursor-pointer hover:border-emerald-600 transition-colors"
+            onClick={() => onNavigate('enquiries')}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs muted font-semibold uppercase tracking-wider">Inbound CP Leads</span>
+              <Mail size={16} className="text-emerald-700" />
+            </div>
+            <strong className="text-3xl font-bold text-stone-900 block mt-2">{stats?.channelPartnerLeads || 0}</strong>
+            <p className="text-xs text-forest font-medium mt-1 flex items-center gap-1">
+              <CheckCircle2 size={12} /> Leads assigned to partner advisors
+            </p>
+          </div>
         </div>
       </div>
 
@@ -2510,10 +2981,10 @@ function ChannelPartnersView({ onReload, onInspectProperty }) {
         <table>
           <thead>
             <tr>
-              <th>Partner Firm &amp; Lead</th>
+              <th>Partner Firm &amp; Tier</th>
               <th>RERA Registration</th>
               <th>Contact Details</th>
-              <th>Active Inventory</th>
+              <th>Inventory &amp; Pipeline</th>
               <th>Status</th>
               <th>Action</th>
             </tr>
@@ -2524,18 +2995,47 @@ function ChannelPartnersView({ onReload, onInspectProperty }) {
                 <td>
                   <strong>{cp.company || 'Enterprise Agency'}</strong>
                   <div className="text-xs muted">Lead: {cp.name}</div>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className={`pill text-[10px] font-bold ${
+                      cp.tier === 'Platinum' ? '!bg-purple-100 !text-purple-800' :
+                      cp.tier === 'Silver' ? '!bg-slate-100 !text-slate-800' :
+                      '!bg-amber-100 !text-amber-800'
+                    }`}>
+                      ★ {cp.tier || 'Gold'} Tier
+                    </span>
+                    {cp.verified ? (
+                      <span className="pill text-[10px] !bg-emerald-100 !text-emerald-800 font-semibold inline-flex items-center gap-0.5">
+                        <ShieldCheck size={10} /> Verified
+                      </span>
+                    ) : (
+                      <span className="pill text-[10px] !bg-amber-100 !text-amber-800 font-semibold">
+                        Unverified
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="font-mono text-xs font-semibold text-stone-800">
                   {cp.reraId || 'PRM/KA/RERA/PENDING'}
+                  <div className="text-xs muted font-sans mt-0.5 flex items-center gap-1">
+                    <UserCheck size={11} className="text-forest" />
+                    {cp.teamCount || cp.team?.length || 0} Team Advisors
+                  </div>
                 </td>
                 <td>
                   <div>{cp.email}</div>
                   <div className="text-xs muted font-mono">{cp.phone || 'No phone'}</div>
                 </td>
                 <td>
-                  <span className="pill text-xs font-semibold">
-                    {cp.propertiesCount || 0} Listings
-                  </span>
+                  <div className="space-y-1">
+                    <span className="pill text-xs font-semibold block w-fit">
+                      {cp.propertiesCount || 0} Listings
+                    </span>
+                    {cp.leadsCount !== undefined && (
+                      <span className="pill text-[10px] !bg-emerald-50 !text-emerald-800 !border !border-emerald-200 block w-fit">
+                        {cp.leadsCount} Inbound Leads
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td>
                   <span className={`pill text-xs capitalize ${
@@ -2549,9 +3049,9 @@ function ChannelPartnersView({ onReload, onInspectProperty }) {
                     <button
                       type="button"
                       onClick={() => setSelectedPartner(cp)}
-                      className="text-link !text-xs font-semibold"
+                      className="text-link !text-xs font-semibold flex items-center gap-0.5"
                     >
-                      View dossier
+                      Inspect <ArrowUpRight size={11} />
                     </button>
                     <button
                       type="button"
@@ -3273,9 +3773,58 @@ function EnquiriesVisitsView({ onOpenProperty }) {
   const [visitsPage, setVisitsPage] = useState(1);
   const [selectedLead, setSelectedLead] = useState(null);
   const [selectedVisit, setSelectedVisit] = useState(null);
+  const [cpFilter, setCpFilter] = useState('all'); // 'all' | 'cp' | 'direct'
 
-  const { data: leads, reload: reloadLeads } = useData(`leads?page=${leadsPage}&limit=10`);
+  const leadQuery = `leads?page=${leadsPage}&limit=10${cpFilter === 'cp' ? '&channelPartner=true' : ''}`;
+  const { data: leads, reload: reloadLeads } = useData(leadQuery);
   const { data: visits, reload: reloadVisits } = useData(`visits?page=${visitsPage}&limit=10`);
+
+  function renderTouchpointBadge(source) {
+    if (source === 'phone') {
+      return (
+        <span className="pill text-xs !bg-blue-50 !text-blue-800 !border !border-blue-200 font-semibold inline-flex items-center gap-1">
+          <Phone size={11} className="text-blue-600" /> Phone Callback
+        </span>
+      );
+    }
+    if (source === 'message') {
+      return (
+        <span className="pill text-xs !bg-indigo-50 !text-indigo-800 !border !border-indigo-200 font-semibold inline-flex items-center gap-1">
+          <Mail size={11} className="text-indigo-600" /> Direct Chat
+        </span>
+      );
+    }
+    return (
+      <span className="pill text-xs !bg-emerald-50 !text-emerald-800 !border !border-emerald-200 font-semibold inline-flex items-center gap-1">
+        <Home size={11} className="text-emerald-600" /> Property Form
+      </span>
+    );
+  }
+
+  const displayedLeads = useMemo(() => {
+    if (!leads?.items) return [];
+    if (cpFilter === 'cp') {
+      return leads.items.filter((l) =>
+        Boolean(
+          l.assignedTeamMember ||
+          l.manager?.role === 'channel_partner' ||
+          l.property?.owner?.role === 'channel_partner' ||
+          l.manager?.company ||
+          l.property?.owner?.company
+        )
+      );
+    }
+    if (cpFilter === 'direct') {
+      return leads.items.filter((l) =>
+        !l.assignedTeamMember &&
+        l.manager?.role !== 'channel_partner' &&
+        l.property?.owner?.role !== 'channel_partner' &&
+        !l.manager?.company &&
+        !l.property?.owner?.company
+      );
+    }
+    return leads.items;
+  }, [leads?.items, cpFilter]);
 
   return (
     <>
@@ -3300,41 +3849,113 @@ function EnquiriesVisitsView({ onOpenProperty }) {
 
       {subTab === 'leads' ? (
         <>
+          {/* Channel Partner & Attribution Filter Strip */}
+          <div className="panel !p-3 mb-5 flex flex-wrap items-center justify-between gap-3 bg-stone-50/70 border border-stone-200">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-stone-600 uppercase tracking-wider flex items-center gap-1">
+                <Filter size={13} className="text-forest" /> Attribution:
+              </span>
+              <button
+                type="button"
+                onClick={() => { setCpFilter('all'); setLeadsPage(1); }}
+                className={`pill text-xs font-semibold cursor-pointer transition-colors ${
+                  cpFilter === 'all' ? '!bg-forest !text-white' : '!bg-white hover:!bg-stone-100 !border !border-stone-200'
+                }`}
+              >
+                All Enquiries
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCpFilter('cp'); setLeadsPage(1); }}
+                className={`pill text-xs font-semibold cursor-pointer flex items-center gap-1 transition-colors ${
+                  cpFilter === 'cp' ? '!bg-emerald-800 !text-white' : '!bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100 !border !border-emerald-200'
+                }`}
+              >
+                <Handshake size={12} /> Channel Partner Leads
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCpFilter('direct'); setLeadsPage(1); }}
+                className={`pill text-xs font-semibold cursor-pointer transition-colors ${
+                  cpFilter === 'direct' ? '!bg-forest !text-white' : '!bg-white hover:!bg-stone-100 !border !border-stone-200'
+                }`}
+              >
+                Direct Platform Leads
+              </button>
+            </div>
+            <span className="text-xs muted font-medium">
+              Showing {displayedLeads.length} leads
+            </span>
+          </div>
+
           <div className="panel !p-0 overflow-x-auto">
             <table>
               <thead>
                 <tr>
                   <th>Customer</th>
-                  <th>Contact</th>
+                  <th>Touchpoint</th>
+                  <th>Attribution &amp; Advisor</th>
                   <th>Target Inquiry</th>
                   <th>Budget</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {leads?.items?.map((l) => (
-                  <tr
-                    key={l._id}
-                    onClick={() => setSelectedLead(l)}
-                    className="cursor-pointer hover:bg-stone-50 transition-colors"
-                  >
-                    <td>
-                      <strong className="text-stone-900 hover:text-forest flex items-center gap-1">
-                        {l.name}
-                        <ArrowUpRight size={12} className="text-forest" />
-                      </strong>
-                    </td>
-                    <td>
-                      <div>{l.phone}</div>
-                      <div className="text-xs muted">{l.email}</div>
-                    </td>
-                    <td>
-                      {l.project?.title || l.design?.title || 'General Property Inquiry'}
-                    </td>
-                    <td><strong className="text-stone-900">{money(l.budget)}</strong></td>
-                    <td><span className="pill capitalize">{l.status || 'New Lead'}</span></td>
-                  </tr>
-                ))}
+                {displayedLeads.map((l) => {
+                  const isCp = Boolean(
+                    l.assignedTeamMember ||
+                    l.manager?.role === 'channel_partner' ||
+                    l.property?.owner?.role === 'channel_partner' ||
+                    l.manager?.company ||
+                    l.property?.owner?.company
+                  );
+                  return (
+                    <tr
+                      key={l._id}
+                      onClick={() => setSelectedLead(l)}
+                      className="cursor-pointer hover:bg-stone-50 transition-colors"
+                    >
+                      <td>
+                        <strong className="text-stone-900 hover:text-forest flex items-center gap-1">
+                          {l.name}
+                          <ArrowUpRight size={12} className="text-forest" />
+                        </strong>
+                        <div className="text-xs muted font-mono mt-0.5">{l.phone}</div>
+                      </td>
+                      <td>
+                        {renderTouchpointBadge(l.source)}
+                      </td>
+                      <td>
+                        {isCp ? (
+                          <div>
+                            {l.assignedTeamMember ? (
+                              <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1">
+                                <UserCheck size={13} className="text-emerald-700 shrink-0" />
+                                <span>{l.assignedTeamMember}</span>
+                              </div>
+                            ) : null}
+                            <div className="text-xs text-stone-600 flex items-center gap-1 mt-0.5">
+                              <Handshake size={12} className="text-forest shrink-0" />
+                              <span>{l.manager?.company || l.property?.owner?.company || 'Channel Partner Network'}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs muted">
+                            Direct Platform Lead
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="font-semibold text-stone-900 text-xs truncate max-w-xs">
+                          {l.property?.title || l.project?.title || l.design?.title || 'General Property Inquiry'}
+                        </div>
+                        <div className="text-[11px] muted">{l.city}</div>
+                      </td>
+                      <td><strong className="text-stone-900">{money(l.budget)}</strong></td>
+                      <td><span className="pill capitalize">{l.status || 'New Lead'}</span></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -3342,7 +3963,7 @@ function EnquiriesVisitsView({ onOpenProperty }) {
           {leads && (
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-xs muted font-medium">
-                Showing {leads.items?.length ? (leadsPage - 1) * (leads.limit || 10) + 1 : 0} to{' '}
+                Showing {displayedLeads.length ? (leadsPage - 1) * (leads.limit || 10) + 1 : 0} to{' '}
                 {Math.min(leadsPage * (leads.limit || 10), leads.total || 0)} of {leads.total || 0} direct leads
               </div>
               <Pagination data={leads} onChange={setLeadsPage} />
@@ -3434,19 +4055,57 @@ function EnquiriesVisitsView({ onOpenProperty }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 10. CUSTOMER SUPPORT VIEW
+// 10. CUSTOMER SUPPORT VIEW (LIVE TICKETS & CHANNEL PARTNER HELPDESK)
 // ─────────────────────────────────────────────────────────────
 function CustomerSupportView() {
-  const [tickets, setTickets] = useState([
-    { id: 't-1', name: 'Arjun Mehta', email: 'arjun@example.com', topic: 'Listing Verification', message: 'I submitted my 3 BHK in Koramangala. When will the direct-owner tag be approved and verified by the moderation desk?', date: '15 mins ago', status: 'Open' },
-    { id: 't-2', name: 'Priya Sundaram', email: 'priya@example.com', topic: 'Channel Partner Registration', message: 'Looking to link our Karnataka RERA certification to our newly registered firm account for inventory bulk upload.', date: '2 hours ago', status: 'In Progress' },
-    { id: 't-3', name: 'Vikram Patel', email: 'vikram@example.com', topic: 'Service Provider Inquiry', message: 'Interested in listing our 15-member HVAC technician team across Ahmedabad and Pune under mechanical services.', date: 'Yesterday', status: 'Resolved' },
-  ]);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
 
-  function handleUpdateTicketStatus(id, newStatus) {
-    setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
-  }
+  const queryParams = new URLSearchParams();
+  queryParams.set('limit', '50');
+  if (statusFilter) queryParams.set('status', statusFilter);
+
+  const { data, loading, error, reload } = useData(`support-tickets?${queryParams.toString()}`);
+
+  const tickets = data?.items || [];
+
+  // Filter in-memory for category, priority, and search
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((t) => {
+      if (categoryFilter && t.category !== categoryFilter) return false;
+      if (priorityFilter && t.priority !== priorityFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const num = (t.ticketNumber || '').toLowerCase();
+        const sub = (t.subject || '').toLowerCase();
+        const msg = (t.message || '').toLowerCase();
+        const usr = (t.user?.name || '').toLowerCase();
+        const cmp = (t.user?.company || '').toLowerCase();
+        if (!num.includes(q) && !sub.includes(q) && !msg.includes(q) && !usr.includes(q) && !cmp.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [tickets, categoryFilter, priorityFilter, search]);
+
+  // KPI counts
+  const totalCount = tickets.length;
+  const openCount = tickets.filter((t) => t.status === 'open').length;
+  const inProgressCount = tickets.filter((t) => t.status === 'in_progress').length;
+  const resolvedCount = tickets.filter((t) => t.status === 'resolved' || t.status === 'closed').length;
+
+  const categories = [
+    'Listing Review',
+    'Lead Inquiry',
+    'Billing & RERA',
+    'Technical Support',
+    'Account Verification',
+    'Other'
+  ];
 
   return (
     <>
@@ -3455,48 +4114,227 @@ function CustomerSupportView() {
           <p className="eyebrow">COMMUNICATION DESK</p>
           <h1 className="!text-4xl">Customer support.</h1>
           <p className="muted mt-4 mb-7">
-            Direct tickets from seekers, property owners, and channel partners.
+            Direct ticket desk handling inquiries from Channel Partners, property owners, and platform seekers.
           </p>
+        </div>
+        <span className="pill text-sm font-semibold !p-2 px-3">
+          {totalCount} Total Desk Tickets
+        </span>
+      </div>
+
+      {/* KPI Counters Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div
+          onClick={() => setStatusFilter('')}
+          className={`panel !p-4 cursor-pointer transition-all ${
+            statusFilter === '' ? 'border-[#163e35] shadow-xs' : 'hover:border-stone-300'
+          }`}
+        >
+          <span className="text-xs muted block">Total Tickets</span>
+          <strong className="text-2xl font-bold text-stone-900 block mt-1">{totalCount}</strong>
+        </div>
+        <div
+          onClick={() => setStatusFilter('open')}
+          className={`panel !p-4 cursor-pointer transition-all ${
+            statusFilter === 'open' ? 'border-red-600 bg-red-50/20 shadow-xs' : 'hover:border-stone-300'
+          }`}
+        >
+          <span className="text-xs text-red-700 font-semibold flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Open (Urgent)
+          </span>
+          <strong className="text-2xl font-bold text-red-700 block mt-1">{openCount}</strong>
+        </div>
+        <div
+          onClick={() => setStatusFilter('in_progress')}
+          className={`panel !p-4 cursor-pointer transition-all ${
+            statusFilter === 'in_progress' ? 'border-amber-600 bg-amber-50/20 shadow-xs' : 'hover:border-stone-300'
+          }`}
+        >
+          <span className="text-xs text-amber-700 font-semibold block">In Progress</span>
+          <strong className="text-2xl font-bold text-amber-700 block mt-1">{inProgressCount}</strong>
+        </div>
+        <div
+          onClick={() => setStatusFilter('resolved')}
+          className={`panel !p-4 cursor-pointer transition-all ${
+            statusFilter === 'resolved' ? 'border-emerald-600 bg-emerald-50/20 shadow-xs' : 'hover:border-stone-300'
+          }`}
+        >
+          <span className="text-xs text-emerald-800 font-semibold block">Resolved / Closed</span>
+          <strong className="text-2xl font-bold text-emerald-800 block mt-1">{resolvedCount}</strong>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {tickets.map((t) => (
-          <div
-            key={t.id}
-            onClick={() => setSelectedTicket(t)}
-            className="panel flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer hover:border-forest transition-colors"
-          >
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <strong className="text-stone-900">{t.name}</strong>
-                <span className="pill text-xs">{t.topic}</span>
-                <span className={`pill text-xs ${t.status === 'Open' ? '!bg-red-100 !text-red-800' : '!bg-emerald-100 !text-emerald-800'}`}>
-                  {t.status}
-                </span>
-              </div>
-              <p className="muted text-sm max-w-2xl">{t.message}</p>
-              <p className="text-xs muted font-mono">{t.email} • {t.date}</p>
-            </div>
+      {/* Filter Toolbar */}
+      <div className="panel !p-4 mb-6 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="flex-1 w-full flex items-center gap-2">
+            <Search size={16} className="text-stone-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search by ticket # (e.g. CP-159964), subject, user name, or company..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input !h-10 !text-sm w-full"
+            />
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="input !h-10 !text-xs font-semibold cursor-pointer"
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="input !h-10 !text-xs font-semibold cursor-pointer"
+            >
+              <option value="">All Priorities</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Status Pills */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-stone-200/60">
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider mr-1">Status:</span>
+          {[
+            { id: '', label: 'All Statuses' },
+            { id: 'open', label: 'Open' },
+            { id: 'in_progress', label: 'In Progress' },
+            { id: 'resolved', label: 'Resolved' },
+            { id: 'closed', label: 'Closed' }
+          ].map((st) => (
+            <button
+              key={st.id}
+              type="button"
+              onClick={() => setStatusFilter(st.id)}
+              className={`pill text-xs font-semibold cursor-pointer transition-all ${
+                statusFilter === st.id ? '!bg-[#163e35] !text-white' : 'hover:bg-stone-200'
+              }`}
+            >
+              {st.label}
+            </button>
+          ))}
+          {(statusFilter || categoryFilter || priorityFilter || search) && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedTicket(t);
+              onClick={() => {
+                setStatusFilter('');
+                setCategoryFilter('');
+                setPriorityFilter('');
+                setSearch('');
               }}
-              className="btn-outline !min-h-0 !py-2 !px-4 !text-sm font-semibold"
+              className="text-xs font-bold text-stone-500 hover:text-red-700 ml-auto cursor-pointer"
             >
-              Manage ticket
+              Reset Filters
             </button>
-          </div>
-        ))}
+          )}
+        </div>
+      </div>
+
+      <State loading={loading} error={error} empty={filteredTickets.length === 0} />
+
+      {/* Tickets List */}
+      <div className="space-y-3.5">
+        {filteredTickets.map((t) => {
+          const userObj = t.user || {};
+          const isCP = userObj.role === 'channel_partner';
+          const priorityStyle =
+            t.priority === 'urgent'
+              ? 'bg-red-100 text-red-800 border-red-300'
+              : t.priority === 'high'
+              ? 'bg-amber-100 text-amber-800 border-amber-300'
+              : t.priority === 'medium'
+              ? 'bg-sky-100 text-sky-800 border-sky-300'
+              : 'bg-stone-100 text-stone-700 border-stone-200';
+
+          const statusStyle =
+            t.status === 'open'
+              ? 'bg-red-50 text-red-800 border-red-200'
+              : t.status === 'in_progress'
+              ? 'bg-amber-50 text-amber-800 border-amber-200'
+              : t.status === 'resolved'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-stone-100 text-stone-600 border-stone-200';
+
+          return (
+            <div
+              key={t._id}
+              onClick={() => setSelectedTicket(t)}
+              className="panel !p-4.5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer hover:border-[#163e35] transition-all duration-150 hover:shadow-xs group"
+            >
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-xs font-bold bg-[#163e35] text-[#d8edb3] px-2 py-0.5 rounded">
+                    {t.ticketNumber || `TICK-${t._id?.slice(-6)}`}
+                  </span>
+                  <strong className="text-stone-900 group-hover:text-[#163e35] transition-colors">
+                    {t.subject}
+                  </strong>
+                  <span className="pill text-xs">{t.category}</span>
+                  <span className={`pill text-[11px] font-bold border capitalize ${priorityStyle}`}>
+                    {t.priority}
+                  </span>
+                  <span className={`pill text-[11px] font-bold border capitalize ${statusStyle}`}>
+                    {t.status?.replace('_', ' ')}
+                  </span>
+                </div>
+                <p className="muted text-xs line-clamp-2 max-w-3xl leading-relaxed">
+                  {t.message}
+                </p>
+                <div className="flex items-center gap-2 text-[11px] text-stone-500 flex-wrap">
+                  <span className="font-semibold text-stone-800">
+                    {userObj.name || 'Anonymous User'}
+                  </span>
+                  {userObj.company && (
+                    <span>• <strong className="text-stone-700">{userObj.company}</strong></span>
+                  )}
+                  {isCP && (
+                    <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded text-[10px] font-bold">
+                      Channel Partner
+                    </span>
+                  )}
+                  <span>• {userObj.email || t.email || 'No email'}</span>
+                  <span>• {date(t.createdAt)}</span>
+                  {t.responses?.length > 0 && (
+                    <span className="bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1">
+                      <Mail size={10} />
+                      {t.responses.length} {t.responses.length === 1 ? 'Reply' : 'Replies'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedTicket(t);
+                }}
+                className="btn-outline !min-h-0 !py-2 !px-4 !text-xs font-bold shrink-0 group-hover:bg-[#163e35] group-hover:text-white transition-all"
+              >
+                Manage Ticket
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {selectedTicket && (
         <SupportTicketModal
           ticket={selectedTicket}
           onClose={() => setSelectedTicket(null)}
-          onUpdateStatus={handleUpdateTicketStatus}
+          onUpdated={() => {
+            reload();
+          }}
         />
       )}
     </>
