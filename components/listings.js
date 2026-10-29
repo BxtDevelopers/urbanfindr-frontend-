@@ -11,6 +11,11 @@ import {
   Bell,
   Map as MapIcon,
   LayoutGrid,
+  MapPin,
+  KeyRound,
+  ChevronDown,
+  Building2,
+  House,
 } from 'lucide-react';
 
 import { useData, useApp, api } from './providers';
@@ -144,9 +149,20 @@ export default function Listings({
   const params = useSearchParams();
   const { user, toast } = useApp();
   const [expanded, setExpanded] = useState(false);
+  const [projectsExpanded, setProjectsExpanded] = useState(false);
+  const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [savingSearch, setSavingSearch] = useState(false);
   const [currentCity, setCurrentCity] = useState(params.get('city') || city || '');
+
+  const activeCityParam = params.get('city') || city || currentCity || 'Bengaluru';
+  const activeCityGuide = cityGuides?.find(
+    item =>
+      item.name?.toLowerCase() === activeCityParam.toLowerCase() ||
+      item.slug === activeCityParam.toLowerCase().replace(/\s+/g, '-')
+  );
+  const displayCityName = activeCityGuide?.name || activeCityParam || 'Bengaluru';
+  const cityLocalities = activeCityGuide?.localities || [];
 
   const category = categoryFor(purpose);
 
@@ -225,7 +241,7 @@ export default function Listings({
 
   // Resolve the selected city to its full guide object for Spotlight.
   const selectedCityName = projects
-    ? params.get('city') || city || ''
+    ? params.get('city') || city || displayCityName || ''
     : '';
 
   const spotlightCity = selectedCityName
@@ -264,6 +280,10 @@ export default function Listings({
       next.set('city', form.get('city'));
     }
 
+    if (projects && form.get('locality') && !form.get('q')) {
+      next.set('q', form.get('locality'));
+    }
+
     router.push(
       `${basePath}${next.size ? `?${next.toString()}` : ''}`
     );
@@ -289,7 +309,258 @@ export default function Listings({
 
   return (
     <div className={`${hideHeader ? '' : 'wrap'} pb-20`}>
-      {!hideHeader &&
+      {/* Builder Projects Hero Banner (Dark Green Theme with Architectural Skyline & Floating Card) */}
+      {projects && !hideHeader ? (
+        <section className="relative bg-[#163e35] text-white rounded-3xl pt-8 pb-20 sm:pb-24 px-5 sm:px-8 lg:px-12 overflow-visible mb-20 sm:mb-24 shadow-xl">
+          {/* Subtle Architectural Grid & Skyscraper Wireframe SVG watermark */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.09] rounded-3xl" aria-hidden="true">
+            <svg className="w-full h-full" viewBox="0 0 1200 480" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <line x1="60" y1="480" x2="60" y2="120" />
+              <line x1="140" y1="480" x2="140" y2="80" />
+              <line x1="60" y1="120" x2="140" y2="80" />
+              <line x1="140" y1="80" x2="210" y2="150" />
+              <line x1="210" y1="480" x2="210" y2="150" />
+              <line x1="280" y1="480" x2="280" y2="200" />
+              <line x1="360" y1="480" x2="360" y2="60" />
+              <line x1="280" y1="200" x2="360" y2="60" />
+              <line x1="360" y1="60" x2="430" y2="110" />
+              <line x1="430" y1="480" x2="430" y2="110" />
+              <line x1="510" y1="480" x2="510" y2="180" />
+              <line x1="580" y1="480" x2="580" y2="40" />
+              <line x1="510" y1="180" x2="580" y2="40" />
+              <line x1="580" y1="40" x2="650" y2="130" />
+              <line x1="650" y1="480" x2="650" y2="130" />
+              <line x1="720" y1="480" x2="720" y2="90" />
+              <line x1="800" y1="480" x2="800" y2="160" />
+              <line x1="720" y1="90" x2="800" y2="160" />
+              <line x1="870" y1="480" x2="870" y2="70" />
+              <line x1="800" y1="160" x2="870" y2="70" />
+              <line x1="940" y1="480" x2="940" y2="140" />
+              <line x1="870" y1="70" x2="940" y2="140" />
+              <line x1="1020" y1="480" x2="1020" y2="50" />
+              <line x1="1090" y1="480" x2="1090" y2="150" />
+              <line x1="1020" y1="50" x2="1090" y2="150" />
+              <line x1="1160" y1="480" x2="1160" y2="110" />
+              <line x1="0" y1="420" x2="1200" y2="420" strokeDasharray="4 4" />
+              <line x1="0" y1="340" x2="1200" y2="340" strokeDasharray="4 4" />
+              <line x1="0" y1="260" x2="1200" y2="260" strokeDasharray="4 4" />
+              <line x1="0" y1="180" x2="1200" y2="180" strokeDasharray="4 4" />
+            </svg>
+          </div>
+
+          {/* Top Row: Logo & City Dropdown Pill */}
+          <div className="relative z-10 flex items-center justify-between pb-3">
+            <Link href="/" className="inline-flex items-center gap-2.5 group cursor-pointer">
+              <span className="w-9 h-9 rounded-xl bg-white/10 text-[#d8edb3] flex items-center justify-center shrink-0 border border-white/15 shadow-sm group-hover:bg-white/20 transition">
+                <House size={20} />
+              </span>
+              <div className="flex flex-col justify-center">
+                <span className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-none">
+                  urban<span className="brand-finder text-[#749546]">findr</span><span className="brand-dot text-[#749546]">.</span>
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium tracking-normal text-white/70 leading-none mt-1">
+                  Find. Connect. Build Your Life.
+                </span>
+              </div>
+            </Link>
+
+            {/* City Selector Pill with Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setCityDropdownOpen(v => !v)}
+                className="bg-white text-stone-800 font-semibold text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-sm hover:bg-stone-50 transition flex items-center gap-1.5 cursor-pointer"
+                aria-label="Select City"
+              >
+                <span>{displayCityName}</span>
+                <ChevronDown size={14} className={`text-stone-500 transition-transform ${cityDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {cityDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-stone-200 py-2 z-50 text-stone-800 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-stone-400 tracking-wider">
+                    Select City
+                  </div>
+                  {cityGuides.map(c => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => {
+                        setCityDropdownOpen(false);
+                        setCurrentCity(c.name);
+                        const next = new URLSearchParams(params.toString());
+                        next.set('city', c.name);
+                        next.delete('locality');
+                        next.delete('q');
+                        router.push(`${basePath}?${next.toString()}`);
+                      }}
+                      className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm hover:bg-[#163e35]/10 hover:text-[#163e35] font-medium transition flex items-center justify-between cursor-pointer ${
+                        displayCityName.toLowerCase() === c.name.toLowerCase()
+                          ? 'text-[#163e35] font-bold bg-[#163e35]/5'
+                          : 'text-stone-700'
+                      }`}
+                    >
+                      <span>{c.name}</span>
+                      {displayCityName.toLowerCase() === c.name.toLowerCase() && (
+                        <Check size={14} className="text-[#163e35]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Centered Bold Hero Title */}
+          <div className="relative z-10 text-center my-4 sm:my-6">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+              Properties For Investment in {displayCityName}
+            </h1>
+            {activeCityGuide?.tagline && (
+              <p className="text-[#d8edb3] text-xs sm:text-sm font-medium mt-2 opacity-90">
+                {activeCityGuide.tagline}
+              </p>
+            )}
+          </div>
+
+          {/* Centered Tab: "Search by locality" only (no "Search by project name", no stats pill) */}
+          <div className="relative z-10 flex justify-center mt-5 mb-1">
+            <div className="bg-white text-[#163e35] px-5 py-2 rounded-full font-bold text-xs sm:text-sm shadow-sm">
+              Search by locality
+            </div>
+          </div>
+
+          {/* Overlapping Search Bar Card: Half inside the hero section, half outside extending downwards */}
+          <div className="relative z-30 max-w-4xl mx-auto -mb-28 sm:-mb-32 pt-4">
+            <form
+              key={`projects:${displayCityName}:${params}`}
+              onSubmit={search}
+              className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 border border-stone-100 text-stone-900"
+            >
+              <input type="hidden" name="city" value={displayCityName} />
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center">
+                {/* Box 1: LOCATION */}
+                <div className="sm:col-span-6 bg-stone-50 hover:bg-stone-100/70 border border-stone-200/90 rounded-xl px-3.5 py-2.5 transition focus-within:border-[#163e35] focus-within:ring-2 focus-within:ring-[#163e35]/15 focus-within:bg-white">
+                  <div className="flex items-center gap-1.5 text-stone-400 text-[10px] font-bold tracking-wider uppercase mb-0.5">
+                    <MapPin size={13} className="text-[#163e35]" />
+                    <span>LOCATION</span>
+                  </div>
+                  <input
+                    name="locality"
+                    list="project-localities-datalist"
+                    defaultValue={params.get('locality') || params.get('q') || ''}
+                    placeholder="Select Locality"
+                    className="w-full bg-transparent font-medium text-stone-800 text-sm focus:outline-none placeholder:text-stone-400"
+                  />
+                  <datalist id="project-localities-datalist">
+                    {cityLocalities.map(loc => (
+                      <option key={loc} value={loc} />
+                    ))}
+                  </datalist>
+                </div>
+
+                {/* Box 2: POSSESSION */}
+                <div className="sm:col-span-4 bg-stone-50 hover:bg-stone-100/70 border border-stone-200/90 rounded-xl px-3.5 py-2.5 transition focus-within:border-[#163e35] focus-within:ring-2 focus-within:ring-[#163e35]/15 focus-within:bg-white">
+                  <div className="flex items-center gap-1.5 text-stone-400 text-[10px] font-bold tracking-wider uppercase mb-0.5">
+                    <KeyRound size={13} className="text-[#163e35]" />
+                    <span>POSSESSION</span>
+                  </div>
+                  <select
+                    name="stage"
+                    defaultValue={params.get('stage') || ''}
+                    className="w-full bg-transparent font-medium text-stone-800 text-sm focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Select Time</option>
+                    <option value="Ready to move">Ready to move</option>
+                    <option value="Under construction">Under construction</option>
+                    <option value="New launch">New launch</option>
+                  </select>
+                </div>
+
+                {/* Box 3: SEARCH BUTTON */}
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="w-full h-full min-h-[50px] bg-[#1c2420] hover:bg-[#163e35] text-white font-bold text-sm sm:text-base rounded-xl transition duration-150 shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Search size={16} />
+                    <span>Search</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Expandable filters for Configuration (BHK), Maximum Budget, and Project or Builder Name */}
+              {projectsExpanded && (
+                <div className="mt-4 pt-4 border-t border-stone-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Field label="Configuration">
+                    <select name="bedrooms" defaultValue={params.get('bedrooms') || ''}>
+                      <option value="">All BHKs</option>
+                      {['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK'].map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Maximum budget (₹)">
+                    <input
+                      type="number"
+                      min="0"
+                      name="maxPrice"
+                      placeholder="Any budget"
+                      defaultValue={params.get('maxPrice') || ''}
+                    />
+                  </Field>
+
+                  <Field label="Search project or builder">
+                    <input
+                      name="q"
+                      placeholder="e.g. Prestige, Godrej, Green Acres"
+                      defaultValue={params.get('q') || ''}
+                    />
+                  </Field>
+                </div>
+              )}
+
+              {/* Bottom Actions Bar */}
+              <div className="flex items-center justify-between mt-3 pt-2 text-xs text-stone-500">
+                <button
+                  type="button"
+                  onClick={() => setProjectsExpanded(v => !v)}
+                  className="text-[#163e35] font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
+                >
+                  <SlidersHorizontal size={13} />
+                  <span>{projectsExpanded ? 'Fewer filters' : '+ More filters (BHK, Budget, Project name)'}</span>
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <select
+                    className="input !w-auto text-xs py-1 px-2.5 h-8"
+                    name="sort"
+                    aria-label="Sort results"
+                    defaultValue={params.get('sort') || ''}
+                  >
+                    <option value="">Newest first</option>
+                    <option value="recommended">Recommended</option>
+                    <option value="price-asc">Price: low to high</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    className="text-stone-500 hover:text-stone-800 underline cursor-pointer"
+                    onClick={clear}
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Regular Properties Hero (Only shown when not on Builder Projects) */}
+      {!projects && !hideHeader &&
         (category ? (
           <section className={`category-hero category-${purpose}`}>
             <div>
@@ -325,29 +596,21 @@ export default function Listings({
             />
           </section>
         ) : (
-          <div className={projects ? 'projects-hero-heading' : 'page-heading'}>
-            <p className={projects ? 'projects-hero-eyebrow' : 'eyebrow'}>
-              {projects
-                ? 'COMMUNITIES FOR YOUR NEXT CHAPTER'
-                : favorites
-                  ? 'A LITTLE CLOSER TO HOME'
-                  : 'YOUR SPACE IS OUT THERE'}
+          <div className="page-heading">
+            <p className="eyebrow">
+              {favorites ? 'A LITTLE CLOSER TO HOME' : 'YOUR SPACE IS OUT THERE'}
             </p>
 
-            <h1 className={projects ? 'projects-hero-title' : ''}>
-              {projects
-                ? 'A fresh beginning starts here.'
-                : favorites
-                  ? 'Your saved homes.'
-                  : params.get('featured') === 'true'
-                    ? 'Featured properties.'
-                    : 'Explore all properties.'}
+            <h1>
+              {favorites
+                ? 'Your saved homes.'
+                : params.get('featured') === 'true'
+                  ? 'Featured properties.'
+                  : 'Explore all properties.'}
             </h1>
 
-            <p className={projects ? 'projects-hero-sub' : 'muted mt-4'}>
-              {projects
-                ? 'Compare builders, explore floor plans and book a project visit.'
-                : 'Find the right place. Connect directly with the owner.'}
+            <p className="muted mt-4">
+              Find the right place. Connect directly with the owner.
             </p>
           </div>
         ))}
@@ -382,11 +645,12 @@ export default function Listings({
         </nav>
       )}
 
-      <form
-        key={`${purpose || ''}:${city || ''}:${params}`}
-        onSubmit={search}
-        className={projects ? 'projects-search-bar' : 'panel mb-8'}
-      >
+      {!projects && (
+        <form
+          key={`${purpose || ''}:${city || ''}:${params}`}
+          onSubmit={search}
+          className="panel mb-8"
+        >
         <div className="filter-grid">
           {projects ? (
             <Field label="Search">
@@ -786,15 +1050,17 @@ export default function Listings({
               )}
             </select>
 
-            <button className={projects ? 'projects-search-btn' : 'btn'} type="submit">
+            <button className="btn" type="submit">
               <Search size={16} />
               Search
             </button>
           </div>
         </div>
       </form>
+      )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+      <div className={projects ? 'pt-16 sm:pt-20' : ''}>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium">
             {data
@@ -909,6 +1175,7 @@ export default function Listings({
       {projects && selectedCityName && (
         <CityPropertiesSection cityName={selectedCityName} />
       )}
+      </div>
     </div>
   );
 }

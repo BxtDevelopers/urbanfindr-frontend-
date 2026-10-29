@@ -1,19 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpRight, Sparkles, CheckCircle2 } from 'lucide-react';
 import { serviceCategories } from '@/lib/serviceCategories';
 import CategoryIcon from './CategoryIcon';
 
 export default function AllCategoriesPage() {
-  const [filter, setFilter] = useState('all');
-
-  const filteredCategories = serviceCategories.filter((cat) => {
-    if (filter === 'live') return cat.isLive;
-    if (filter === 'services') return !cat.isLive;
-    return true;
-  });
+  const searchParams = useSearchParams();
+  const city = searchParams?.get('city');
 
   return (
     <div className="wrap section pb-24">
@@ -35,44 +31,19 @@ export default function AllCategoriesPage() {
           <span>URBANFINDR DIRECTORY</span>
         </div>
         <h1 className="!text-3xl sm:!text-4xl lg:!text-5xl font-bold tracking-tight text-stone-900">
-          Explore by Category
+          Explore Services {city ? `in ${city}` : 'by Category'}
         </h1>
         <p className="muted mt-3 max-w-2xl leading-relaxed text-sm sm:text-base">
           From verified properties and turnkey interiors to licensed legal and home maintenance specialists — all in one place for a better living experience.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="tab-row my-8">
-        <button
-          type="button"
-          className={filter === 'all' ? 'active' : ''}
-          onClick={() => setFilter('all')}
-        >
-          All Categories ({serviceCategories.length})
-        </button>
-        <button
-          type="button"
-          className={filter === 'live' ? 'active' : ''}
-          onClick={() => setFilter('live')}
-        >
-          Active Now (2)
-        </button>
-        <button
-          type="button"
-          className={filter === 'services' ? 'active' : ''}
-          onClick={() => setFilter('services')}
-        >
-          Coming Soon (11)
-        </button>
-      </div>
-
-      {/* Categories Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-        {filteredCategories.map((cat) => (
+      {/* Categories Grid - All 13 verified categories */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 mt-8">
+        {serviceCategories.map((cat) => (
           <Link
             key={cat.slug}
-            href={cat.href}
+            href={city ? `${cat.href}?city=${encodeURIComponent(city)}` : cat.href}
             className="panel p-5 hover:border-forest/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between group bg-white"
           >
             <div>
@@ -90,16 +61,10 @@ export default function AllCategoriesPage() {
                   <CategoryIcon name={cat.iconName} size={24} />
                 </div>
 
-                {/* Badge */}
-                {cat.isLive ? (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Live
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
-                    Coming Soon
-                  </span>
-                )}
+                {/* Verified Badge */}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Verified
+                </span>
               </div>
 
               <h2 className="!text-lg font-bold text-stone-900 group-hover:text-forest transition-colors">
@@ -112,7 +77,7 @@ export default function AllCategoriesPage() {
             </div>
 
             <div className="mt-5 pt-3 border-t border-stone-100 flex items-center justify-between text-xs font-semibold text-forest">
-              <span>{cat.isLive ? 'Explore listings' : 'View service details'}</span>
+              <span>View service details</span>
               <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </div>
           </Link>
@@ -121,4 +86,3 @@ export default function AllCategoriesPage() {
     </div>
   );
 }
-

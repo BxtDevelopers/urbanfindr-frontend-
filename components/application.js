@@ -24,7 +24,7 @@ function Content() {
   const pathname = usePathname();
   const [root, id, action] = pathname.split('/').filter(Boolean);
   if (!root) return <HomePage />;
-  if (root === 'categories' || root === 'services') {
+  if (root === 'categories' || root === 'services' || root === 'explore-by-category') {
     if (!id) return <AllCategoriesPage />;
     return <CategoryComingSoon slug={id} />;
   }

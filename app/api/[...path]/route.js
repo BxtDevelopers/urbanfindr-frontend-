@@ -25,6 +25,7 @@ async function dispatch(req, context) {
       pathname.startsWith('support-tickets') ||
       pathname.startsWith('leads') ||
       pathname.startsWith('contact') ||
+      pathname.startsWith('service-requests') ||
       pathname === 'auth/password'
     ) {
       return originalHandle(req, context);

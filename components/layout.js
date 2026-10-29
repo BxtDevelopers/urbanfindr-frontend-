@@ -2,13 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useState, Fragment } from 'react';
+import React, { useState, useEffect, useRef, Fragment } from 'react';
 import {
   Menu,
   X,
   ArrowUpRight,
   House,
+  Search,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
+import CategoryIcon from './CategoryIcon';
 
 import { useApp } from './providers';
 import { cityGuides } from '@/lib/catalog';
@@ -77,6 +82,47 @@ export function Header() {
   const [showProjectsModal, setShowProjectsModal] = useState(false);
 
   const pathname = usePathname();
+
+  const [servicesLauncherOpen, setServicesLauncherOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const launcherTimeoutRef = useRef(null);
+
+  function handleLauncherMouseEnter() {
+    if (launcherTimeoutRef.current) {
+      clearTimeout(launcherTimeoutRef.current);
+      launcherTimeoutRef.current = null;
+    }
+  }
+
+  function handleLauncherMouseLeave() {
+    launcherTimeoutRef.current = setTimeout(() => {
+      setServicesLauncherOpen(false);
+    }, 250);
+  }
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (!e.target.closest?.('.services-launcher-wrap')) {
+        setServicesLauncherOpen(false);
+      }
+    }
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      if (launcherTimeoutRef.current) clearTimeout(launcherTimeoutRef.current);
+    };
+  }, []);
+
+  const filteredLauncherCategories = serviceCategories.filter((cat) => {
+    if (!categorySearch.trim()) return true;
+    const q = categorySearch.toLowerCase().trim();
+    return (
+      cat.label.toLowerCase().includes(q) ||
+      cat.shortTitle?.toLowerCase().includes(q) ||
+      cat.tagline?.toLowerCase().includes(q) ||
+      cat.description?.toLowerCase().includes(q)
+    );
+  });
 
   // Main navbar links
   const links = [
@@ -215,6 +261,144 @@ export function Header() {
               FREE
             </span>
           </Link>
+
+          {/* Google-style 9-Dots Services / Category App Launcher */}
+          <div
+            className="relative services-launcher-wrap flex items-center"
+            onMouseEnter={handleLauncherMouseEnter}
+            onMouseLeave={handleLauncherMouseLeave}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setServicesLauncherOpen((prev) => !prev);
+                setCategorySearch('');
+              }}
+              aria-label="UrbanFindr Categories & Services"
+              aria-expanded={servicesLauncherOpen}
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                servicesLauncherOpen
+                  ? 'bg-stone-200 text-forest shadow-inner'
+                  : 'text-stone-600 hover:text-forest hover:bg-stone-100'
+              }`}
+              title="Explore by Category"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <circle cx="5" cy="5" r="2.2" />
+                <circle cx="12" cy="5" r="2.2" />
+                <circle cx="19" cy="5" r="2.2" />
+                <circle cx="5" cy="12" r="2.2" />
+                <circle cx="12" cy="12" r="2.2" />
+                <circle cx="19" cy="12" r="2.2" />
+                <circle cx="5" cy="19" r="2.2" />
+                <circle cx="12" cy="19" r="2.2" />
+                <circle cx="19" cy="19" r="2.2" />
+              </svg>
+            </button>
+
+            {/* Services Popup with Instant Search & Category Grid */}
+            {servicesLauncherOpen && (
+              <div
+                className="absolute right-0 top-full mt-2 w-[320px] sm:w-[360px] bg-white rounded-3xl shadow-2xl border border-stone-200/90 z-50 p-3 sm:p-4 transition-all duration-150 animate-in fade-in"
+                onMouseEnter={handleLauncherMouseEnter}
+                onMouseLeave={handleLauncherMouseLeave}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-2 pt-1 pb-2 mb-2 border-b border-stone-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-stone-900 tracking-tight">
+                      Explore by Category
+                    </span>
+                    <span className="text-[10px] font-bold text-forest bg-forest/10 px-1.5 py-0.5 rounded-full">
+                      {serviceCategories.length}
+                    </span>
+                  </div>
+                  <Link
+                    href="/categories"
+                    onClick={() => setServicesLauncherOpen(false)}
+                    className="text-xs font-semibold text-forest hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>All categories</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+
+                {/* Instant Search Bar inside Dotted Box Popup */}
+                <div className="relative mb-3 px-1">
+                  <Search size={14} className="absolute left-3.5 top-2.5 text-stone-400" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    placeholder="Search category or service..."
+                    className="w-full pl-8 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-forest focus:bg-white transition-all"
+                  />
+                  {categorySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCategorySearch('')}
+                      className="absolute right-3.5 top-2 text-stone-400 hover:text-stone-600 text-xs px-1"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {/* 3-Column Categories Grid */}
+                {filteredLauncherCategories.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-stone-400">
+                    No categories found for &quot;{categorySearch}&quot;
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2 max-h-[340px] overflow-y-auto p-1 pr-1.5">
+                    {filteredLauncherCategories.map((cat) => (
+                      <Link
+                        key={cat.slug}
+                        href={cat.href}
+                        onClick={() => setServicesLauncherOpen(false)}
+                        className="flex flex-col items-center p-2 rounded-2xl hover:bg-stone-50 transition-all duration-150 group text-center"
+                      >
+                        <div
+                          className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-xs group-hover:scale-105 group-hover:shadow transition-transform"
+                          style={{
+                            backgroundColor: cat.bgTint || '#f5f5f5',
+                            borderColor: cat.borderTint || '#e5e5e5',
+                            borderWidth: '1px',
+                            color: cat.accentColor || '#163e35',
+                          }}
+                        >
+                          <CategoryIcon name={cat.iconName} size={22} />
+                        </div>
+                        <span className="text-[11px] font-medium text-stone-700 group-hover:text-forest mt-1.5 leading-tight line-clamp-1 w-full">
+                          {cat.shortTitle || cat.label}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                {/* Bottom Promo Callout */}
+                <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-forest/5 via-lime/10 to-transparent border border-forest/10 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-stone-700">
+                    <Sparkles size={15} className="text-forest shrink-0" />
+                    <span className="font-medium text-[11px] leading-tight">
+                      Explore 13+ verified categories
+                    </span>
+                  </div>
+                  <Link
+                    href="/categories"
+                    onClick={() => setServicesLauncherOpen(false)}
+                    className="font-bold text-forest text-xs hover:underline whitespace-nowrap ml-2"
+                  >
+                    View →
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+
 
           <button
             className="mobile-menu"
@@ -372,16 +556,7 @@ export function Header() {
           Latest listings
         </Link>
 
-        <span>
-          List directly. Find your next match.
-        </span>
 
-        <Link
-          href="/post-property"
-          className="text-forest font-semibold"
-        >
-          Post property <ArrowUpRight size={13} />
-        </Link>
       </nav>
 
       {/* Builder projects city picker */}
