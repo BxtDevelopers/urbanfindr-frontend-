@@ -13,20 +13,23 @@ async function dispatch(req, context) {
     return originalHandle(req, context);
   }
 
+  let body = undefined;
+
   try {
     const params = await context?.params;
     const pathSegments = params?.path || [];
     const pathname = pathSegments.join('/');
     const search = new URL(req.url).search;
 
-    // Directly handle Channel Partner system, Support Desk, Leads, Contact, and Password updates with native Next.js API
+    // Directly handle Auth system, Channel Partner system, Support Desk, Leads, Contact, and Service Requests with native Next.js API
     if (
+      pathname.startsWith('auth') ||
       pathname.startsWith('channel-partner') ||
       pathname.startsWith('support-tickets') ||
       pathname.startsWith('leads') ||
       pathname.startsWith('contact') ||
       pathname.startsWith('service-requests') ||
-      pathname === 'auth/password'
+      pathname.startsWith('interior-project')
     ) {
       return originalHandle(req, context);
     }
@@ -37,7 +40,6 @@ async function dispatch(req, context) {
     headers.delete('host');
     headers.delete('connection');
 
-    let body = undefined;
     if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
       const contentType = req.headers.get('content-type') || '';
       const contentLength = req.headers.get('content-length');
@@ -74,7 +76,8 @@ async function dispatch(req, context) {
 
     // If Express backend does not recognize the endpoint (404), fall back to native Next.js API
     if (expressResponse.status === 404) {
-      return originalHandle(req, context);
+      const fallbackReq = body ? new Request(req.url, { method: req.method, headers: req.headers, body, duplex: 'half' }) : req;
+      return originalHandle(fallbackReq, context);
     }
 
     const data = await expressResponse.arrayBuffer();
@@ -85,7 +88,8 @@ async function dispatch(req, context) {
     });
   } catch (error) {
     console.warn(`[Proxy Notice] Express backend unreachable (${error.message}). Falling back to Next.js API...`);
-    return originalHandle(req, context);
+    const fallbackReq = body ? new Request(req.url, { method: req.method, headers: req.headers, body, duplex: 'half' }) : req;
+    return originalHandle(fallbackReq, context);
   }
 }
 

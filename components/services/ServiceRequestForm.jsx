@@ -1,19 +1,16 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import {
-  MapPin,
-  User,
-  Mail,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Wrench,
   ArrowRight,
-  ChevronDown,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react';
-import { api } from '@/components/providers';
+import { api, useApp } from '@/components/providers';
 
 const CITIES = [
   'Bengaluru',
@@ -32,28 +29,25 @@ export default function ServiceRequestForm({
   selectedServicePreload = '',
   onResetPreload
 }) {
+  const { user } = useApp();
+
   const serviceOptions = useMemo(() => {
-    const base = category?.serviceOptions && category.serviceOptions.length > 0
+    return category?.serviceOptions && category.serviceOptions.length > 0
       ? category.serviceOptions
       : ['General Consultation / Inspection', 'Standard Repair', 'Maintenance Service'];
-    return base.includes('Others') ? base : [...base, 'Others'];
   }, [category]);
 
+  // Form Fields: Service Type, Address, City, First Name, Last Name, Mobile Number
   const [serviceType, setServiceType] = useState(
     selectedServicePreload && serviceOptions.includes(selectedServicePreload)
       ? selectedServicePreload
       : serviceOptions[0] || ''
   );
-  const [customService, setCustomService] = useState('');
-  const [city, setCity] = useState(initialCity || '');
-  const [cityOpen, setCityOpen] = useState(false);
-  const cityRef = useRef(null);
-
-  const [description, setDescription] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState(initialCity || 'Bengaluru');
+  const [firstName, setFirstName] = useState(user?.name ? user.name.split(' ')[0] : '');
+  const [lastName, setLastName] = useState(user?.name ? user.name.split(' ').slice(1).join(' ') : '');
+  const [phone, setPhone] = useState(user?.phone || '');
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -71,51 +65,21 @@ export default function ServiceRequestForm({
     }
   }, [initialCity]);
 
-  // Click outside listener for the city dropdown popover
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (cityRef.current && !cityRef.current.contains(event.target)) {
-        setCityOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const dynamicPlaceholder = useMemo(() => {
-    if (serviceType === 'Others') {
-      return `Describe what you need or any specific instructions for this service...`;
-    }
-    if (category?.servicePlaceholders && category.servicePlaceholders[serviceType]) {
-      return category.servicePlaceholders[serviceType];
-    }
-    return (
-      category?.defaultPlaceholder ||
-      `Briefly describe what you need for ${serviceType || category?.label || 'this service'}...`
-    );
-  }, [category, serviceType]);
-
+  // Handle Single Form Submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setCityOpen(false);
     setErrorMessage('');
 
     if (!serviceType) {
       setErrorMessage('Please select a service type.');
       return;
     }
-    if (serviceType === 'Others' && !customService.trim()) {
-      setErrorMessage('Please specify what service you need.');
+    if (!address.trim()) {
+      setErrorMessage('Please enter your house/flat or street address.');
       return;
     }
     if (!city) {
       setErrorMessage('Please select your city.');
-      return;
-    }
-    if (!description.trim()) {
-      setErrorMessage('Please describe your requirement or problem.');
       return;
     }
     if (!firstName.trim()) {
@@ -135,21 +99,18 @@ export default function ServiceRequestForm({
     setSubmitting(true);
     try {
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
-      const finalServiceType = serviceType === 'Others'
-        ? (customService.trim() ? `Other (${customService.trim()})` : 'Others')
-        : serviceType;
-
       const payload = {
         category: category?.label || 'General Service',
         categorySlug: category?.slug || 'general',
-        serviceType: finalServiceType,
-        description: description.trim(),
+        serviceType,
+        description: `Doorstep service booking for ${serviceType} in ${city}.`,
+        address: address.trim(),
         city,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         name: fullName,
         phone: cleanPhone,
-        email: email.trim() || undefined
+        email: user?.email || undefined
       };
 
       const res = await api('service-requests', {
@@ -157,14 +118,23 @@ export default function ServiceRequestForm({
         body: payload
       });
 
+      const quote = res.item?.quotation || {
+        amount: 599,
+        inspectionFee: 199,
+        laborCost: 400,
+        tax: 108,
+        notes: 'Doorstep diagnostic inspection and expert service labor.'
+      };
+
       setSubmittedData({
-        requestId: res.requestId || 'SR-' + Date.now().toString().slice(-6),
-        serviceType: finalServiceType,
+        requestId: res.requestId || res.item?.requestId || 'SR-' + Date.now().toString().slice(-6),
+        serviceType,
         city,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        address: address.trim(),
         name: fullName,
-        phone: cleanPhone
+        phone: cleanPhone,
+        quotation: quote,
+        status: res.item?.status || 'quotation'
       });
     } catch (err) {
       setErrorMessage(err.message || 'Unable to submit your service request. Please try again.');
@@ -173,303 +143,354 @@ export default function ServiceRequestForm({
     }
   };
 
+  const [acceptingQuote, setAcceptingQuote] = useState(false);
+
+  const handleAcceptQuotation = async () => {
+    if (!submittedData?.requestId) return;
+    setAcceptingQuote(true);
+    setErrorMessage('');
+    try {
+      await api(`service-requests/${submittedData.requestId}`, {
+        method: 'PATCH',
+        body: {
+          action: 'accept',
+          quotationId: submittedData.quotation?.id,
+          acceptedQuotation: submittedData.quotation
+        }
+      });
+      setSubmittedData(prev => ({
+        ...prev,
+        status: 'accepted'
+      }));
+    } catch (err) {
+      setErrorMessage(err.message || 'Unable to accept quotation.');
+    } finally {
+      setAcceptingQuote(false);
+    }
+  };
+
   const handleReset = () => {
     setSubmittedData(null);
-    setDescription('');
-    setCustomService('');
-    setCity(initialCity || '');
-    setFirstName('');
-    setLastName('');
-    setPhone('');
-    setEmail('');
+    setAddress('');
     setErrorMessage('');
     if (onResetPreload) onResetPreload();
   };
 
-  // SUCCESS STATE
+  // SUCCESS STATE: Instant Quotation & One-Click Acceptance
   if (submittedData) {
+    const isAccepted = submittedData.status === 'accepted';
+    const activeQuotation = submittedData.quotation;
+
     return (
-      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xl p-4 sm:p-5 text-center animate-fadeIn w-full max-w-[420px] ml-auto">
-        <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto mb-2">
-          <CheckCircle2 size={22} />
-        </div>
-        <span className="inline-block px-2 py-0.5 bg-forest/10 text-forest text-[10px] font-bold rounded-full uppercase tracking-wider mb-1">
-          Request Confirmed
-        </span>
-        <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
-          Request Submitted!
-        </h3>
-        <p className="text-xs text-stone-600 mt-0.5 max-w-xs mx-auto">
-          A verified {category?.label || 'service'} specialist will contact you shortly.
-        </p>
-
-        <div className="mt-3 bg-stone-50 rounded-xl p-2.5 text-left border border-stone-200/80 text-xs space-y-1">
-          <div className="flex justify-between items-center pb-1 border-b border-stone-200">
-            <span className="text-stone-500 font-medium text-[11px]">Ref ID</span>
-            <span className="font-mono font-bold text-forest bg-forest/5 px-1.5 py-0.5 rounded border border-forest/20 text-[10.5px]">
-              {submittedData.requestId}
+      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xl p-5 sm:p-6 text-center animate-fadeIn w-full max-w-[420px] ml-auto">
+        {isAccepted ? (
+          <>
+            <div className="w-12 h-12 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center mx-auto mb-2">
+              <CheckCircle2 size={26} />
+            </div>
+            <span className="inline-block px-3 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-full uppercase tracking-wider mb-1 border border-emerald-300">
+              ✓ Service Accepted
             </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-stone-500 text-[11px]">Customer</span>
-            <span className="font-medium text-stone-800 text-[11px]">{submittedData.name}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-stone-500 text-[11px]">Service</span>
-            <span className="font-medium text-stone-800 truncate max-w-[170px] text-[11px]">{submittedData.serviceType}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-stone-500 text-[11px]">City</span>
-            <span className="font-medium text-stone-800 text-[11px]">{submittedData.city}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-stone-500 text-[11px]">Phone</span>
-            <span className="font-medium text-stone-800 text-[11px]">+91 {submittedData.phone}</span>
-          </div>
-        </div>
+            <h3 className="text-lg font-bold text-stone-900 tracking-tight">
+              Quotation Accepted &amp; Service Confirmed!
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 max-w-xs mx-auto">
+              Your service quotation is confirmed. A certified technician will be assigned to visit your address in <strong>{submittedData.city}</strong>.
+            </p>
 
-        <button
-          type="button"
-          onClick={handleReset}
-          className="mt-3 w-full py-2 px-3 rounded-lg font-semibold text-xs bg-forest text-white hover:bg-[#114032] transition-colors shadow-sm cursor-pointer"
-        >
-          Submit Another Request
-        </button>
+            <div className="mt-4 bg-emerald-50/50 rounded-xl p-3.5 text-left border border-emerald-200 text-xs space-y-2">
+              <div className="flex justify-between items-center pb-1.5 border-b border-emerald-100">
+                <span className="text-stone-500 text-[11px]">Booking Reference</span>
+                <span className="font-mono font-bold text-emerald-900 bg-white px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
+                  {submittedData.requestId}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 text-[11px]">Service</span>
+                <span className="font-semibold text-stone-900 truncate max-w-[190px]">{submittedData.serviceType}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 text-[11px]">Address</span>
+                <span className="font-medium text-stone-800 truncate max-w-[190px]">{submittedData.address}, {submittedData.city}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 text-[11px]">Final Quotation Amount</span>
+                <span className="font-bold text-emerald-800 text-[12px] font-mono">
+                  ₹{Number(activeQuotation?.amount || 599).toLocaleString('en-IN')}
+                </span>
+              </div>
+              {activeQuotation?.warranty && (
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-500 text-[11px]">Coverage Guarantee</span>
+                  <span className="font-medium text-emerald-700 text-[11px]">{activeQuotation.warranty}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-1 border-t border-emerald-100">
+                <span className="text-stone-500 text-[11px]">Status</span>
+                <span className="font-bold text-emerald-700 text-[11px]">Service Accepted</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 text-[11px]">Payment</span>
+                <span className="font-medium text-stone-700 text-[11px]">Pay After Service (Cash / UPI)</span>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-2">
+              <Link
+                href="/dashboard/bookings"
+                className="w-full py-2.5 px-4 bg-[#163e35] hover:bg-[#204e43] text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+              >
+                Track in My Bookings <ArrowRight size={13} />
+              </Link>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="w-full py-2 px-3 text-stone-600 hover:text-stone-900 text-xs font-medium cursor-pointer"
+              >
+                Book Another Service
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="w-12 h-12 rounded-full bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center mx-auto mb-2">
+              <Sparkles size={24} />
+            </div>
+            <span className="inline-block px-2.5 py-0.5 bg-sky-100 text-sky-800 text-[10px] font-bold rounded-full uppercase tracking-wider mb-1">
+              Service Requested · Quotation Ready
+            </span>
+            <h3 className="text-lg font-bold text-stone-900 tracking-tight">
+              Official Service Quotation
+            </h3>
+            <p className="text-xs text-stone-600 mt-0.5 max-w-xs mx-auto">
+              Review your service quotation below and accept to confirm service.
+            </p>
+
+            {/* Quotation Card */}
+            <div className="mt-3.5 bg-gradient-to-br from-emerald-50/50 via-white to-sky-50/30 rounded-xl p-3.5 text-left border border-emerald-200/90 shadow-xs space-y-2.5">
+              <div className="flex justify-between items-baseline pb-2 border-b border-stone-200">
+                <div>
+                  <span className="text-xs font-bold text-stone-800 block">Total Service Quotation</span>
+                  <span className="text-[10px] text-stone-500">Includes all taxes &amp; inspection</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-extrabold text-emerald-800 font-mono">
+                    ₹{Number(activeQuotation?.amount || 599).toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-[10px] text-stone-400 block font-normal">(incl. GST)</span>
+                </div>
+              </div>
+
+              <div className="text-[11px] space-y-1 text-stone-600">
+                <div className="flex justify-between">
+                  <span>Doorstep Diagnostic &amp; Visit Fee:</span>
+                  <span className="font-semibold text-stone-800">
+                    ₹{activeQuotation?.inspectionFee || 199}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Service Labor Charge:</span>
+                  <span className="font-semibold text-stone-800">
+                    ₹{activeQuotation?.laborCost || 400}
+                  </span>
+                </div>
+              </div>
+
+              {activeQuotation?.warranty && (
+                <div className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1 bg-emerald-50/70 px-2 py-1 rounded-lg border border-emerald-100">
+                  <span>🛡️</span>
+                  <span>{activeQuotation.warranty}</span>
+                </div>
+              )}
+
+              {activeQuotation?.notes && (
+                <div className="pt-2 border-t border-stone-100 text-[10px] text-stone-500 leading-relaxed bg-white/70 p-2 rounded-lg border border-stone-100">
+                  <strong className="text-stone-700 block mb-0.5">Scope &amp; Inclusions:</strong>
+                  {activeQuotation.notes}
+                </div>
+              )}
+
+              <div className="pt-1.5 flex justify-between items-center text-[10px] text-stone-500">
+                <span>Ref ID: <strong className="font-mono text-stone-700">{submittedData.requestId}</strong></span>
+                <span>City: <strong className="text-stone-700">{submittedData.city}</strong></span>
+              </div>
+            </div>
+
+            {errorMessage && (
+              <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded-lg border border-red-200 text-left">
+                {errorMessage}
+              </p>
+            )}
+
+            {/* Accept Quotation Button */}
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={handleAcceptQuotation}
+                disabled={acceptingQuote}
+                className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {acceptingQuote ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Accepting Quotation...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Accept Quotation &amp; Confirm Service</span>
+                  </>
+                )}
+              </button>
+
+              <Link
+                href="/dashboard/bookings"
+                className="w-full py-2 px-3 text-stone-600 hover:text-stone-900 text-xs font-medium flex items-center justify-center gap-1 cursor-pointer"
+              >
+                View in My Bookings <ArrowRight size={12} />
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     );
   }
 
-  // COMPACT, HIGH-VISIBILITY FORM CARD
+  // SINGLE FORM (NO STEP 1 / STEP 2)
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xl p-3.5 sm:p-4 relative w-full max-w-[420px] ml-auto">
+    <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xl overflow-hidden w-full max-w-[420px] ml-auto">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-stone-100">
-        <div>
-          <h2 className="text-sm sm:text-base font-bold text-stone-900 tracking-tight leading-tight">
-            Tell Us What You Need
-          </h2>
-          <p className="text-[10.5px] text-stone-500 leading-tight">
-            Get matched with verified {category?.label?.toLowerCase() || 'service'} pros
-          </p>
-        </div>
-        <div className="flex items-center gap-1 text-forest text-[10px] font-bold tracking-wider uppercase bg-forest/10 px-2 py-0.5 rounded-full shrink-0">
-          <Wrench size={11} className="text-forest" />
-          <span>Quick Book</span>
-        </div>
+      <div className="p-4 sm:p-5 pb-3 border-b border-stone-100">
+        <h3 className="text-base sm:text-lg font-bold text-stone-900 leading-tight">
+          Book {category?.label || 'Service'}
+        </h3>
+        <p className="text-xs text-stone-500 mt-0.5">
+          Fill in your details below for an instant service quotation.
+        </p>
       </div>
 
+      {/* Error Alert */}
       {errorMessage && (
-        <div className="mb-2 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11px] flex items-start gap-1.5">
-          <AlertCircle size={13} className="shrink-0 mt-0.5" />
+        <div className="mx-4 mt-3 p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs flex items-center gap-2">
+          <AlertCircle size={15} className="shrink-0 text-red-600" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-2 text-left">
-        {/* Row 1: Service Type & City (2 Columns) */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-[10.5px] font-semibold text-stone-700 mb-0.5">
-              Service <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <select
-                value={serviceType}
-                onChange={(e) => setServiceType(e.target.value)}
-                className="w-full h-8 px-2 pr-6 rounded-lg border border-stone-300 bg-stone-50/50 text-stone-900 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest transition-colors appearance-none cursor-pointer truncate"
-                required
-              >
-                {serviceOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-stone-500">
-                <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div ref={cityRef} className="relative">
-            <label className="block text-[10.5px] font-semibold text-stone-700 mb-0.5">
-              City <span className="text-rose-500">*</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => setCityOpen((prev) => !prev)}
-              className="w-full h-8 px-2 pl-6 pr-5 rounded-lg border border-stone-300 bg-stone-50/50 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest transition-colors flex items-center justify-between cursor-pointer"
-            >
-              <MapPin size={12} className="absolute left-2 text-stone-400 pointer-events-none" />
-              <span className={`truncate text-xs ${!city ? 'text-stone-400 font-normal' : 'text-stone-900 font-medium'}`}>
-                {city || 'Search City'}
-              </span>
-              <ChevronDown
-                size={12}
-                className={`text-stone-400 transition-transform duration-200 pointer-events-none shrink-0 ${
-                  cityOpen ? 'rotate-180 text-forest' : ''
-                }`}
-              />
-            </button>
-
-            {/* Compact City Dropdown Menu: Shows only actual cities */}
-            {cityOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-stone-200/90 p-1 z-50 max-h-48 overflow-y-auto animate-fadeIn">
-                {CITIES.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      setCity(c);
-                      setCityOpen(false);
-                    }}
-                    className={`w-full px-2.5 py-1.5 text-left text-xs font-medium flex items-center justify-between rounded-md hover:bg-forest/10 hover:text-forest transition-colors cursor-pointer ${
-                      city === c ? 'bg-forest/10 text-forest font-bold' : 'text-stone-700'
-                    }`}
-                  >
-                    <span>{c}</span>
-                    {city === c && <Check size={12} className="text-forest shrink-0" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+      {/* Single Form with exact requested fields */}
+      <form onSubmit={handleSubmit} className="p-4 sm:p-5 pt-3 space-y-3">
+        {/* 1. Select Service Type */}
+        <div>
+          <label className="block text-xs font-semibold text-stone-800 mb-1">
+            Select Service Type *
+          </label>
+          <select
+            value={serviceType}
+            onChange={(e) => setServiceType(e.target.value)}
+            className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs bg-white text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35]"
+          >
+            {serviceOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* If 'Others' is selected, show custom service input */}
-        {serviceType === 'Others' && (
-          <div className="animate-fadeIn">
-            <label className="block text-[10.5px] font-semibold text-stone-700 mb-0.5">
-              Specify Other Service <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={customService}
-              onChange={(e) => setCustomService(e.target.value)}
-              placeholder="Type the service you need..."
-              className="w-full h-8 px-2 rounded-lg border border-stone-300 bg-stone-50/50 text-stone-900 text-xs placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest transition-colors"
-              required
-            />
-          </div>
-        )}
-
-        {/* Row 2: Requirement Details */}
+        {/* 2. Address */}
         <div>
-          <label className="block text-[10.5px] font-semibold text-stone-700 mb-0.5">
-            Requirement Details <span className="text-rose-500">*</span>
+          <label className="block text-xs font-semibold text-stone-800 mb-1">
+            Address *
           </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            placeholder={dynamicPlaceholder}
-            className="w-full p-1.5 px-2 rounded-lg border border-stone-300 bg-stone-50/50 text-stone-900 text-xs placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest transition-colors resize-none leading-snug"
+          <input
+            type="text"
             required
+            placeholder="House / Flat / Street Address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#163e35]"
           />
         </div>
 
-        {/* Row 3: First Name & Last Name (2 Columns) */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-[10.5px] font-semibold text-stone-700 mb-0.5">
-              First Name <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="First name"
-                className="w-full h-8 px-2 pl-6 rounded-lg border border-stone-300 bg-stone-50/50 text-stone-900 text-xs placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest transition-colors"
-                required
-              />
-              <User size={12} className="absolute left-2 top-2 text-stone-400 pointer-events-none" />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[10.5px] font-semibold text-stone-700 mb-0.5">
-              Last Name <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Last name"
-                className="w-full h-8 px-2 pl-6 rounded-lg border border-stone-300 bg-stone-50/50 text-stone-900 text-xs placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest transition-colors"
-                required
-              />
-              <User size={12} className="absolute left-2 top-2 text-stone-400 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* Row 4: Phone Number & Email (2 Columns) */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-[10.5px] font-semibold text-stone-700 mb-0.5">
-              Phone Number <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative flex">
-              <span className="inline-flex items-center px-1.5 rounded-l-lg border border-r-0 border-stone-300 bg-stone-100 text-stone-600 text-[10.5px] font-semibold select-none">
-                +91
-              </span>
-              <input
-                type="tel"
-                maxLength={10}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="10-digit number"
-                className="w-full h-8 px-1.5 rounded-r-lg border border-stone-300 bg-stone-50/50 text-stone-900 text-xs placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest transition-colors"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[10.5px] font-semibold text-stone-700 mb-0.5">
-              Email <span className="text-stone-400 font-normal">(Optional)</span>
-            </label>
-            <div className="relative">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="w-full h-8 px-2 pl-6 rounded-lg border border-stone-300 bg-stone-50/50 text-stone-900 text-xs placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest transition-colors"
-              />
-              <Mail size={12} className="absolute left-2 top-2 text-stone-400 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* Submit CTA Button */}
-        <div className="pt-1.5">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full h-9 bg-[#16503e] hover:bg-[#114032] active:bg-[#0c2e24] disabled:opacity-70 text-white font-semibold text-xs sm:text-sm rounded-lg shadow hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+        {/* 3. City */}
+        <div>
+          <label className="block text-xs font-semibold text-stone-800 mb-1">
+            City *
+          </label>
+          <select
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="w-full px-2.5 py-2 border border-stone-300 rounded-lg text-xs bg-white text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35]"
           >
-            {submitting ? (
-              <>
-                <Loader2 size={14} className="animate-spin text-white" />
-                <span>Finding Professional...</span>
-              </>
-            ) : (
-              <>
-                <span>Find a Professional</span>
-                <ArrowRight size={13} />
-              </>
-            )}
-          </button>
+            {CITIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <p className="text-[9.5px] text-stone-400 text-center pt-0.5">
-          🔒 Verified professionals only &bull; Free instant quote
-        </p>
+        {/* 4 & 5. First Name & Last Name */}
+        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-100">
+          <div>
+            <label className="block text-xs font-semibold text-stone-800 mb-1">
+              First Name *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="First name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#163e35]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-800 mb-1">
+              Last Name *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Last name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#163e35]"
+            />
+          </div>
+        </div>
+
+        {/* 6. Mobile Number */}
+        <div>
+          <label className="block text-xs font-semibold text-stone-800 mb-1">
+            Mobile Number *
+          </label>
+          <input
+            type="tel"
+            required
+            placeholder="10-digit mobile number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#163e35]"
+          />
+        </div>
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full mt-2 py-2.5 px-4 bg-[#163e35] hover:bg-[#204e43] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+        >
+          {submitting ? (
+            <>
+              <Loader2 size={14} className="animate-spin" /> Submitting Request...
+            </>
+          ) : (
+            <>
+              <Check size={14} /> Confirm Service Booking
+            </>
+          )}
+        </button>
       </form>
     </div>
   );

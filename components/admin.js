@@ -33,6 +33,9 @@ import {
   UserCheck,
   Award,
   ShieldAlert,
+  ChevronLeft,
+  ChevronRight,
+  Camera,
 } from 'lucide-react';
 import { api, useApp, useData } from './providers';
 import { Field, Pagination, State, Submit, Image } from './ui';
@@ -436,35 +439,99 @@ function PropertyDetailModal({ property, propertyId, onClose, onStatusUpdated, o
           </button>
         </div>
 
-        {/* Photo Gallery with thumbnails */}
-        <div className="space-y-2">
-          <div className="relative h-64 sm:h-80 w-full rounded-lg overflow-hidden bg-stone-100 border border-stone-200">
+        {/* Photo Gallery with high-res thumbnails & carousel navigation */}
+        <div className="space-y-3">
+          <div className="relative h-72 sm:h-96 w-full rounded-2xl overflow-hidden bg-stone-950 border border-stone-200 shadow-sm group">
             <img
               src={images[activeImg] || images[0]}
-              alt={prop.title}
-              className="w-full h-full object-cover"
+              alt={`${prop.title} - Photo ${activeImg + 1}`}
+              className="w-full h-full object-cover transition-all duration-300"
             />
+            
+            {/* Top Left Verified / Inspect Badge */}
+            <div className="absolute top-3 left-3 flex items-center gap-2">
+              <span className="bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm border border-white/10">
+                <Camera size={13} className="text-emerald-400" />
+                Photo Inspection View
+              </span>
+            </div>
+
+            {/* Previous & Next Navigation Overlay Arrows */}
             {images.length > 1 && (
-              <span className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2.5 py-1 rounded backdrop-blur-sm">
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveImg((activeImg - 1 + images.length) % images.length)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft size={22} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveImg((activeImg + 1) % images.length)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
+                  aria-label="Next photo"
+                >
+                  <ChevronRight size={22} />
+                </button>
+              </>
+            )}
+
+            {/* Bottom Right Photo Counter */}
+            {images.length > 1 && (
+              <span className="absolute bottom-3 right-3 bg-black/75 text-white text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-md shadow border border-white/10">
                 Photo {activeImg + 1} of {images.length}
               </span>
             )}
           </div>
 
+          {/* Remaining Images Horizontal Scroll Strip - Clear, crisp, large previews */}
           {images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {images.map((img, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setActiveImg(idx)}
-                  className={`w-16 h-16 rounded border-2 overflow-hidden shrink-0 transition-all ${
-                    activeImg === idx ? 'border-forest ring-2 ring-forest/30' : 'border-stone-200 opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img src={img} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>All Property Photos ({images.length})</span>
+                </span>
+                <span className="text-[11px] text-stone-500 font-medium">
+                  Click any photo or scroll to inspect full gallery
+                </span>
+              </div>
+
+              <div className="flex gap-3 overflow-x-auto pb-2 pt-0.5 scroll-smooth no-scrollbar">
+                {images.map((img, idx) => {
+                  const isActive = activeImg === idx;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveImg(idx)}
+                      className={`relative w-28 sm:w-36 h-20 sm:h-24 rounded-xl border-2 overflow-hidden shrink-0 transition-all cursor-pointer shadow-xs group ${
+                        isActive
+                          ? 'border-forest ring-2 ring-forest/30 scale-[1.02] shadow-md'
+                          : 'border-stone-200 hover:border-forest/50 hover:shadow-sm'
+                      }`}
+                    >
+                      <img 
+                        src={img} 
+                        alt={`Photo ${idx + 1}`} 
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                      />
+                      
+                      {/* Photo Number Tag */}
+                      <span className={`absolute bottom-1.5 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-md ${
+                        isActive ? 'bg-forest text-white' : 'bg-black/60 text-white'
+                      }`}>
+                        #{idx + 1}
+                      </span>
+
+                      {isActive && (
+                        <div className="absolute inset-0 bg-forest/10 border-2 border-forest rounded-xl pointer-events-none" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

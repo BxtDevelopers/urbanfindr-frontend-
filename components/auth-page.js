@@ -402,143 +402,76 @@ export default function AuthPage({ register = false, adminLogin = false }) {
   }
 
   /* =========================================================================
-     REGISTRATION PAGE VIEW (Matching Reference Design)
+     REGISTRATION PAGE VIEW
      ========================================================================= */
   return (
-    <section className="min-h-[calc(100vh-86px)] w-full flex flex-col lg:flex-row bg-[#f8faf7]">
-      {/* Left Showcase Side */}
-      <div className="w-full lg:w-1/2 p-8 sm:p-12 lg:p-14 flex flex-col justify-between bg-white border-r border-stone-200/70">
-        <div>
-          {/* Brand Logo & Sub-tagline */}
-          <Link href="/" className="inline-flex items-center gap-3 group">
-            <span className="w-10 h-10 rounded-xl bg-[#163e35] text-[#d8edb3] flex items-center justify-center shadow-md group-hover:bg-[#1f5247] transition-colors">
-              <House size={22} />
+    <section className="min-h-[calc(100vh-86px)] w-full py-4 sm:py-6 px-4 sm:px-6 bg-[#f8faf7] flex flex-col items-center justify-center">
+      <div className="w-full max-w-2xl mx-auto">
+        {/* Text Header at the top of the form */}
+        <div className="text-center mb-3 sm:mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight leading-snug">
+            Your next chapter <span className="text-[#163e35]">starts here</span>
+          </h1>
+          <p className="text-stone-600 text-xs sm:text-sm mt-1 max-w-xl mx-auto leading-relaxed">
+            Discover verified properties, trusted professionals and complete real estate solutions
+            — all in one place.
+          </p>
+
+          {/* 4 Feature Badges in a compact, sleek badge bar */}
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-stone-200 shadow-2xs text-[11px] font-semibold text-stone-700">
+              <House size={13} className="text-[#163e35]" /> Verified Listings
             </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-stone-200 shadow-2xs text-[11px] font-semibold text-stone-700">
+              <ShieldCheck size={13} className="text-[#163e35]" /> Trusted Professionals
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-stone-200 shadow-2xs text-[11px] font-semibold text-stone-700">
+              <MapPin size={13} className="text-[#163e35]" /> Multiple Services
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-stone-200 shadow-2xs text-[11px] font-semibold text-stone-700">
+              <Heart size={13} className="text-[#163e35]" /> Built for Your Needs
+            </span>
+          </div>
+        </div>
+
+        {/* Clean Form Card in the middle */}
+        <div className="w-full bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-stone-200/70">
+          <div className="flex items-center justify-between mb-3 border-b border-stone-100 pb-2.5">
             <div>
-              <span className="text-2xl font-bold tracking-tight text-[#163e35] leading-none">
-                urban<span className="text-[#749546]">findr</span>
-                <span className="text-[#749546]">.</span>
-              </span>
-              <p className="text-[11px] text-stone-500 font-medium leading-none mt-1">
-                Find. Connect. Build Your Life.
+              <h2 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight leading-tight">
+                Create your account
+              </h2>
+              <p className="text-stone-500 text-xs mt-0.5">
+                Join UrbanFindr to find, list or service properties across India.
               </p>
             </div>
-          </Link>
-
-          {/* Headline & Subtitle */}
-          <div className="my-6 sm:my-8">
-            <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-stone-900 leading-[1.15] tracking-tight">
-              Your next chapter <br />
-              <span className="text-[#163e35]">starts here</span>
-            </h1>
-            <p className="text-stone-600 text-sm sm:text-base leading-relaxed mt-3.5 max-w-lg">
-              Discover verified properties, trusted professionals and complete real estate solutions
-              — all in one place.
-            </p>
-          </div>
-
-          {/* 4 Feature Badges */}
-          <div className="grid grid-cols-4 gap-2 sm:gap-3 py-4 mb-6 border-y border-stone-200/80">
-            <div className="text-center">
-              <div className="w-9 h-9 mx-auto rounded-full bg-[#163e35]/10 text-[#163e35] flex items-center justify-center mb-1.5 shadow-sm">
-                <House size={16} />
-              </div>
-              <div className="text-[11px] font-semibold text-stone-800 leading-tight">
-                Verified
-                <br />
-                Listings
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="w-9 h-9 mx-auto rounded-full bg-[#163e35]/10 text-[#163e35] flex items-center justify-center mb-1.5 shadow-sm">
-                <ShieldCheck size={16} />
-              </div>
-              <div className="text-[11px] font-semibold text-stone-800 leading-tight">
-                Trusted
-                <br />
-                Professionals
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="w-9 h-9 mx-auto rounded-full bg-[#163e35]/10 text-[#163e35] flex items-center justify-center mb-1.5 shadow-sm">
-                <MapPin size={16} />
-              </div>
-              <div className="text-[11px] font-semibold text-stone-800 leading-tight">
-                Multiple
-                <br />
-                Services
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="w-9 h-9 mx-auto rounded-full bg-[#163e35]/10 text-[#163e35] flex items-center justify-center mb-1.5 shadow-sm">
-                <Heart size={16} />
-              </div>
-              <div className="text-[11px] font-semibold text-stone-800 leading-tight">
-                Built for
-                <br />
-                Your Needs
-              </div>
+            <div className="text-xs text-stone-500">
+              Already have an account?{' '}
+              <Link
+                href={`/login${
+                  params.get('next') ? `?next=${encodeURIComponent(params.get('next'))}` : ''
+                }`}
+                className="font-bold text-[#163e35] hover:underline"
+              >
+                Log in
+              </Link>
             </div>
           </div>
-        </div>
-
-        {/* Villa Photo with "More than just properties" badge */}
-        <div className="relative rounded-2xl overflow-hidden shadow-md aspect-[16/10] sm:aspect-[16/11] w-full mt-2">
-          <img
-            src="/photos/hero-home.jpg"
-            alt="Contemporary luxury villa residence"
-            className="w-full h-full object-cover"
-          />
-          {/* Curved dark green badge on bottom left corner */}
-          <div className="absolute -bottom-1 -left-1 bg-[#163e35] text-white px-5 sm:px-6 py-3.5 sm:py-4 rounded-tr-[45px] shadow-lg flex items-center">
-            <span className="font-serif italic text-sm sm:text-base tracking-wide text-[#d8edb3]">
-              More than just properties
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Form Side */}
-      <div className="w-full lg:w-1/2 p-6 sm:p-10 lg:p-12 flex flex-col justify-between bg-[#f8faf7]">
-        {/* Top-Right Quick Link */}
-        <div className="flex justify-end items-center text-xs text-stone-600 mb-4 sm:mb-6">
-          <span>Already have an account?</span>
-          <Link
-            href={`/login${
-              params.get('next') ? `?next=${encodeURIComponent(params.get('next'))}` : ''
-            }`}
-            className="ml-1.5 font-bold text-[#163e35] hover:underline inline-flex items-center gap-1"
-          >
-            Login <ArrowRight size={13} />
-          </Link>
-        </div>
-
-        {/* Clean Form Card */}
-        <div className="max-w-xl w-full mx-auto my-auto bg-white rounded-2xl p-6 sm:p-9 shadow-lg border border-stone-200/70">
-          {/* Top Green Accent Pill */}
-          <div className="w-8 h-1 bg-[#163e35] rounded-full mb-3" />
-
-          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
-            Create your account
-          </h2>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1 mb-6">
-            Join UrbanFindr to find, list or service properties across India.
-          </p>
 
           {error && (
             <div
               role="alert"
-              className="p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs mb-5 font-medium whitespace-pre-line"
+              className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs mb-3 font-medium whitespace-pre-line"
             >
               {error}
             </div>
           )}
 
-          <form className="space-y-4" onSubmit={submit}>
+          <form className="space-y-3" onSubmit={submit}>
             {/* Account Type Selection */}
             <div>
-              <div className="text-xs font-bold text-stone-800 mb-2.5">Select your account type</div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
+              <div className="text-xs font-bold text-stone-800 mb-1.5">Select your account type</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {ROLE_OPTIONS.map((opt) => {
                   const isSelected = selectedRole === opt.id;
                   const Icon = opt.icon;
@@ -547,29 +480,28 @@ export default function AuthPage({ register = false, adminLogin = false }) {
                       type="button"
                       key={opt.id}
                       onClick={() => setSelectedRole(opt.id)}
-                      className={`relative p-2.5 rounded-xl border text-center flex flex-col items-center justify-between min-h-[92px] transition-all cursor-pointer ${
+                      className={`relative p-2 rounded-xl border text-center flex flex-col items-center justify-between min-h-[72px] transition-all cursor-pointer ${
                         isSelected
                           ? 'border-[#163e35] bg-[#163e35] text-white shadow-sm ring-1 ring-[#163e35]'
                           : 'border-stone-200 bg-white text-stone-700 hover:border-[#163e35]/40 hover:bg-stone-50'
                       }`}
                     >
-                      {/* Active Checkmark Pill in top-right */}
                       {isSelected && (
-                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white text-[#163e35] flex items-center justify-center shadow-xs">
-                          <Check size={11} strokeWidth={3} />
+                        <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-white text-[#163e35] flex items-center justify-center shadow-xs">
+                          <Check size={10} strokeWidth={3} />
                         </span>
                       )}
 
                       <div
-                        className={`p-1.5 rounded-lg mb-1 ${
+                        className={`p-1 rounded-md mb-0.5 ${
                           isSelected ? 'text-white' : 'text-[#163e35]'
                         }`}
                       >
-                        <Icon size={20} />
+                        <Icon size={18} />
                       </div>
                       <div className="font-bold text-xs leading-tight">{opt.label}</div>
                       <div
-                        className={`text-[10px] leading-tight mt-0.5 ${
+                        className={`text-[9px] leading-tight mt-0.5 ${
                           isSelected ? 'text-[#d8edb3]' : 'text-stone-400'
                         }`}
                       >
@@ -582,15 +514,15 @@ export default function AuthPage({ register = false, adminLogin = false }) {
             </div>
 
             {/* 2-Column Inputs: Full Name & Phone Number */}
-            <div className="grid sm:grid-cols-2 gap-3 pt-1">
+            <div className="grid sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-semibold text-stone-800 mb-1.5">
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
                   Full name <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <UserIcon
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400"
-                    size={17}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                    size={16}
                   />
                   <input
                     name="name"
@@ -599,92 +531,90 @@ export default function AuthPage({ register = false, adminLogin = false }) {
                     minLength={2}
                     maxLength={80}
                     placeholder="e.g. Priya Sharma"
-                    className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 border border-stone-300 rounded-lg text-sm text-stone-900 bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#163e35] focus:border-[#163e35] transition-all"
+                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-lg text-xs sm:text-sm text-stone-900 bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#163e35] focus:border-[#163e35] transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-800 mb-1.5">
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
                   Phone number <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Phone
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400"
-                    size={17}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                    size={16}
                   />
                   <input
                     name="phone"
                     type="tel"
                     autoComplete="tel"
                     required
-                    pattern="\+?[0-9\s-]{10,16}"
+                    pattern="\\+?[0-9\\s-]{10,16}"
                     placeholder="10-digit mobile number"
-                    className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 border border-stone-300 rounded-lg text-sm text-stone-900 bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#163e35] focus:border-[#163e35] transition-all"
+                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-lg text-xs sm:text-sm text-stone-900 bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#163e35] focus:border-[#163e35] transition-all"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Full-width Email Input */}
-            <div>
-              <label className="block text-xs font-semibold text-stone-800 mb-1.5">
-                Email address <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Mail
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400"
-                  size={17}
-                />
-                <input
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  maxLength={200}
-                  placeholder="name@example.com"
-                  className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 border border-stone-300 rounded-lg text-sm text-stone-900 bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#163e35] focus:border-[#163e35] transition-all"
-                />
+            {/* 2-Column Inputs: Email & Password */}
+            <div className="grid sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  Email address <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                    size={16}
+                  />
+                  <input
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    maxLength={200}
+                    placeholder="name@example.com"
+                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-lg text-xs sm:text-sm text-stone-900 bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#163e35] focus:border-[#163e35] transition-all"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Full-width Password Input */}
-            <div>
-              <label className="block text-xs font-semibold text-stone-800 mb-1.5">
-                Password <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Lock
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400"
-                  size={17}
-                />
-                <input
-                  name="password"
-                  type={showRegisterPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  minLength={10}
-                  maxLength={100}
-                  placeholder="Create a strong password"
-                  className="w-full pl-10 pr-10 py-2.5 sm:py-3 border border-stone-300 rounded-lg text-sm text-stone-900 bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#163e35] focus:border-[#163e35] transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 focus:outline-none cursor-pointer"
-                  aria-label={showRegisterPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showRegisterPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
+              <div>
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                    size={16}
+                  />
+                  <input
+                    name="password"
+                    type={showRegisterPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    required
+                    minLength={10}
+                    maxLength={100}
+                    placeholder="Min 10 characters"
+                    className="w-full pl-9 pr-9 py-2 border border-stone-300 rounded-lg text-xs sm:text-sm text-stone-900 bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#163e35] focus:border-[#163e35] transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 focus:outline-none cursor-pointer"
+                    aria-label={showRegisterPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
-              <p className="text-[11px] text-stone-500 mt-1">
-                Use at least 10 characters with a mix of letters, numbers and symbols.
-              </p>
             </div>
 
             {/* Role specific inputs */}
             {selectedRole === 'broker' && (
-              <div className="panel bg-sky-50/60 border-sky-200/80 p-3.5 space-y-3 my-2 rounded-xl">
+              <div className="panel bg-sky-50/60 border-sky-200/80 p-3 space-y-2.5 my-1.5 rounded-xl">
                 <div className="flex items-center gap-2 text-sky-900 font-semibold text-xs tracking-wider uppercase">
                   <Handshake size={15} /> Broker Credentials
                 </div>
@@ -700,7 +630,7 @@ export default function AuthPage({ register = false, adminLogin = false }) {
             )}
 
             {selectedRole === 'builder' && (
-              <div className="panel bg-amber-50/60 border-amber-200/80 p-3.5 space-y-3 my-2 rounded-xl">
+              <div className="panel bg-amber-50/60 border-amber-200/80 p-3 space-y-2.5 my-1.5 rounded-xl">
                 <div className="flex items-center gap-2 text-amber-900 font-semibold text-xs tracking-wider uppercase">
                   <Building2 size={15} /> Developer Details
                 </div>
@@ -721,7 +651,7 @@ export default function AuthPage({ register = false, adminLogin = false }) {
             )}
 
             {selectedRole === 'channel_partner' && (
-              <div className="panel bg-emerald-50/60 border-emerald-200/80 p-3.5 space-y-3 my-2 rounded-xl">
+              <div className="panel bg-emerald-50/60 border-emerald-200/80 p-3 space-y-2.5 my-1.5 rounded-xl">
                 <div className="flex items-center gap-2 text-emerald-900 font-semibold text-xs tracking-wider uppercase">
                   <Briefcase size={15} /> Channel Partner Credentials
                 </div>
@@ -747,7 +677,7 @@ export default function AuthPage({ register = false, adminLogin = false }) {
             )}
 
             {selectedRole === 'service_provider' && (
-              <div className="panel bg-purple-50/60 border-purple-200/80 p-3.5 space-y-3 my-2 rounded-xl">
+              <div className="panel bg-purple-50/60 border-purple-200/80 p-3 space-y-2.5 my-1.5 rounded-xl">
                 <div className="flex items-center gap-2 text-purple-900 font-semibold text-xs tracking-wider uppercase">
                   <Wrench size={15} /> Service Specialization
                 </div>
@@ -779,7 +709,7 @@ export default function AuthPage({ register = false, adminLogin = false }) {
             <button
               type="submit"
               disabled={busy}
-              className="w-full mt-4 bg-[#163e35] hover:bg-[#204e43] text-white font-semibold py-3.5 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm text-sm cursor-pointer disabled:opacity-50"
+              className="w-full mt-2.5 bg-[#163e35] hover:bg-[#204e43] text-white font-semibold py-2.5 sm:py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm text-sm cursor-pointer disabled:opacity-50"
             >
               {busy ? (
                 'Creating account...'
@@ -792,7 +722,7 @@ export default function AuthPage({ register = false, adminLogin = false }) {
           </form>
 
           {/* Terms and Privacy policy */}
-          <p className="text-center text-[11px] text-stone-500 mt-5 leading-relaxed">
+          <p className="text-center text-[11px] text-stone-500 mt-3 leading-relaxed">
             By creating an account, you agree to our{' '}
             <Link href="/about" className="font-semibold text-[#163e35] hover:underline">
               Terms of Service
@@ -804,9 +734,6 @@ export default function AuthPage({ register = false, adminLogin = false }) {
             .
           </p>
         </div>
-
-        {/* Bottom spacing helper */}
-        <div className="h-2" />
       </div>
     </section>
   );

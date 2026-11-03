@@ -246,7 +246,7 @@ export default function ServiceHero({
 
           {/* RIGHT COLUMN: Positioned Up and to the Right, Fully Contained */}
           <div className="lg:col-span-5 w-full flex justify-end items-start relative z-10">
-            <div id="booking-form" className="w-full max-w-[420px] ml-auto rounded-2xl transition-all duration-300">
+            <div id="booking-form" className="w-full max-w-[420px] ml-auto rounded-2xl transition-all duration-300 scroll-mt-28 sm:scroll-mt-32">
               <ServiceRequestForm
                 category={category}
                 initialCity={searchCity}

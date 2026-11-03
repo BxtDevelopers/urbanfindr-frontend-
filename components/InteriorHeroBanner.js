@@ -1,14 +1,17 @@
 'use client';
 
-import React from 'react';
+import Link from 'next/link';
 import { 
   Headset, 
   Users, 
   FileText, 
-  ShieldCheck 
+  ShieldCheck, 
+  Sparkles, 
+  ArrowRight, 
+  Calculator 
 } from 'lucide-react';
 
-export default function InteriorHeroBanner() {
+export default function InteriorHeroBanner({ onBookClick, onGetQuoteClick }) {
   return (
     <section className="relative w-full overflow-hidden bg-white min-h-[460px] sm:min-h-[500px] flex items-center border-b border-stone-200/70" aria-label="UrbanInteriors Hero">
       
@@ -41,25 +44,25 @@ export default function InteriorHeroBanner() {
       <div className="wrap relative z-10 pt-12 sm:pt-16 lg:pt-20 pb-16 sm:pb-20 lg:pb-24">
         <div className="max-w-xl flex flex-col items-start">
           
-          {/* Brand Badge: Small card with cream background and light green text on 'interiors' & 'finder' */}
+          {/* Brand Badge */}
           <div className="inline-flex items-center gap-2.5 bg-[#f0e2cd] backdrop-blur-md px-4 py-2 rounded-xl shadow-xs border border-[#dec5a2] mb-6">
             <span className="font-extrabold text-lg text-forest tracking-tight">
               urban<span className="text-[#55822e]">interiors</span>
             </span>
             <span className="w-1 h-1 rounded-full bg-stone-400" />
             <span className="text-xs text-stone-600 font-medium">
-              by <strong className="text-forest font-bold">urban<span className="text-[#55822e]">finder</span></strong>
+              by <strong className="text-forest font-bold">urban<span className="text-[#55822e]">findr</span></strong>
             </span>
           </div>
 
-          {/* Main Headline - In Website Theme Forest Green */}
+          {/* Main Headline */}
           <h1 className="!text-3xl sm:!text-4xl lg:!text-5xl font-medium text-forest tracking-tight leading-[1.18] mb-6">
             Find the right <span className="font-black text-forest">Interior</span>
             <br />
             <span className="font-black text-forest">Designer</span> for your home
           </h1>
 
-          {/* 3 Value Propositions - In Website Theme Forest Green */}
+          {/* 3 Value Propositions */}
           <div className="space-y-3.5 mb-7 text-sm sm:text-base text-forest">
             <div className="flex items-center gap-3">
               <span className="w-8 h-8 rounded-full bg-[#edf2e2] border border-[#d6e2cd] flex items-center justify-center shrink-0 text-forest shadow-xs">
@@ -89,7 +92,40 @@ export default function InteriorHeroBanner() {
             </div>
           </div>
 
-          {/* Trust Badge - In Theme Forest Green */}
+          {/* Action Row & Trust Badge */}
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            {onBookClick && (
+              <button
+                type="button"
+                onClick={onBookClick}
+                className="btn btn-primary px-5 py-3 text-xs sm:text-sm font-bold shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95"
+              >
+                <Sparkles size={16} />
+                <span>Book Free Consultation</span>
+              </button>
+            )}
+
+            {onGetQuoteClick && (
+              <button
+                type="button"
+                onClick={onGetQuoteClick}
+                className="btn bg-[#55822e] hover:bg-[#436724] text-white px-5 py-3 text-xs sm:text-sm font-bold shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95"
+              >
+                <Calculator size={15} />
+                <span>Get Instant Quote</span>
+              </button>
+            )}
+
+            <Link
+              href="/dashboard?section=interiors"
+              className="btn-outline px-4 py-3 text-xs sm:text-sm font-semibold flex items-center gap-2 bg-white/90 hover:bg-white transition-all shadow-xs"
+            >
+              <span>Track Project</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* Trust Badge */}
           <div className="inline-flex items-center gap-2 bg-[#edf2e2] px-4 py-2 rounded-full border border-[#d6e2cd] text-forest font-bold text-xs sm:text-sm shadow-xs">
             <ShieldCheck size={16} className="text-forest shrink-0 stroke-[2.4]" />
             <span className="text-forest">+50,000 Smiles Delivered</span>

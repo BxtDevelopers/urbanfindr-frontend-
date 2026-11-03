@@ -12,7 +12,18 @@ export default function PopularServices({ category, onSelectService }) {
       onSelectService(serviceName);
     }
     // Smooth scroll to hero form
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const elem = document.getElementById('booking-form');
+    if (elem) {
+      const navOffset = 90;
+      const elementPosition = elem.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navOffset;
+      window.scrollTo({
+        top: Math.max(0, offsetPosition),
+        behavior: 'smooth'
+      });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (

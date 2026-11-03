@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import {  useState  } from 'react';
 import { Play, X } from 'lucide-react';
 
 const STEPS = [
@@ -145,7 +145,7 @@ const STEPS = [
   },
 ];
 
-export default function InteriorStepsProcess() {
+export default function InteriorStepsProcess({ onBookConsultation }) {
   const [showVideoModal, setShowVideoModal] = useState(false);
 
   return (

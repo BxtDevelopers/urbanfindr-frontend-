@@ -32,6 +32,7 @@ import {
   Calendar,
   Home,
   Tag,
+  ChevronLeft,
   ChevronRight,
   TrendingUp,
   UserCheck,
@@ -582,6 +583,7 @@ export default function ChannelPartnerDashboard({
   // Active Modals
   const [selectedLead, setSelectedLead] = useState(null);
   const [selectedListing, setSelectedListing] = useState(null);
+  const [listingActiveImg, setListingActiveImg] = useState(0);
   const [selectedMember, setSelectedMember] = useState(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -3589,29 +3591,111 @@ export default function ChannelPartnerDashboard({
             className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden no-scrollbar my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Image Preview */}
-            <div className="relative aspect-[16/9] bg-stone-900">
-              <img
-                src={propertyImages(selectedListing)[0]}
-                alt={selectedListing.title}
-                className="w-full h-full object-cover"
-              />
-              <button
-                onClick={() => setSelectedListing(null)}
-                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
+            {/* Image Preview & Gallery Carousel */}
+            {(() => {
+              const lImages = propertyImages(selectedListing);
+              const currentImg = lImages[listingActiveImg] || lImages[0];
+              return (
+                <div className="space-y-2 bg-stone-950 p-3 sm:p-4 border-b border-stone-200">
+                  <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-stone-900 border border-white/10 group">
+                    <img
+                      src={currentImg}
+                      alt={selectedListing.title}
+                      className="w-full h-full object-cover transition-all duration-300"
+                    />
+                    <button
+                      onClick={() => {
+                        setSelectedListing(null);
+                        setListingActiveImg(0);
+                      }}
+                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition-colors cursor-pointer z-20 shadow"
+                    >
+                      <X size={16} />
+                    </button>
 
-              <div className="absolute bottom-3 left-4 flex gap-2">
-                <span className="px-3 py-1 bg-[#163e35] text-white rounded-full text-xs font-bold">
-                  {selectedListing.status?.toUpperCase()}
-                </span>
-                <span className="px-3 py-1 bg-black/60 text-white rounded-full text-xs font-bold">
-                  {selectedListing.purpose?.toUpperCase()}
-                </span>
-              </div>
-            </div>
+                    {/* Previous & Next overlay arrows */}
+                    {lImages.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setListingActiveImg((listingActiveImg - 1 + lImages.length) % lImages.length);
+                          }}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md shadow transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setListingActiveImg((listingActiveImg + 1) % lImages.length);
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md shadow transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </>
+                    )}
+
+                    <div className="absolute bottom-2.5 left-3 flex gap-1.5 z-10">
+                      <span className="px-2.5 py-0.5 bg-[#163e35] text-white rounded-full text-[10px] font-bold">
+                        {selectedListing.status?.toUpperCase()}
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-black/60 text-white rounded-full text-[10px] font-bold">
+                        {selectedListing.purpose?.toUpperCase()}
+                      </span>
+                    </div>
+
+                    {lImages.length > 1 && (
+                      <span className="absolute bottom-2.5 right-3 bg-black/75 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-full backdrop-blur-md border border-white/10 z-10">
+                        {listingActiveImg + 1} / {lImages.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Remaining Images Scroll Strip */}
+                  {lImages.length > 1 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between px-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-300">
+                          Remaining Images ({lImages.length})
+                        </span>
+                        <span className="text-[10px] text-stone-400">
+                          Click to inspect
+                        </span>
+                      </div>
+                      <div className="flex gap-2.5 overflow-x-auto pb-1 pt-1 no-scrollbar">
+                        {lImages.map((img, idx) => {
+                          const isActive = listingActiveImg === idx;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setListingActiveImg(idx);
+                              }}
+                              className={`relative w-20 sm:w-24 h-14 sm:h-16 rounded-xl border-2 overflow-hidden shrink-0 transition-all cursor-pointer ${
+                                isActive
+                                  ? 'border-[#d8edb3] ring-2 ring-[#d8edb3]/40 scale-105 shadow-md'
+                                  : 'border-white/20 hover:border-white/50 opacity-80 hover:opacity-100'
+                              }`}
+                            >
+                              <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                              <span className="absolute bottom-1 right-1 text-[9px] font-bold px-1 py-0.2 bg-black/70 text-white rounded">
+                                #{idx + 1}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Details */}
             <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar">

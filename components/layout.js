@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useState, useEffect, useRef, Fragment } from 'react';
+import {  useState, useEffect, useRef, Fragment  } from 'react';
 import {
   Menu,
   X,
@@ -12,6 +12,9 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  LayoutDashboard,
+  LogOut,
+  User,
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
 
@@ -80,8 +83,14 @@ export function Header() {
 
   const [open, setOpen] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const pathname = usePathname();
+
+  useEffect(() => {
+    setUserMenuOpen(false);
+  }, [pathname]);
 
   const [servicesLauncherOpen, setServicesLauncherOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
@@ -104,6 +113,9 @@ export function Header() {
     function handleClickOutside(e) {
       if (!e.target.closest?.('.services-launcher-wrap')) {
         setServicesLauncherOpen(false);
+      }
+      if (!e.target.closest?.('.user-menu-wrap')) {
+        setUserMenuOpen(false);
       }
     }
     document.addEventListener('click', handleClickOutside);
@@ -190,62 +202,75 @@ export function Header() {
           </div>
         </nav>
 
-        {/* Right-side actions: User Account & Role Badge */}
+        {/* Right-side actions: User Avatar Initial & Dropdown */}
         <div className="flex gap-3 items-center">
           {user ? (
-            user.role === 'admin' ? (
-              <div className="flex items-center gap-2">
-                <Link
-                  className="account-btn !bg-forest !text-white flex items-center gap-1.5 font-semibold text-xs py-1.5 px-3 rounded-md shadow-sm hover:!bg-[#24564a] transition-all"
-                  href="/admin"
-                  title="Go to Admin Command Center"
-                >
-                  <ShieldCheck size={14} className="text-lime" />
-                  <span>Admin: {(user.name || 'Admin').split(' ')[0]}</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="text-xs text-muted hover:text-forest hidden sm:inline-block px-1"
-                  title="Log out"
-                >
-                  Sign out
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  className="account-btn flex items-center gap-2"
-                  href="/dashboard"
-                  title={`${user.name} (${roleMeta?.label || 'Account'})`}
-                >
-                  <span>{(user.name || 'Account').split(' ')[0]}</span>
-                  {roleMeta && (
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        background: roleMeta.bgColor,
-                        color: roleMeta.color,
-                        border: `1px solid ${roleMeta.borderColor}`,
-                      }}
+            <div className="relative user-menu-wrap" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((prev) => !prev)}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-forest text-white font-bold text-sm sm:text-base flex items-center justify-center shadow-sm hover:shadow hover:bg-[#1f4a3f] ring-2 ring-forest/15 hover:ring-lime/50 transition-all cursor-pointer select-none"
+                aria-label="User account menu"
+                aria-expanded={userMenuOpen}
+                title={user.name || 'Account'}
+              >
+                {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+              </button>
+
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 sm:w-60 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in">
+                  {/* User Profile Header */}
+                  <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-2.5 mb-1">
+                    <div className="w-8 h-8 rounded-full bg-forest/10 text-forest font-bold text-sm flex items-center justify-center shrink-0">
+                      {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-stone-900 truncate">
+                        {user.name || 'User'}
+                      </p>
+                      <p className="text-[11px] text-stone-500 truncate capitalize">
+                        {user.email || roleMeta?.label || user.role}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Dropdown Options */}
+                  <div className="space-y-0.5 pt-1">
+                    <Link
+                      href={user.role === 'admin' ? '/admin' : '/dashboard'}
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
                     >
-                      {roleMeta.shortLabel}
-                    </span>
-                  )}
-                </Link>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="text-xs text-muted hover:text-forest hidden sm:inline-block px-1"
-                  title="Log out"
-                >
-                  Sign out
-                </button>
-              </div>
-            )
+                      <LayoutDashboard size={15} className="text-stone-500" />
+                      <span>Dashboard</span>
+                    </Link>
+
+                    {user.role === 'admin' && (
+                      <Link
+                        href="/dashboard?view=user"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
+                      >
+                        <User size={15} className="text-stone-500" />
+                        <span>User Portal View</span>
+                      </Link>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all text-left cursor-pointer"
+                    >
+                      <LogOut size={15} className="text-red-500" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href="/login"
@@ -492,9 +517,7 @@ export function Header() {
                     setOpen(false);
                     logout();
                   }}
-                >
-                  Sign out
-                </button>
+                >Logout</button>
               </>
             ) : (
               <>
@@ -519,9 +542,7 @@ export function Header() {
                     setOpen(false);
                     logout();
                   }}
-                >
-                  Sign out
-                </button>
+                >Logout</button>
               </>
             )
           ) : (

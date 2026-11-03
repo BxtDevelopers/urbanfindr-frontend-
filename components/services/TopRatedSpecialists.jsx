@@ -92,7 +92,13 @@ export default function TopRatedSpecialists({
     }
     const elem = document.getElementById('booking-form');
     if (elem) {
-      elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const navOffset = 90;
+      const elementPosition = elem.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navOffset;
+      window.scrollTo({
+        top: Math.max(0, offsetPosition),
+        behavior: 'smooth'
+      });
       elem.classList.add('ring-4', 'ring-emerald-500/40', 'transition-all', 'duration-500');
       setTimeout(() => {
         elem.classList.remove('ring-4', 'ring-emerald-500/40');

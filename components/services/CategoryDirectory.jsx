@@ -685,8 +685,14 @@ export default function CategoryDirectory({
       {/* QUICK BOOKING MODAL (WHEN USER CLICKS BOOK PROFESSIONAL)   */}
       {/* ======================================================== */}
       {bookingModalPro && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-md p-5 sm:p-6 relative text-left">
+        <div 
+          onClick={closeBookingModal}
+          className="fixed inset-0 z-[99999] overflow-y-auto bg-stone-900/80 backdrop-blur-sm p-3 sm:p-6 flex flex-col items-center justify-start pt-6 sm:pt-10 pb-12"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] relative text-left shrink-0"
+          >
             
             {/* Close Button */}
             <button
@@ -698,7 +704,7 @@ export default function CategoryDirectory({
             </button>
 
             {modalSuccess ? (
-              <div className="text-center py-4 space-y-3">
+              <div className="text-center p-6 space-y-3">
                 <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCircle2 size={26} />
                 </div>
@@ -734,7 +740,7 @@ export default function CategoryDirectory({
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleModalSubmit} className="space-y-3">
+              <form onSubmit={handleModalSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-3 overscroll-contain">
                 {/* Header with Professional Info */}
                 <div className="flex items-center gap-3 pb-3 border-b border-stone-100">
                   <img

@@ -29,6 +29,8 @@ import { money, date } from '@/lib/format';
 import { serviceCategories } from '@/lib/serviceCategories';
 import Listings from './listings';
 import ChannelPartnerDashboard from './channel-partner-dashboard';
+import BookingsTracker from './bookings-tracker';
+import InteriorProjectHub from './interior/InteriorProjectHub';
 
 export default function Dashboard({ section = '' }) {
   const { user, setUser, toast, roleMeta, logout } = useApp(),
@@ -61,6 +63,8 @@ export default function Dashboard({ section = '' }) {
       ? [
           ['Saved homes', 'favorites'],
           ['Saved searches & alerts', 'saved-searches'],
+          ['Bookings & Services', 'bookings'],
+          ['Home Interiors', 'interiors'],
           ['Site visits', 'visits'],
           ['Consultations & enquiries', 'leads'],
         ]
@@ -90,14 +94,16 @@ export default function Dashboard({ section = '' }) {
       : []),
     ...(isServiceProvider
       ? [
-          ['Service leads & quotes', 'leads'],
+          ['Bookings & Quotes', 'bookings'],
+          ['Interior Projects', 'interiors'],
+          ['Service leads & inquiries', 'leads'],
           ['Consultations', 'visits'],
         ]
       : []),
     ['Messages', 'messages'],
     ['Notifications', 'notifications'],
     ['Account profile', 'profile'],
-    ...(isAdmin ? [['Administration', 'admin']] : []),
+    ...(isAdmin ? [['Service Bookings', 'bookings'], ['Administration', 'admin']] : []),
   ];
 
   return (
@@ -155,6 +161,21 @@ export default function Dashboard({ section = '' }) {
             <Listings favorites />
           ) : section === 'saved-searches' ? (
             <SavedSearches />
+          ) : section === 'bookings' ? (
+            <BookingsTracker />
+          ) : section === 'interiors' ? (
+            <div className="space-y-6">
+              <div className="mb-2">
+                <span className="eyebrow">HOME INTERIOR MANAGEMENT</span>
+                <h2 className="!text-3xl font-extrabold text-stone-900 mt-1">
+                  Active Interior Projects &amp; 3D Proposals
+                </h2>
+                <p className="text-xs sm:text-sm text-stone-500 mt-1">
+                  Track 3D walkthroughs, verify milestone progress, review itemized quotations, and approve site deliverables.
+                </p>
+              </div>
+              <InteriorProjectHub />
+            </div>
           ) : section === 'properties' ? (
             <MyProperties />
           ) : section === 'messages' ? (
