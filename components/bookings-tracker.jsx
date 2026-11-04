@@ -305,16 +305,6 @@ export default function BookingsTracker() {
                   </span>
                 )}
               </button>
-              {tabCounts.cancelled > 0 && (
-                <button
-                  onClick={() => setActiveTab('cancelled')}
-                  className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === 'cancelled' ? 'bg-white text-rose-800 shadow-xs font-bold' : 'text-stone-600 hover:text-rose-700'
-                  }`}
-                >
-                  <span>Cancelled / Declined ({tabCounts.cancelled})</span>
-                </button>
-              )}
             </>
           ) : (
             <>
@@ -459,6 +449,7 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
     label: effectiveStatus,
     color: 'bg-stone-100 text-stone-700 border-stone-200'
   };
+  const statusLabel = isProvider && ['completed', 'closed'].includes(effectiveStatus) ? 'Lead Closed' : statusInfo.label;
 
   // Stepper steps: Customers have 3 steps (Request Sent -> Connected -> Completed)
   // Providers have 4 steps (New Lead -> Connected -> Completed -> Lead Closed)
@@ -514,7 +505,7 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
             {['completed', 'closed'].includes(effectiveStatus) && (
               <Check size={12} strokeWidth={3} className="text-emerald-700" />
             )}
-            {statusInfo.label}
+            {statusLabel}
           </span>
         </div>
       </div>
@@ -711,17 +702,6 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
               className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <CheckCircle2 size={14} /> Mark Completed
-            </button>
-          )}
-
-          {/* CANCEL / DECLINE LEAD BUTTON (for Provider) */}
-          {canManage && !['completed', 'closed', 'cancelled', 'rejected'].includes(booking.status) && (
-            <button
-              onClick={() => onAction('cancel')}
-              className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-stone-600 border border-stone-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-              title="Decline or cancel this lead if unable to service"
-            >
-              <X size={13} /> Cancel / Decline Lead
             </button>
           )}
 
@@ -1260,6 +1240,7 @@ export function InvoiceAndDetailsModal({ booking, onClose, isProvider, isAdmin, 
     label: effectiveStatus,
     color: 'bg-stone-100 text-stone-700 border-stone-200'
   };
+  const statusLabel = isProvider && ['completed', 'closed'].includes(effectiveStatus) ? 'Lead Closed' : statusInfo.label;
 
   const content = (
     <div
@@ -1302,7 +1283,7 @@ export function InvoiceAndDetailsModal({ booking, onClose, isProvider, isAdmin, 
                   {['completed', 'closed'].includes(effectiveStatus) && (
                     <Check size={12} strokeWidth={3} className="text-emerald-700" />
                   )}
-                  {statusInfo.label}
+                  {statusLabel}
                 </span>
               </div>
             </div>
