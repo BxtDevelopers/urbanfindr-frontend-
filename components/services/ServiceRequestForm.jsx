@@ -323,26 +323,6 @@ export default function ServiceRequestForm({
           </select>
         </div>
 
-        {/* 1.5. Select Preferred Specialist */}
-        {specialists.length > 0 && (
-          <div>
-            <label className="block text-xs font-semibold text-stone-800 mb-1">
-              Select Specialist / Professional *
-            </label>
-            <select
-              value={selectedSpecialistId}
-              onChange={(e) => setSelectedSpecialistId(e.target.value)}
-              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs bg-white text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35]"
-            >
-              {specialists.map((pro) => (
-                <option key={pro._id} value={pro._id}>
-                  {pro.specialist || pro.name} ({pro.experience || 'Verified Specialist'})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {/* 2. Customer Contact Preference: Call / Message / Direct Quotation */}
         <div>
           <div className="flex items-center justify-between mb-1">
