@@ -141,7 +141,6 @@ export default function ServiceRequestForm({
     setSubmitting(true);
     try {
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
-      const selectedPro = specialists.find((p) => String(p._id) === String(selectedSpecialistId)) || specialists[0] || null;
       const payload = {
         category: category?.label || 'General Service',
         categorySlug: category?.slug || 'general',
@@ -156,11 +155,14 @@ export default function ServiceRequestForm({
         lastName: lastName.trim(),
         name: fullName,
         phone: cleanPhone,
-        email: user?.email || undefined,
-        assignedSpecialist: selectedPro ? (selectedPro.specialist || selectedPro.name) : undefined,
-        assignedSpecialistId: selectedPro ? String(selectedPro._id) : undefined,
-        assignedSpecialistRating: selectedPro?.rating
+        email: user?.email || undefined
       };
+
+      if (specialistPreload?.name || specialistPreload?.specialist) {
+        payload.assignedSpecialist = specialistPreload.specialist || specialistPreload.name;
+        if (specialistPreload._id) payload.assignedSpecialistId = String(specialistPreload._id);
+        if (specialistPreload.rating) payload.assignedSpecialistRating = specialistPreload.rating;
+      }
 
       const res = await api('service-requests', {
         method: 'POST',

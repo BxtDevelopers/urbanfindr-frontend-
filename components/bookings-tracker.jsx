@@ -88,6 +88,25 @@ export default function BookingsTracker() {
     const uName = String(user.name || '').toLowerCase().trim();
     const uCompany = String(user.company || '').toLowerCase().trim();
     const uEmail = String(user.email || '').toLowerCase().trim();
+    const uCat = String(user.serviceCategory || '').toLowerCase().trim().replace(/_/g, '-');
+    const uCatClean = uCat.replace(/s$/, '');
+
+    // Category match: all providers of this category receive requests for this category
+    const itemCatSlug = String(item.categorySlug || '').toLowerCase().trim().replace(/_/g, '-');
+    const itemCatSlugClean = itemCatSlug.replace(/s$/, '');
+    const itemCat = String(item.category || '').toLowerCase().trim().replace(/\s+/g, '-').replace(/_/g, '-');
+    const itemCatClean = itemCat.replace(/s$/, '');
+
+    if (uCat && (
+      itemCatSlug === uCat ||
+      itemCatSlugClean === uCatClean ||
+      itemCat === uCat ||
+      itemCatClean === uCatClean ||
+      (uCatClean.length > 3 && itemCatSlug.includes(uCatClean)) ||
+      (itemCatSlugClean.length > 3 && uCat.includes(itemCatSlugClean))
+    )) {
+      return true;
+    }
 
     // 1. Direct Specialist ID match
     if (uId && item.assignedSpecialistId && String(item.assignedSpecialistId) === uId) {
