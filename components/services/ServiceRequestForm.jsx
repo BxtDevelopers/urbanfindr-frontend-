@@ -46,11 +46,11 @@ export default function ServiceRequestForm({
   const [serviceType, setServiceType] = useState(
     selectedServicePreload && serviceOptions.includes(selectedServicePreload)
       ? selectedServicePreload
-      : serviceOptions[0] || ''
+      : ''
   );
   const [contactPreference, setContactPreference] = useState('call'); // 'call' | 'message' | 'quote'
   const [locality, setLocality] = useState('');
-  const [city, setCity] = useState(initialCity || 'Bengaluru');
+  const [city, setCity] = useState(initialCity || '');
   const [firstName, setFirstName] = useState(user?.name ? user.name.split(' ')[0] : '');
   const [lastName, setLastName] = useState(user?.name ? user.name.split(' ').slice(1).join(' ') : '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -315,6 +315,7 @@ export default function ServiceRequestForm({
             onChange={(e) => setServiceType(e.target.value)}
             className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs bg-white text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35]"
           >
+            <option value="">Select Service Type</option>
             {serviceOptions.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
@@ -323,21 +324,21 @@ export default function ServiceRequestForm({
           </select>
         </div>
 
-        {/* 2. Customer Contact Preference: Call / Message / Direct Quotation */}
+        {/* 2. Customer Contact Preference: Call / Message (Direct Quote hidden) */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-[11px] font-semibold text-stone-700">
               How would you like to connect? *
             </label>
             <span className="text-[10px] text-stone-500">
-              {contactPreference === 'call' ? 'Specialist calls you' : contactPreference === 'message' ? 'WhatsApp message' : 'Upfront price quote'}
+              {contactPreference === 'call' ? 'Specialist calls you' : 'WhatsApp message'}
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setContactPreference('call')}
-              className={`py-1.5 px-1.5 rounded-lg border text-center transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              className={`py-1.5 px-2 rounded-lg border text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 contactPreference === 'call'
                   ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold ring-1 ring-emerald-500 shadow-xs'
                   : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
@@ -350,27 +351,14 @@ export default function ServiceRequestForm({
             <button
               type="button"
               onClick={() => setContactPreference('message')}
-              className={`py-1.5 px-1.5 rounded-lg border text-center transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              className={`py-1.5 px-2 rounded-lg border text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 contactPreference === 'message'
                   ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold ring-1 ring-emerald-500 shadow-xs'
                   : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
               }`}
             >
               <MessageCircle size={12} className={contactPreference === 'message' ? 'text-emerald-700' : 'text-stone-500'} />
-              <span className="text-xs">Message</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setContactPreference('quote')}
-              className={`py-1.5 px-1.5 rounded-lg border text-center transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                contactPreference === 'quote'
-                  ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold ring-1 ring-emerald-500 shadow-xs'
-                  : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
-              }`}
-            >
-              <FileSpreadsheet size={12} className={contactPreference === 'quote' ? 'text-emerald-700' : 'text-stone-500'} />
-              <span className="text-xs">Direct Quote</span>
+              <span className="text-xs">Message / WhatsApp</span>
             </button>
           </div>
         </div>
@@ -399,6 +387,7 @@ export default function ServiceRequestForm({
               onChange={(e) => setCity(e.target.value)}
               className="w-full px-2 py-1.5 border border-stone-300 rounded-lg text-xs bg-white text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35]"
             >
+              <option value="">Select City</option>
               {CITIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
