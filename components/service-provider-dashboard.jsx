@@ -106,13 +106,11 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
       ['submitted', 'requested', 'pending', 'new'].includes(i.status)
     );
     const connectedLeads = items.filter((i) =>
-      ['contacted', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(i.status)
+      ['contacted', 'connected', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(i.status)
     );
-    const completed = items.filter((i) => i.status === 'completed');
-    const closed = items.filter((i) => i.status === 'closed');
+    const completed = items.filter((i) => i.status === 'completed' || i.status === 'closed');
 
     const totalRevenue = completed
-      .concat(closed)
       .reduce((sum, item) => {
         const amt = Number(item.invoice?.total || item.invoice?.subtotal || item.quotation?.amount || item.predefinedPrice || 0);
         return sum + amt;
@@ -127,7 +125,6 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
       newCount: newLeads.length,
       connectedCount: connectedLeads.length,
       completedCount: completed.length,
-      closedCount: closed.length,
       totalCount: items.length,
       totalRevenue,
       newLeads: newLeads.slice(0, 5),
@@ -253,7 +250,7 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         {/* KPI Summary Cards */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div
             onClick={() => setActiveSection('leads')}
             className="p-4 bg-white rounded-2xl border border-stone-200/90 shadow-xs hover:border-[#163e35] transition-all cursor-pointer"
@@ -293,21 +290,7 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
             <div className="text-2xl sm:text-3xl font-extrabold text-stone-900">
               {metrics.completedCount}
             </div>
-            <div className="text-[11px] text-stone-500 mt-1">Ready to close &amp; archive</div>
-          </div>
-
-          <div
-            onClick={() => setActiveSection('leads')}
-            className="p-4 bg-white rounded-2xl border border-stone-200/90 shadow-xs hover:border-[#163e35] transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between text-stone-700 text-xs font-bold mb-1">
-              <span>Closed Leads</span>
-              <Check size={14} className="text-stone-500" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-stone-900">
-              {metrics.closedCount}
-            </div>
-            <div className="text-[11px] text-stone-500 mt-1">Finalized &amp; archived</div>
+            <div className="text-[11px] text-stone-500 mt-1">Service finished</div>
           </div>
         </section>
 
@@ -405,6 +388,15 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
                             <>
                               <a
                                 href={`tel:${lead.phone}`}
+                                onClick={async () => {
+                                  try {
+                                    await api(`service-requests/${lead._id}`, {
+                                      method: 'PATCH',
+                                      body: { action: 'status', status: 'contacted' }
+                                    });
+                                    reload();
+                                  } catch {}
+                                }}
                                 className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold flex items-center gap-1 transition-colors"
                               >
                                 <Phone size={12} /> Call
@@ -413,6 +405,15 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
                                 href={`https://wa.me/${String(lead.phone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${lead.name}, I am reaching out from UrbanFinder regarding your ${lead.serviceType} booking.`)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                onClick={async () => {
+                                  try {
+                                    await api(`service-requests/${lead._id}`, {
+                                      method: 'PATCH',
+                                      body: { action: 'status', status: 'contacted' }
+                                    });
+                                    reload();
+                                  } catch {}
+                                }}
                                 className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center gap-1 transition-colors"
                               >
                                 <MessageCircle size={12} /> WhatsApp
@@ -459,9 +460,9 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
                 <div className="w-8 h-8 rounded-lg bg-stone-100 text-stone-800 flex items-center justify-center font-bold">
                   3
                 </div>
-                <h3 className="font-bold text-stone-900 text-sm">Close and Archive Leads</h3>
+                <h3 className="font-bold text-stone-900 text-sm">Mark Work Completed</h3>
                 <p className="text-stone-500 text-xs leading-relaxed">
-                  After payment collection and client confirmation, click "Close Lead" to finalize the job and archive the lead cleanly.
+                  Once the service is completed to the customer's satisfaction, mark the job as completed.
                 </p>
               </div>
             </div>

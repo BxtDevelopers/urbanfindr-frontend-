@@ -35,18 +35,19 @@ import { api, useApp, useData } from './providers';
 import { money, date } from '@/lib/format';
 
 const STATUS_CONFIG = {
-  submitted: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  requested: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  pending: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  new: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  contacted: { label: 'Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
-  quotation: { label: 'Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
-  quoted: { label: 'Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
-  accepted: { label: 'Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
-  scheduled: { label: 'Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
-  in_progress: { label: 'Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
+  submitted: { label: 'Requested', color: 'bg-amber-50 text-amber-800 border-amber-200' },
+  requested: { label: 'Requested', color: 'bg-amber-50 text-amber-800 border-amber-200' },
+  pending: { label: 'Requested', color: 'bg-amber-50 text-amber-800 border-amber-200' },
+  new: { label: 'Requested', color: 'bg-amber-50 text-amber-800 border-amber-200' },
+  contacted: { label: 'Call Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
+  connected: { label: 'Call Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
+  quotation: { label: 'Call Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
+  quoted: { label: 'Call Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
+  accepted: { label: 'Call Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
+  scheduled: { label: 'Call Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
+  in_progress: { label: 'Call Connected', color: 'bg-teal-50 text-teal-800 border-teal-200' },
   completed: { label: 'Completed', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  closed: { label: 'Lead Closed', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  closed: { label: 'Completed', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   cancelled: { label: 'Cancelled', color: 'bg-stone-100 text-stone-600 border-stone-200' },
   rejected: { label: 'Declined', color: 'bg-rose-50 text-rose-800 border-rose-200' },
   disputed: { label: 'Disputed', color: 'bg-red-50 text-red-800 border-red-200' },
@@ -113,14 +114,13 @@ export default function BookingsTracker() {
     return {
       all: items.length,
       new: items.filter((i) => ['submitted', 'requested', 'pending', 'new'].includes(i.status)).length,
-      connected: items.filter((i) => ['contacted', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(i.status)).length,
-      completed: items.filter((i) => isCustomer ? (i.status === 'completed' || i.status === 'closed') : i.status === 'completed').length,
-      closed: items.filter((i) => i.status === 'closed').length,
+      connected: items.filter((i) => ['contacted', 'connected', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(i.status)).length,
+      completed: items.filter((i) => i.status === 'completed' || i.status === 'closed').length,
       cancelled: items.filter((i) => ['cancelled', 'rejected'].includes(i.status)).length,
       active: items.filter((i) => !['completed', 'closed', 'cancelled', 'rejected'].includes(i.status)).length,
       issues: items.filter((i) => ['disputed', 'cancelled', 'rejected'].includes(i.status)).length,
     };
-  }, [filteredRawItems, isCustomer]);
+  }, [filteredRawItems]);
 
   const bookings = useMemo(() => {
     return filteredRawItems.filter((item) => {
@@ -128,17 +128,11 @@ export default function BookingsTracker() {
       if (activeTab === 'new') {
         if (!['submitted', 'requested', 'pending', 'new'].includes(item.status)) return false;
       } else if (activeTab === 'connected') {
-        if (!['contacted', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(item.status)) return false;
+        if (!['contacted', 'connected', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(item.status)) return false;
       } else if (activeTab === 'active') {
         if (['completed', 'closed', 'cancelled', 'rejected'].includes(item.status)) return false;
-      } else if (activeTab === 'completed') {
-        if (isCustomer) {
-          if (item.status !== 'completed' && item.status !== 'closed') return false;
-        } else {
-          if (item.status !== 'completed') return false;
-        }
-      } else if (activeTab === 'closed') {
-        if (item.status !== 'closed') return false;
+      } else if (activeTab === 'completed' || activeTab === 'closed') {
+        if (item.status !== 'completed' && item.status !== 'closed') return false;
       } else if (activeTab === 'cancelled') {
         if (!['cancelled', 'rejected'].includes(item.status)) return false;
       } else if (activeTab === 'issues') {
@@ -288,19 +282,6 @@ export default function BookingsTracker() {
                 {tabCounts.completed > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-emerald-700 text-white text-[10px]">
                     {tabCounts.completed}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab('closed')}
-                className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'closed' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <span>Closed Leads</span>
-                {tabCounts.closed > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-stone-500 text-white text-[10px]">
-                    {tabCounts.closed}
                   </span>
                 )}
               </button>
@@ -504,6 +485,12 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
           <span
             className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${statusInfo.color}`}
           >
+            {['submitted', 'requested', 'pending', 'new'].includes(effectiveStatus) && (
+              <Clock size={12} className="text-amber-600 animate-pulse" />
+            )}
+            {['contacted', 'connected', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(effectiveStatus) && (
+              <Phone size={12} className="text-teal-600" />
+            )}
             {['completed', 'closed'].includes(effectiveStatus) && (
               <Check size={12} strokeWidth={3} className="text-emerald-700" />
             )}
@@ -512,7 +499,7 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
         </div>
       </div>
 
-      {/* Customer Contact Preference Highlight Banner - Direct Quotation badge removed for customer */}
+      {/* Customer Contact Preference Highlight Banner */}
       {(!isCustomer || (contactPref !== 'quote' && contactPref !== 'direct_quotation')) && (
         <div className="px-4 sm:px-5 py-2.5 bg-stone-50 border-b border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
@@ -537,119 +524,6 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
         </div>
       )}
 
-      {/* Status Guidance Banner */}
-      <div className="px-4 sm:px-5 py-2.5 bg-gradient-to-r from-stone-50 via-white to-stone-50 border-b border-stone-100 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2">
-          {['submitted', 'requested', 'pending', 'new'].includes(booking.status) ? (
-            <span className="text-emerald-800 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              {isProvider ? (
-                <>
-                  <strong>New Lead:</strong> Review customer requirements and contact customer directly via Phone Call or WhatsApp.
-                </>
-              ) : (
-                <>
-                  <strong>Request Sent:</strong> Your service request has been sent to verified specialists in your locality. A specialist will call or chat with you directly.
-                </>
-              )}
-            </span>
-          ) : ['contacted', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(booking.status) ? (
-            <span className="text-teal-800 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-500" />
-              {isCustomer ? (
-                <>
-                  <strong>Connected:</strong> Specialist has received your request and will communicate directly with you via Call or WhatsApp.
-                </>
-              ) : (
-                <>
-                  <strong>In Communication:</strong> Discuss details directly on Call or WhatsApp. When the service is finished, click <strong>Mark Completed</strong>.
-                </>
-              )}
-            </span>
-          ) : (booking.status === 'completed' || (isCustomer && booking.status === 'closed')) ? (
-            <span className="text-emerald-800 font-medium flex items-center gap-1.5">
-              <CheckCircle2 size={13} className="text-emerald-600" />
-              <strong>Service Completed:</strong> {isProvider ? 'Work has been marked completed. You can now close and archive this lead.' : 'Specialist has completed the service. You can rate and review below.'}
-            </span>
-          ) : booking.status === 'closed' ? (
-            <span className="text-emerald-800 font-medium flex items-center gap-1.5">
-              <CheckCircle2 size={13} className="text-emerald-600" />
-              <strong>Lead Closed:</strong> Service was completed and this lead has been closed and archived.
-            </span>
-          ) : booking.status === 'rejected' ? (
-            <span className="text-rose-800 font-medium flex items-center gap-1.5">
-              <X size={13} className="text-rose-600" />
-              <strong>Declined:</strong> {isCustomer ? 'You declined this service request.' : 'Lead was declined.'}
-            </span>
-          ) : (
-            <span className="text-stone-600 font-medium capitalize">
-              Status: {booking.status}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Visual Stepper Tracker (Request Sent -> Connected (Call/Chat) -> Completed -> Lead Closed) */}
-      {!['cancelled', 'rejected', 'disputed'].includes(booking.status) && (
-        <div className="px-4 sm:px-5 py-3 bg-stone-50/70 border-b border-stone-100 overflow-x-auto">
-          <div className="flex items-center justify-between min-w-[480px]">
-            {activeSteps.map((step, idx) => {
-              const isCompleted = booking.status === 'completed' || booking.status === 'closed';
-              const isClosed = booking.status === 'closed';
-
-              // Every reached step displays a dark green circle with checkmark
-              const isStepDone =
-                idx <= currentStepIndex ||
-                (step === 'completed' && isCompleted) ||
-                (step === 'closed' && isClosed);
-
-              const isCurrent = currentStepIndex === idx;
-              const isLineActive = currentStepIndex > idx || (step === 'completed' && isClosed);
-
-              const stepLabels = {
-                submitted: isProvider ? 'New Lead' : 'Request Sent',
-                contacted: 'Connected (Call / Chat)',
-                completed: 'Completed',
-                closed: 'Lead Closed'
-              };
-              return (
-                <div key={step} className="flex items-center flex-1 last:flex-none">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                        isStepDone
-                          ? 'bg-[#163e35] text-white shadow-xs'
-                          : isCurrent
-                          ? 'bg-[#163e35] text-[#d8edb3] ring-4 ring-[#163e35]/15'
-                          : 'bg-stone-200 text-stone-500'
-                      }`}
-                    >
-                      {isStepDone ? <Check size={12} strokeWidth={3} /> : idx + 1}
-                    </div>
-                    <span
-                      className={`text-xs capitalize font-medium ${
-                        isStepDone || isCurrent
-                          ? 'font-bold text-[#163e35]'
-                          : 'text-stone-400'
-                      }`}
-                    >
-                      {stepLabels[step]}
-                    </span>
-                  </div>
-                  {idx < activeSteps.length - 1 && (
-                    <div
-                      className={`flex-1 h-0.5 mx-2 rounded ${
-                        isLineActive ? 'bg-[#163e35]' : 'bg-stone-200'
-                      }`}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Main Body Details */}
       <div className="p-4 sm:p-5 grid sm:grid-cols-3 gap-4 text-xs">
         {/* Customer & Location */}
@@ -666,26 +540,26 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
           <div className="text-stone-600 flex items-start gap-1.5">
             <MapPin size={13} className="text-stone-400 mt-0.5 shrink-0" />
             <span>
-              {booking.address ? `${booking.address}, ` : ''}
               {booking.locality ? `${booking.locality}, ` : ''}
+              {booking.address && booking.address !== booking.locality ? `${booking.address}, ` : ''}
               <strong className="text-stone-800">{booking.city}</strong>
               {booking.pincode ? ` - ${booking.pincode}` : ''}
             </span>
           </div>
         </div>
 
-        {/* Schedule & Category Fields */}
+        {/* Requested Service Details */}
         <div className="space-y-1.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-            Appointment Slot
+            Requested Service
           </div>
-          <div className="text-stone-700 flex items-center gap-1.5">
-            <Calendar size={13} className="text-[#163e35]" />
-            <span>{booking.preferredDate || 'Flexible / As soon as possible'}</span>
+          <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+            <Wrench size={13} className="text-[#163e35]" />
+            <span>{booking.serviceType || 'General Service'}</span>
           </div>
-          <div className="text-stone-700 flex items-center gap-1.5">
-            <Clock size={13} className="text-stone-400" />
-            <span>{booking.preferredTimeSlot || booking.preferredTime || 'Any convenient time'}</span>
+          <div className="text-stone-600 flex items-center gap-1.5 text-xs">
+            <span className="text-stone-400">Category:</span>
+            <span className="font-medium text-stone-800">{booking.category || 'Maintenance'}</span>
           </div>
 
           {/* Category specific badges */}
@@ -780,11 +654,16 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
 
         {/* Action Buttons Depending on State and Role */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Connect for Provider */}
+          {/* Quick Connect for Provider with Auto-Transition to Connected */}
           {canManage && booking.phone && (
             <>
               <a
                 href={`tel:${booking.phone}`}
+                onClick={() => {
+                  if (['submitted', 'requested', 'pending', 'new'].includes(booking.status)) {
+                    onDirectStatus('contacted');
+                  }
+                }}
                 className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
                 <Phone size={13} className="text-stone-600" /> Call Customer
@@ -793,6 +672,11 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
                 href={`https://wa.me/${String(booking.phone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${booking.name}, I am contacting you regarding your service booking for ${booking.serviceType} on UrbanFinder.`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  if (['submitted', 'requested', 'pending', 'new'].includes(booking.status)) {
+                    onDirectStatus('contacted');
+                  }
+                }}
                 className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
                 <MessageCircle size={13} className="text-emerald-700" /> WhatsApp
@@ -807,16 +691,6 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
               className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <CheckCircle2 size={14} /> Mark Completed
-            </button>
-          )}
-
-          {/* CLOSE LEAD BUTTON (when completed) */}
-          {canManage && booking.status === 'completed' && (
-            <button
-              onClick={() => onAction('close')}
-              className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-black text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-            >
-              <Check size={14} /> Close Lead
             </button>
           )}
 
@@ -839,13 +713,6 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
             >
               <X size={13} /> Cancel Booking
             </button>
-          )}
-
-          {/* CLOSED BADGE - Provider only (Customer sees Completed) */}
-          {booking.status === 'closed' && !isCustomer && (
-            <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200 flex items-center gap-1.5">
-              <Check size={13} strokeWidth={3} className="text-emerald-600" /> Lead Closed &amp; Completed
-            </span>
           )}
 
           {/* CANCELLED BADGE */}
