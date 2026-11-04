@@ -105,8 +105,8 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
     const newLeads = items.filter((i) =>
       ['submitted', 'requested', 'pending', 'new'].includes(i.status)
     );
-    const activeOffers = items.filter((i) =>
-      ['quotation', 'quoted', 'accepted', 'scheduled'].includes(i.status)
+    const connectedLeads = items.filter((i) =>
+      ['contacted', 'quotation', 'quoted', 'accepted', 'scheduled', 'in_progress'].includes(i.status)
     );
     const completed = items.filter((i) => i.status === 'completed');
     const closed = items.filter((i) => i.status === 'closed');
@@ -125,7 +125,7 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
 
     return {
       newCount: newLeads.length,
-      offersCount: activeOffers.length,
+      connectedCount: connectedLeads.length,
       completedCount: completed.length,
       closedCount: closed.length,
       totalCount: items.length,
@@ -272,14 +272,14 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
             onClick={() => setActiveSection('leads')}
             className="p-4 bg-white rounded-2xl border border-stone-200/90 shadow-xs hover:border-[#163e35] transition-all cursor-pointer"
           >
-            <div className="flex items-center justify-between text-sky-800 text-xs font-bold mb-1">
-              <span>Active Offers</span>
-              <FileText size={14} className="text-sky-600" />
+            <div className="flex items-center justify-between text-teal-800 text-xs font-bold mb-1">
+              <span>Connected Leads</span>
+              <Phone size={14} className="text-teal-600" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-stone-900">
-              {metrics.offersCount}
+              {metrics.connectedCount}
             </div>
-            <div className="text-[11px] text-stone-500 mt-1">Offers sent &amp; accepted</div>
+            <div className="text-[11px] text-stone-500 mt-1">In communication via Call / WhatsApp</div>
           </div>
 
           <div
@@ -449,9 +449,9 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-800 flex items-center justify-center font-bold">
                   2
                 </div>
-                <h3 className="font-bold text-stone-900 text-sm">Send Offer &amp; Execute</h3>
+                <h3 className="font-bold text-stone-900 text-sm">Call or Chat Directly</h3>
                 <p className="text-stone-500 text-xs leading-relaxed">
-                  Discuss the job requirements with the customer via call or WhatsApp, click "Send Offer", and once the customer accepts, complete the service.
+                  Discuss the job requirements, pricing, and timing directly with the customer via phone call or WhatsApp, and complete the service.
                 </p>
               </div>
 
