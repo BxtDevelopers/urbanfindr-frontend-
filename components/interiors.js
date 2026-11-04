@@ -151,11 +151,12 @@ export default function Interiors({ id }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between overflow-x-auto gap-2 no-scrollbar text-xs">
           <div className="flex items-center gap-2 shrink-0">
             {[
+              { id: 'categories', label: 'Categories' },
+              { id: 'portfolio', label: 'Portfolio' },
+              { id: 'process', label: 'How It Works' },
               { id: 'packages', label: 'Packages' },
               { id: 'estimator', label: 'Get Quote' },
-              { id: 'categories', label: 'Categories' },
               { id: 'designers', label: 'Designers' },
-              { id: 'portfolio', label: 'Portfolio' },
               { id: 'reviews', label: 'Reviews' }
             ].map((tab) => (
               <button
@@ -193,6 +194,34 @@ export default function Interiors({ id }) {
           </div>
         </div>
       </nav>
+
+      {/* FEATURE 2: INTERIOR DESIGN CATEGORIES */}
+      <InteriorCategoriesSection
+        onSelectCategory={(cat) => {
+          setSelectedPackage({
+            bhk: '3 BHK',
+            tier: 'Premium',
+            scope: cat.title
+          });
+          setShowConsultModal(true);
+        }}
+      />
+
+      {/* FEATURE 4: PORTFOLIO GALLERIES */}
+      <InteriorPortfolioSection
+        onBookConsultation={(portfolioItem) => {
+          setSelectedPackage({
+            bhk: portfolioItem?.bhk || 'Turnkey',
+            tier: 'Premium',
+            packageName: portfolioItem?.title || 'Bespoke Package',
+            scope: `${portfolioItem?.room || 'Custom'} - ${portfolioItem?.style || 'Modern'}`
+          });
+          setShowConsultModal(true);
+        }}
+      />
+
+      {/* HOW IT WORKS / STEP-BY-STEP PROCESS */}
+      <InteriorStepsProcess onBookConsultation={() => setShowConsultModal(true)} />
 
       {/* FEATURE 3: ALL-INCLUSIVE DESIGN PACKAGES */}
       <InteriorPackagesSection
@@ -341,17 +370,9 @@ export default function Interiors({ id }) {
         </div>
       </section>
 
-      {/* FEATURE 2: INTERIOR DESIGN CATEGORIES */}
-      <InteriorCategoriesSection
-        onSelectCategory={(cat) => {
-          setSelectedPackage({
-            bhk: '3 BHK',
-            tier: 'Premium',
-            scope: cat.title
-          });
-          setShowConsultModal(true);
-        }}
-      />
+      {/* REAL HOME MAKEOVERS & CUSTOMER STORIES */}
+      <InteriorMakeoverShowcase />
+      <InteriorStoriesCarousel />
 
       {/* FEATURE 1: INTERIOR DESIGNER PROFILES */}
       <InteriorDesignerCard
@@ -361,23 +382,7 @@ export default function Interiors({ id }) {
         }}
       />
 
-      {/* FEATURE 4: PORTFOLIO GALLERIES */}
-      <InteriorPortfolioSection
-        onBookConsultation={(portfolioItem) => {
-          setSelectedPackage({
-            bhk: portfolioItem?.bhk || 'Turnkey',
-            tier: 'Premium',
-            packageName: portfolioItem?.title || 'Bespoke Package',
-            scope: `${portfolioItem?.room || 'Custom'} - ${portfolioItem?.style || 'Modern'}`
-          });
-          setShowConsultModal(true);
-        }}
-      />
-
-      {/* Brand Collective & Process Showcase */}
-      <InteriorMakeoverShowcase />
-      <InteriorStoriesCarousel />
-      <InteriorStepsProcess onBookConsultation={() => setShowConsultModal(true)} />
+      {/* PREMIUM MATERIAL PARTNERS & BRAND COLLECTIVE */}
       <InteriorBrandCollective />
 
       {/* FEATURE 15: CUSTOMER REVIEWS */}

@@ -149,7 +149,7 @@ export default function InteriorStepsProcess({ onBookConsultation }) {
   const [showVideoModal, setShowVideoModal] = useState(false);
 
   return (
-    <section className="wrap my-16 sm:my-20 lg:my-24" aria-label="Step-by-Step Interior Process">
+    <section id="process" className="wrap my-16 sm:my-20 lg:my-24 scroll-mt-24 sm:scroll-mt-28" aria-label="Step-by-Step Interior Process">
       {/* Outer Container in authentic website theme soft sage with curved top-right arc - Full prominence */}
       <div className="bg-[#edf2e2] border border-[#d6e2cd] rounded-3xl sm:rounded-[44px] rounded-tr-[75px] sm:rounded-tr-[110px] p-6 sm:p-10 lg:p-12 relative overflow-hidden shadow-sm">
         
