@@ -86,7 +86,7 @@ export default function ServiceHero({
       ];
 
   return (
-    <section className="relative py-6 sm:py-8 lg:py-10 flex items-center min-h-[510px]">
+    <section className="relative py-4 sm:py-5 lg:py-6 flex items-center">
       {/* 1. Complete Hero Section Background Image (Isolated overflow-hidden to allow dropdown to float over hero boundary) */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
         {category?.heroImage && (

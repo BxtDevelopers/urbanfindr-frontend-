@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {  useState, useEffect, useRef, Fragment  } from 'react';
+import {  useState, useEffect, useRef, Fragment, useMemo  } from 'react';
 import {
   Menu,
   X,
@@ -15,10 +15,12 @@ import {
   LayoutDashboard,
   LogOut,
   User,
+  Wrench,
+  Bell,
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
 
-import { useApp } from './providers';
+import { useApp, useData } from './providers';
 import { cityGuides } from '@/lib/catalog';
 import { serviceCategories } from '@/lib/serviceCategories';
 
@@ -87,6 +89,40 @@ export function Header() {
   const userMenuRef = useRef(null);
 
   const pathname = usePathname();
+
+  const isServiceProvider = user?.role === 'service_provider' || user?.role === 'service-provider';
+  const isCustomer = user && !isServiceProvider && user.role !== 'admin';
+
+  const providerCategoryParam = isServiceProvider && user?.serviceCategory ? '&category=' + user.serviceCategory : '';
+  const { data: requestData } = useData(user ? 'service-requests?limit=50' + providerCategoryParam : null);
+
+  const newLeadsCount = useMemo(() => {
+    if (!requestData?.items || !isServiceProvider || !user?.serviceCategory) return 0;
+    const pCat = user.serviceCategory.toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+    return requestData.items.filter((i) => {
+      if (!['submitted', 'requested', 'pending', 'new', 'quotation'].includes(i.status)) return false;
+      const itemSlug = String(i.categorySlug || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+      const itemCat = String(i.category || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+      const itemService = String(i.serviceType || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+      return (
+        itemSlug === pCat ||
+        itemCat === pCat ||
+        itemSlug.includes(pCat) ||
+        pCat.includes(itemSlug) ||
+        itemCat.includes(pCat) ||
+        pCat.includes(itemCat) ||
+        itemService.includes(pCat)
+      );
+    }).length;
+  }, [requestData?.items, isServiceProvider, user?.serviceCategory]);
+
+  const customerRequestsCount = useMemo(() => {
+    if (!requestData?.items) return 0;
+    if (isCustomer) {
+      return requestData.items.length;
+    }
+    return 0;
+  }, [requestData?.items, isCustomer]);
 
   useEffect(() => {
     setUserMenuOpen(false);
@@ -280,12 +316,36 @@ export function Header() {
             </Link>
           )}
 
-          <Link className="btn post-btn" href="/post-property">
-            Post property{' '}
-            <span className="text-xs bg-lime text-forest rounded px-1.5 py-0.5">
-              FREE
-            </span>
-          </Link>
+          {/* Service Provider Leads Notification */}
+          {isServiceProvider && (
+            <Link
+              href="/dashboard/leads"
+              className="relative p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 transition-all shadow-xs flex items-center justify-center cursor-pointer"
+              title={`New Leads (${newLeadsCount})`}
+            >
+              <Bell size={18} className="text-emerald-800" />
+              {newLeadsCount > 0 && (
+                <span className="animate-ping absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400 opacity-75 pointer-events-none"></span>
+              )}
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-emerald-700 text-white text-[10px] font-extrabold shadow-xs">
+                {newLeadsCount}
+              </span>
+            </Link>
+          )}
+
+          {/* Customer Requests Counter */}
+          {isCustomer && (
+            <Link
+              href="/dashboard/bookings"
+              className="relative p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300/80 transition-all shadow-xs flex items-center justify-center cursor-pointer"
+              title={`My Requests (${customerRequestsCount})`}
+            >
+              <Wrench size={18} className="text-[#163e35]" />
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[#163e35] text-white text-[10px] font-extrabold shadow-xs">
+                {customerRequestsCount}
+              </span>
+            </Link>
+          )}
 
           {/* Google-style 9-Dots Services / Category App Launcher */}
           <div
@@ -422,6 +482,13 @@ export function Header() {
               </div>
             )}
           </div>
+
+          <Link className="btn post-btn" href="/post-property">
+            Post property{' '}
+            <span className="text-xs bg-lime text-forest rounded px-1.5 py-0.5">
+              FREE
+            </span>
+          </Link>
 
 
 

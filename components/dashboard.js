@@ -29,6 +29,7 @@ import { money, date } from '@/lib/format';
 import { serviceCategories } from '@/lib/serviceCategories';
 import Listings from './listings';
 import ChannelPartnerDashboard from './channel-partner-dashboard';
+import ServiceProviderDashboard from './service-provider-dashboard';
 import BookingsTracker from './bookings-tracker';
 import InteriorProjectHub from './interior/InteriorProjectHub';
 
@@ -48,6 +49,12 @@ export default function Dashboard({ section = '' }) {
 
   if (user && user.role === 'channel_partner') {
     return <ChannelPartnerDashboard initialSection={section} />;
+  }
+
+  if (user && (user.role === 'service_provider' || user.role === 'service-provider') && !isUserView) {
+    const paramSection = searchParams?.get('section');
+    const effectiveSection = section || paramSection || '';
+    return <ServiceProviderDashboard initialSection={effectiveSection} />;
   }
 
   const isCustomer = !user || user.role === 'customer' || user.role === 'user';
@@ -94,7 +101,7 @@ export default function Dashboard({ section = '' }) {
       : []),
     ...(isServiceProvider
       ? [
-          ['Bookings & Quotes', 'bookings'],
+          ['Service Leads & Bookings', 'bookings'],
           ['Interior Projects', 'interiors'],
           ['Service leads & inquiries', 'leads'],
           ['Consultations', 'visits'],
@@ -279,6 +286,14 @@ function Overview() {
                 <strong>{data.enquiries ?? 0}</strong>
                 <span className="text-xs muted">Consultation requests</span>
               </Link>
+              <Link className="stat" href="/dashboard/bookings">
+                <div className="flex justify-between">
+                  <Wrench size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.bookings ?? 0}</strong>
+                <span className="text-xs muted">Service bookings</span>
+              </Link>
               <Link className="stat" href="/dashboard/messages">
                 <div className="flex justify-between">
                   <MessageCircle size={20} />
@@ -415,13 +430,21 @@ function Overview() {
           {/* Service Provider stats */}
           {isServiceProvider && (
             <>
+              <Link className="stat" href="/dashboard/bookings">
+                <div className="flex justify-between">
+                  <Wrench size={20} />
+                  <ArrowUpRight size={15} />
+                </div>
+                <strong>{data.bookings ?? 0}</strong>
+                <span className="text-xs muted">Service Leads &amp; Bookings</span>
+              </Link>
               <Link className="stat" href="/dashboard/leads">
                 <div className="flex justify-between">
                   <ClipboardList size={20} />
                   <ArrowUpRight size={15} />
                 </div>
                 <strong>{data.enquiries ?? 0}</strong>
-                <span className="text-xs muted">Service requests</span>
+                <span className="text-xs muted">Consultation enquiries</span>
               </Link>
               <Link className="stat" href="/dashboard/visits">
                 <div className="flex justify-between">

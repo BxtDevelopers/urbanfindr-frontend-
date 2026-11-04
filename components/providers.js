@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 
 export async function api(url, options = {}) {
   let response;
@@ -244,10 +244,15 @@ export function useData(url) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState(0);
+  const prevUrlRef = useRef(url);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    if (prevUrlRef.current !== url) {
+      prevUrlRef.current = url;
+      setLoading(true);
+      setData(null);
+    }
     setError('');
     if (!url) {
       setData(null);

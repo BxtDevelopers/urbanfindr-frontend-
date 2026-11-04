@@ -3438,7 +3438,7 @@ function UsersView({ onReload, onNavigate, onInspectProperty }) {
   const [page, setPage] = useState(1);
   const [selectedOwner, setSelectedOwner] = useState(null);
   const { data, loading, error, reload } = useData(
-    `admin/users?page=${page}&limit=10${roleFilter ? `&role=${roleFilter}&` : ''}${search ? `q=${encodeURIComponent(search)}` : ''}`
+    `admin/users?page=${page}&limit=10${roleFilter ? `&role=${roleFilter}` : ''}${search ? `&q=${encodeURIComponent(search)}` : ''}`
   );
   const [busyId, setBusyId] = useState(null);
 

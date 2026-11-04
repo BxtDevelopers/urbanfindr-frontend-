@@ -67,7 +67,7 @@ export default function CategoryPage({ slug }) {
   return (
     <div className="bg-white min-h-screen text-stone-800 flex flex-col">
       {/* SECTION A: Functional Breadcrumbs */}
-      <div className="bg-[#051812] border-b border-emerald-950/80 py-2.5">
+      <div className="bg-[#051812] border-b border-emerald-950/80 py-1.5 sm:py-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-stone-400">
             <Link

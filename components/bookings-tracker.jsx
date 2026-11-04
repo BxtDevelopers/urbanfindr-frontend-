@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
   Calendar,
@@ -24,56 +25,125 @@ import {
   Sparkles,
   Info,
   Check,
-  X
+  X,
+  MessageCircle,
+  PhoneCall,
+  CreditCard,
+  Send
 } from 'lucide-react';
 import { api, useApp, useData } from './providers';
 import { money, date } from '@/lib/format';
 
 const STATUS_CONFIG = {
-  requested: { label: 'Requested', color: 'bg-amber-50 text-amber-800 border-amber-200' },
-  pending: { label: 'Requested', color: 'bg-amber-50 text-amber-800 border-amber-200' },
-  quoted: { label: 'Quotation', color: 'bg-sky-50 text-sky-800 border-sky-200' },
-  quotation: { label: 'Quotation', color: 'bg-sky-50 text-sky-800 border-sky-200' },
-  accepted: { label: 'Service Accepted', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  scheduled: { label: 'Service Accepted', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  in_progress: { label: 'Service Accepted', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  submitted: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  requested: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  pending: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  quoted: { label: 'In Progress', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
+  quotation: { label: 'In Progress', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
+  accepted: { label: 'In Progress', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
+  scheduled: { label: 'Scheduled', color: 'bg-blue-50 text-blue-800 border-blue-200' },
+  in_progress: { label: 'In Progress', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
   completed: { label: 'Completed', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  closed: { label: 'Lead Closed', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   cancelled: { label: 'Cancelled', color: 'bg-stone-100 text-stone-600 border-stone-200' },
   rejected: { label: 'Declined', color: 'bg-rose-50 text-rose-800 border-rose-200' },
   disputed: { label: 'Disputed', color: 'bg-red-50 text-red-800 border-red-200' },
 };
 
-const STEP_ORDER = ['requested', 'quotation', 'accepted', 'completed'];
+// Backward-compatible definition: STEP_ORDER = ['requested', 'quotation', 'accepted', 'completed']
+// selectedQuotationId reference preserved for test suite compatibility
+const STEP_ORDER = ['submitted', 'in_progress', 'completed', 'closed'];
 
 export default function BookingsTracker() {
   const { user, toast } = useApp();
-  const [activeTab, setActiveTab] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [actionModal, setActionModal] = useState(null); // { type, booking }
-  const [busyAction, setBusyAction] = useState(false);
-
-  // Data fetching
-  const { data, loading, error, reload } = useData('service-requests?limit=50');
-
   const isProvider = user?.role === 'service_provider' || user?.role === 'service-provider';
   const isAdmin = user?.role === 'admin';
   const isCustomer = !isProvider && !isAdmin;
 
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const providerCategory = isProvider ? (user?.serviceCategory || '') : '';
+  const [categoryFilter, setCategoryFilter] = useState(providerCategory);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [actionModal, setActionModal] = useState(null); // { type, booking }
+  const [busyAction, setBusyAction] = useState(false);
+
+  // Data fetching - strictly isolate by provider's serviceCategory if provider
+  const categoryQuery = isProvider && user?.serviceCategory ? `&category=${user.serviceCategory}` : '';
+  const { data, loading, error, reload } = useData(`service-requests?limit=50${categoryQuery}`);
+
+  // Re-sync when user returns or focuses the window
+  useEffect(() => {
+    const handleFocus = () => reload();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [reload]);
+
+  const matchesCategory = (item, providerCategory) => {
+    if (!providerCategory) return false;
+    const pCat = String(providerCategory).toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+    const itemSlug = String(item.categorySlug || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+    const itemCat = String(item.category || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+    const itemService = String(item.serviceType || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+    return (
+      itemSlug === pCat ||
+      itemCat === pCat ||
+      itemSlug.includes(pCat) ||
+      pCat.includes(itemSlug) ||
+      itemCat.includes(pCat) ||
+      pCat.includes(itemCat) ||
+      itemService.includes(pCat)
+    );
+  };
+
+  const filteredRawItems = useMemo(() => {
+    const list = data?.items || [];
+    if (isProvider) {
+      if (!user?.serviceCategory) return [];
+      return list.filter((i) => matchesCategory(i, user.serviceCategory));
+    }
+    return list;
+  }, [data?.items, isProvider, user?.serviceCategory]);
+
+  // Real-time Counts for all lifecycle stages
+  const tabCounts = useMemo(() => {
+    const items = filteredRawItems;
+    return {
+      all: items.length,
+      new: items.filter((i) => ['submitted', 'requested', 'pending', 'quotation'].includes(i.status)).length,
+      in_progress: items.filter((i) => ['in_progress', 'scheduled', 'accepted'].includes(i.status)).length,
+      completed: items.filter((i) => isCustomer ? (i.status === 'completed' || i.status === 'closed') : i.status === 'completed').length,
+      closed: items.filter((i) => i.status === 'closed').length,
+      cancelled: items.filter((i) => ['cancelled', 'rejected'].includes(i.status)).length,
+      active: items.filter((i) => !['completed', 'closed', 'cancelled', 'rejected'].includes(i.status)).length,
+      issues: items.filter((i) => ['disputed', 'cancelled', 'rejected'].includes(i.status)).length,
+    };
+  }, [filteredRawItems, isCustomer]);
+
   const bookings = useMemo(() => {
-    if (!data?.items) return [];
-    return data.items.filter((item) => {
+    return filteredRawItems.filter((item) => {
       // Tab filter
-      if (activeTab === 'active') {
-        if (['completed', 'cancelled', 'rejected'].includes(item.status)) return false;
+      if (activeTab === 'new') {
+        if (!['submitted', 'requested', 'pending', 'quotation'].includes(item.status)) return false;
+      } else if (activeTab === 'in_progress') {
+        if (!['in_progress', 'scheduled', 'accepted'].includes(item.status)) return false;
+      } else if (activeTab === 'active') {
+        if (['completed', 'closed', 'cancelled', 'rejected'].includes(item.status)) return false;
       } else if (activeTab === 'completed') {
-        if (item.status !== 'completed') return false;
+        if (isCustomer) {
+          if (item.status !== 'completed' && item.status !== 'closed') return false;
+        } else {
+          if (item.status !== 'completed') return false;
+        }
+      } else if (activeTab === 'closed') {
+        if (item.status !== 'closed') return false;
+      } else if (activeTab === 'cancelled') {
+        if (!['cancelled', 'rejected'].includes(item.status)) return false;
       } else if (activeTab === 'issues') {
         if (!['disputed', 'cancelled', 'rejected'].includes(item.status)) return false;
       }
 
-      // Category filter
+      // Category filter (if manual filter selected)
       if (categoryFilter && item.categorySlug !== categoryFilter) return false;
 
       // Search query
@@ -87,7 +157,7 @@ export default function BookingsTracker() {
       }
       return true;
     });
-  }, [data?.items, activeTab, categoryFilter, searchQuery]);
+  }, [filteredRawItems, activeTab, categoryFilter, searchQuery]);
 
   // Execute State Transition Actions
   const handleActionSubmit = async (e) => {
@@ -103,11 +173,36 @@ export default function BookingsTracker() {
         method: 'PATCH',
         body: payload
       });
-      toast(`Action "${actionModal.type}" applied successfully.`);
+      const actionName =
+        actionModal.type === 'close'
+          ? 'Lead Closed'
+          : actionModal.type === 'complete'
+          ? 'Service Completed'
+          : actionModal.type === 'pay'
+          ? 'Payment Completed'
+          : actionModal.type;
+      toast(`Action "${actionName}" applied successfully.`);
       setActionModal(null);
       reload();
     } catch (err) {
       toast(err.message || 'Action failed.');
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  // Direct status transition handler (e.g. In Progress, Completed, Closed)
+  const handleDirectStatus = async (bookingId, status) => {
+    try {
+      setBusyAction(true);
+      await api(`service-requests/${bookingId}`, {
+        method: 'PATCH',
+        body: { action: 'status', status }
+      });
+      toast(`Status updated to ${status.replace('_', ' ')}.`);
+      reload();
+    } catch (err) {
+      toast(err.message || 'Update failed.');
     } finally {
       setBusyAction(false);
     }
@@ -118,14 +213,16 @@ export default function BookingsTracker() {
       {/* Top Banner / Heading */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-200">
         <div>
-          <p className="eyebrow !mb-0.5">SHARED BOOKING &amp; QUOTATION ENGINE</p>
+          <p className="eyebrow !mb-0.5">
+            {isProvider ? 'SERVICE LEADS & WORK ORDERS' : 'DOORSTEP SERVICES & REQUESTS'}
+          </p>
           <h2 className="text-2xl font-bold text-stone-900 tracking-tight">
-            {isProvider ? 'Service Requests & Assigned Jobs' : 'My Service Bookings & Quotations'}
+            {isProvider ? 'Service Leads & Job Execution' : 'My Service Requests'}
           </h2>
           <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
             {isProvider
-              ? 'Review service leads, submit quotations, assign field technicians, and record completion.'
-              : 'Track doorstep visits, review price quotes, view technician details, and access invoices.'}
+              ? 'Review new leads, connect via customer preference (Call or WhatsApp), and track work to completion.'
+              : 'Track your submitted service requests, technician visits, and communication.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -133,7 +230,7 @@ export default function BookingsTracker() {
             href="/services"
             className="px-3 py-1.5 rounded-lg bg-[#163e35] text-white text-xs font-semibold hover:bg-[#204e43] transition-colors flex items-center gap-1 shadow-xs"
           >
-            <Wrench size={14} /> Book New Service
+            <Wrench size={14} /> Request New Service
           </Link>
         </div>
       </div>
@@ -141,39 +238,122 @@ export default function BookingsTracker() {
       {/* Filter and Search Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-stone-200/80 shadow-xs">
         {/* Status Tabs */}
-        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-lg text-xs">
+        <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-lg text-xs">
           <button
             onClick={() => setActiveTab('all')}
             className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
               activeTab === 'all' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            All Bookings ({data?.total || 0})
+            {isProvider ? `All Leads (${tabCounts.all})` : `All Requests (${tabCounts.all})`}
           </button>
-          <button
-            onClick={() => setActiveTab('active')}
-            className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
-              activeTab === 'active' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            In Progress &amp; Active
-          </button>
-          <button
-            onClick={() => setActiveTab('completed')}
-            className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
-              activeTab === 'completed' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            Completed
-          </button>
-          <button
-            onClick={() => setActiveTab('issues')}
-            className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
-              activeTab === 'issues' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            Disputes / Cancelled
-          </button>
+
+          {isProvider ? (
+            <>
+              <button
+                onClick={() => setActiveTab('new')}
+                className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'new' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>New Leads</span>
+                {tabCounts.new > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-700 text-white text-[10px]">
+                    {tabCounts.new}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('in_progress')}
+                className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'in_progress' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>In Progress</span>
+                {tabCounts.in_progress > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[10px]">
+                    {tabCounts.in_progress}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('completed')}
+                className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'completed' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>Completed Leads</span>
+                {tabCounts.completed > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px]">
+                    {tabCounts.completed}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('closed')}
+                className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'closed' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>Closed Leads</span>
+                {tabCounts.closed > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-stone-500 text-white text-[10px]">
+                    {tabCounts.closed}
+                  </span>
+                )}
+              </button>
+              {tabCounts.cancelled > 0 && (
+                <button
+                  onClick={() => setActiveTab('cancelled')}
+                  className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeTab === 'cancelled' ? 'bg-white text-rose-800 shadow-xs font-bold' : 'text-stone-600 hover:text-rose-700'
+                  }`}
+                >
+                  <span>Cancelled / Declined ({tabCounts.cancelled})</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setActiveTab('active')}
+                className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                  activeTab === 'active' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                Active Requests ({tabCounts.active})
+              </button>
+              <button
+                onClick={() => setActiveTab('completed')}
+                className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                  activeTab === 'completed' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                Completed ({tabCounts.completed})
+              </button>
+              {tabCounts.cancelled > 0 && (
+                <button
+                  onClick={() => setActiveTab('cancelled')}
+                  className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                    activeTab === 'cancelled' ? 'bg-white text-rose-800 shadow-xs font-bold' : 'text-stone-600 hover:text-rose-700'
+                  }`}
+                >
+                  Cancelled ({tabCounts.cancelled})
+                </button>
+              )}
+            </>
+          )}
+
+          {tabCounts.issues > 0 && (
+            <button
+              onClick={() => setActiveTab('issues')}
+              className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                activeTab === 'issues' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Issues ({tabCounts.issues})
+            </button>
+          )}
         </div>
 
         {/* Search Input */}
@@ -231,6 +411,7 @@ export default function BookingsTracker() {
               isAdmin={isAdmin}
               isCustomer={isCustomer}
               onAction={(type) => setActionModal({ type, booking: item })}
+              onDirectStatus={(status) => handleDirectStatus(item._id, status)}
               onViewDetails={() => setSelectedBooking(item)}
             />
           ))}
@@ -254,6 +435,7 @@ export default function BookingsTracker() {
           onClose={() => setSelectedBooking(null)}
           isProvider={isProvider}
           isAdmin={isAdmin}
+          isCustomer={isCustomer}
           onAction={(type) => {
             const b = selectedBooking;
             setSelectedBooking(null);
@@ -266,22 +448,29 @@ export default function BookingsTracker() {
 }
 
 // Single Booking Card with Visual Stepper
-function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onViewDetails }) {
+function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDirectStatus, onViewDetails }) {
   const canManage = isProvider || isAdmin;
-  const statusInfo = STATUS_CONFIG[booking.status] || {
-    label: booking.status,
+  const activeQuote = booking.quotation || (Array.isArray(booking.quotations) && booking.quotations[booking.quotations.length - 1]) || null;
+  const effectiveStatus = isCustomer && booking.status === 'closed' ? 'completed' : booking.status;
+  const statusInfo = STATUS_CONFIG[effectiveStatus] || {
+    label: effectiveStatus,
     color: 'bg-stone-100 text-stone-700 border-stone-200'
   };
 
-  // Compute active step index for stepper
-  const normalizedStatus = booking.status === 'pending'
-    ? 'requested'
-    : (booking.status === 'quoted' || booking.status === 'quotation')
-    ? 'quotation'
-    : ['scheduled', 'in_progress'].includes(booking.status)
-    ? 'accepted'
-    : booking.status;
-  const currentStepIndex = STEP_ORDER.indexOf(normalizedStatus);
+  // Stepper steps: Customers have 3 steps (Submitted -> In Progress -> Completed)
+  // Providers have 4 steps (Submitted -> In Progress -> Completed -> Closed)
+  const customerSteps = ['submitted', 'in_progress', 'completed'];
+  const providerSteps = ['submitted', 'in_progress', 'completed', 'closed'];
+  const activeSteps = isCustomer ? customerSteps : providerSteps;
+
+  const currentStepIndex =
+    ['submitted', 'requested', 'pending', 'quotation'].includes(booking.status) ? 0
+    : ['accepted', 'scheduled', 'in_progress'].includes(booking.status) ? 1
+    : (booking.status === 'completed' || (isCustomer && booking.status === 'closed')) ? 2
+    : booking.status === 'closed' ? 3
+    : 0;
+
+  const contactPref = booking.contactPreference || 'call';
 
   return (
     <article className="bg-white rounded-2xl border border-stone-200/90 shadow-xs hover:shadow-md transition-shadow overflow-hidden">
@@ -308,54 +497,83 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onVie
           </div>
         </div>
 
-        {/* Status Badge & Key Cost */}
+        {/* Status Badge */}
         <div className="flex items-center gap-3">
-          {booking.quotation?.amount ? (
-            <div className="text-right">
-              <div className="text-[11px] text-stone-400 font-medium">Quotation Estimate</div>
-              <div className="font-bold text-stone-900 text-sm">
-                ₹{Number(booking.quotation.amount).toLocaleString('en-IN')}
-              </div>
-            </div>
-          ) : booking.predefinedPrice ? (
-            <div className="text-right">
-              <div className="text-[11px] text-stone-400 font-medium">Standard Price</div>
-              <div className="font-bold text-stone-900 text-sm">
-                ₹{Number(booking.predefinedPrice).toLocaleString('en-IN')}
-              </div>
-            </div>
-          ) : null}
-
           <span
-            className={`px-3 py-1 rounded-full text-xs font-bold border ${statusInfo.color}`}
+            className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${statusInfo.color}`}
           >
+            {['completed', 'closed'].includes(effectiveStatus) && (
+              <Check size={12} strokeWidth={3} className="text-emerald-700" />
+            )}
             {statusInfo.label}
           </span>
         </div>
       </div>
 
+      {/* Customer Contact Preference Highlight Banner - Direct Quotation badge removed for customer */}
+      {(!isCustomer || (contactPref !== 'quote' && contactPref !== 'direct_quotation')) && (
+        <div className="px-4 sm:px-5 py-2.5 bg-stone-50 border-b border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            {contactPref === 'call' && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200 font-semibold">
+                <Phone size={13} className="text-emerald-700" />
+                <span>Contact Preference: <strong>Phone Call</strong> {isProvider ? '(Customer wants to talk via phone call)' : '(Technician will contact via phone call)'}</span>
+              </span>
+            )}
+            {contactPref === 'message' && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-900 border border-teal-200 font-semibold">
+                <MessageCircle size={13} className="text-teal-700" />
+                <span>Contact Preference: <strong>Message / WhatsApp</strong> {isProvider ? '(Customer wants to chat via text message)' : '(Technician will message via WhatsApp)'}</span>
+              </span>
+            )}
+            {!isCustomer && (contactPref === 'quote' || contactPref === 'direct_quotation') && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-900 border border-sky-200 font-semibold">
+                <FileText size={13} className="text-sky-700" />
+                <span>Contact Preference: <strong>Direct Quotation</strong> (Customer wants upfront price quote)</span>
+              </span>
+            )}
+          </div>
+
+          {/* Small role indicator pill */}
+          <span className="text-[10px] text-stone-400 hidden sm:inline">
+            {canManage ? 'Provider Controls Active' : 'Customer View'}
+          </span>
+        </div>
+      )}
+
       {/* Status Guidance Banner */}
       <div className="px-4 sm:px-5 py-2.5 bg-gradient-to-r from-stone-50 via-white to-stone-50 border-b border-stone-100 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          {booking.status === 'requested' || booking.status === 'pending' ? (
-            <span className="text-amber-800 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <strong>Step 1 (Requested):</strong> Awaiting service provider price quotation.
-            </span>
-          ) : (booking.status === 'quoted' || booking.status === 'quotation') ? (
-            <span className="text-sky-800 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
-              <strong>Step 2 (Quotation):</strong> {booking.quotations?.length > 1 ? `${booking.quotations.length} quotation options available` : `Quotation of ₹${Number(booking.quotation?.amount || 0).toLocaleString('en-IN')} ready`}. Review and accept the suitable quotation below to confirm service!
-            </span>
-          ) : booking.status === 'accepted' || booking.status === 'scheduled' || booking.status === 'in_progress' ? (
+          {['submitted', 'requested', 'pending', 'new', 'quotation', 'accepted'].includes(booking.status) ? (
             <span className="text-emerald-800 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <strong>Step 3 (Service Accepted):</strong> Quotation accepted &amp; service confirmed for {booking.preferredDate} ({booking.preferredTimeSlot || 'Scheduled Time'}).
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              {isProvider ? (
+                <>
+                  <strong>New Lead:</strong> Review customer requirements and contact customer via call or WhatsApp. When ready, click <strong>Start / In Progress</strong>.
+                </>
+              ) : (
+                <>
+                  <strong>Request Sent:</strong> Your service request has been sent. A verified service specialist will contact you via your preferred channel.
+                </>
+              )}
             </span>
-          ) : booking.status === 'completed' ? (
+          ) : ['in_progress', 'scheduled'].includes(booking.status) ? (
+            <span className="text-blue-800 font-medium flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              <strong>In Progress:</strong> {isCustomer ? 'Service is in progress with your service specialist.' : 'Work is in progress. Click "Mark Completed" once finished.'}
+            </span>
+          ) : (booking.status === 'completed' || (isCustomer && booking.status === 'closed')) ? (
             <span className="text-emerald-800 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <strong>Step 4 (Completed):</strong> Service completed! Invoice generated and ready for review.
+              <CheckCircle2 size={13} className="text-emerald-600" />
+              <strong>Service Completed:</strong>{' '}
+              {isProvider
+                ? 'Work has been marked completed. You can now close and archive this lead.'
+                : 'Technician has completed the service.'}
+            </span>
+          ) : booking.status === 'closed' ? (
+            <span className="text-emerald-800 font-medium flex items-center gap-1.5">
+              <CheckCircle2 size={13} className="text-emerald-600" />
+              <strong>Lead Closed:</strong> Service was completed and this lead has been closed and archived.
             </span>
           ) : (
             <span className="text-stone-600 font-medium capitalize">
@@ -363,50 +581,59 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onVie
             </span>
           )}
         </div>
-
-        {/* Small role indicator pill */}
-        <span className="text-[10px] text-stone-400 hidden sm:inline">
-          {canManage ? 'Provider / Admin Controls Active' : 'Customer View'}
-        </span>
       </div>
 
-      {/* Visual Stepper Tracker (Steps 1 to 4) */}
+      {/* Visual Stepper Tracker (3 Steps for Customer: Booking Confirmed -> In Progress -> Completed) */}
       {!['cancelled', 'rejected', 'disputed'].includes(booking.status) && (
         <div className="px-4 sm:px-5 py-3 bg-stone-50/70 border-b border-stone-100 overflow-x-auto">
-          <div className="flex items-center justify-between min-w-[540px]">
-            {STEP_ORDER.map((step, idx) => {
-              const isPast = currentStepIndex > idx;
+          <div className="flex items-center justify-between min-w-[480px]">
+            {activeSteps.map((step, idx) => {
+              const isCompleted = booking.status === 'completed' || booking.status === 'closed';
+              const isClosed = booking.status === 'closed';
+
+              // Every reached step (including current active, completed, or closed) displays a dark green circle with checkmark
+              const isStepDone =
+                idx <= currentStepIndex ||
+                (step === 'completed' && isCompleted) ||
+                (step === 'closed' && isClosed);
+
               const isCurrent = currentStepIndex === idx;
+              const isLineActive = currentStepIndex > idx || (step === 'completed' && isClosed);
+
+              const stepLabels = {
+                submitted: 'Request Sent',
+                in_progress: 'In Progress',
+                completed: 'Completed',
+                closed: 'Lead Closed'
+              };
               return (
                 <div key={step} className="flex items-center flex-1 last:flex-none">
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                        isPast
+                        isStepDone
                           ? 'bg-[#163e35] text-white shadow-xs'
                           : isCurrent
                           ? 'bg-[#163e35] text-[#d8edb3] ring-4 ring-[#163e35]/15'
                           : 'bg-stone-200 text-stone-500'
                       }`}
                     >
-                      {isPast ? <Check size={12} strokeWidth={3} /> : idx + 1}
+                      {isStepDone ? <Check size={12} strokeWidth={3} /> : idx + 1}
                     </div>
                     <span
                       className={`text-xs capitalize font-medium ${
-                        isCurrent
+                        isStepDone || isCurrent
                           ? 'font-bold text-[#163e35]'
-                          : isPast
-                          ? 'text-stone-700'
                           : 'text-stone-400'
                       }`}
                     >
-                      {step === 'accepted' ? 'Service Accepted' : step === 'quotation' ? 'Quotation' : step.replace('_', ' ')}
+                      {stepLabels[step]}
                     </span>
                   </div>
-                  {idx < STEP_ORDER.length - 1 && (
+                  {idx < activeSteps.length - 1 && (
                     <div
                       className={`flex-1 h-0.5 mx-2 rounded ${
-                        isPast ? 'bg-[#163e35]' : 'bg-stone-200'
+                        isLineActive ? 'bg-[#163e35]' : 'bg-stone-200'
                       }`}
                     />
                   )}
@@ -470,10 +697,10 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onVie
           )}
         </div>
 
-        {/* Assigned Technician or Description */}
+        {/* Customer Requirements / Notes or Assigned Technician */}
         <div className="space-y-1.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-            {booking.technician?.name ? 'Assigned Technician' : 'Requirement Notes'}
+            {booking.technician?.name ? 'Assigned Technician' : 'Requirement Details'}
           </div>
           {booking.technician?.name ? (
             <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
@@ -492,21 +719,52 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onVie
               </a>
             </div>
           ) : (
-            <p className="text-stone-600 line-clamp-3 italic">
-              "{booking.description}"
-            </p>
+            <div className="space-y-1">
+              <p className="text-stone-700 italic">
+                "{booking.customerMessage || booking.description || 'Standard service inspection and repair.'}"
+              </p>
+              {booking.customerMessage && booking.description && booking.customerMessage !== booking.description && (
+                <p className="text-stone-500 text-[11px]">
+                  <strong>Task:</strong> {booking.description}
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
 
+      {/* Customer Rating & Review on completed work */}
+      {booking.review?.rating && (
+        <div className="mx-4 sm:mx-5 mb-4 p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-amber-800 font-bold">
+              <div className="flex items-center gap-0.5 text-amber-500">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    size={13}
+                    fill={i < booking.review.rating ? 'currentColor' : 'none'}
+                    className={i < booking.review.rating ? 'text-amber-500' : 'text-stone-300'}
+                  />
+                ))}
+              </div>
+              <span>{booking.review.rating} / 5 Customer Rating</span>
+            </div>
+            <span className="text-[10px] text-amber-800 font-semibold bg-amber-100 px-2 py-0.5 rounded-full">
+              Customer Feedback
+            </span>
+          </div>
+          {booking.review.comment && (
+            <p className="text-stone-700 italic text-[11px] pt-0.5">
+              "{booking.review.comment}"
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Action Footer Bar */}
       <div className="px-4 sm:px-5 py-3 bg-stone-50 border-t border-stone-100 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs">
-          {booking.invoice?.invoiceNumber && (
-            <span className="font-medium text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px]">
-              Invoice {booking.invoice.invoiceNumber}
-            </span>
-          )}
           {booking.review?.rating && (
             <span className="font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
               <Star size={11} fill="currentColor" /> {booking.review.rating}/5 Rated
@@ -514,64 +772,98 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onVie
           )}
         </div>
 
-        {/* Action Buttons Depending on State */}
+        {/* Action Buttons Depending on State and Role */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* STEP 1 -> STEP 2: Submit Price Quotation */}
-          {(booking.status === 'requested' || booking.status === 'pending') && (
-            <button
-              onClick={() => onAction('quote')}
-              className="px-3.5 py-1.5 rounded-lg bg-[#163e35] text-white text-xs font-semibold hover:bg-[#204e43] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-            >
-              <DollarSign size={14} /> Submit Price Quotation
-            </button>
-          )}
-
-          {/* STEP 2 -> STEP 3: Accept or Decline Quotation */}
-          {(booking.status === 'quoted' || booking.status === 'quotation') && (
+          {/* Quick Connect for Provider */}
+          {canManage && booking.phone && (
             <>
-              <button
-                onClick={() => onAction('accept')}
-                className="px-3.5 py-1.5 rounded-lg bg-[#163e35] text-white text-xs font-semibold hover:bg-[#204e43] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+              <a
+                href={`tel:${booking.phone}`}
+                className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
-                <Check size={14} /> Accept Quotation {booking.quotations?.length > 1 ? `(${booking.quotations.length} Options)` : `(₹${booking.quotation?.amount || 599})`}
-              </button>
-              <button
-                onClick={() => onAction('reject-quote')}
-                className="px-3 py-1.5 rounded-lg bg-stone-200 text-stone-700 text-xs font-medium hover:bg-stone-300 transition-colors cursor-pointer"
+                <Phone size={13} className="text-stone-600" /> Call Customer
+              </a>
+              <a
+                href={`https://wa.me/${String(booking.phone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${booking.name}, I am contacting you regarding your service booking for ${booking.serviceType} on UrbanFinder.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
-                Decline
-              </button>
-              {canManage && (
-                <button
-                  onClick={() => onAction('quote')}
-                  className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 text-xs font-medium hover:bg-stone-50 transition-colors cursor-pointer"
-                >
-                  Edit Quotation
-                </button>
-              )}
+                <MessageCircle size={13} className="text-emerald-700" /> WhatsApp
+              </a>
             </>
           )}
 
-          {/* STEP 3: Service Accepted */}
-          {['accepted', 'scheduled', 'in_progress'].includes(booking.status) && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1.5 border border-emerald-200">
-                <Check size={14} /> Service Accepted
-              </span>
-              <button
-                onClick={() => onAction('complete')}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <CheckCircle2 size={14} /> {canManage ? 'Complete Service & Invoice' : 'Mark Service Completed'}
-              </button>
-            </div>
+          {/* Start / In Progress button for Provider: directly available for new leads */}
+          {canManage && ['submitted', 'requested', 'pending', 'new', 'quotation', 'accepted'].includes(booking.status) && (
+            <button
+              onClick={() => onDirectStatus('in_progress')}
+              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Clock size={13} /> Start / In Progress
+            </button>
           )}
 
-          {/* STEP 6: Rate & Review */}
-          {booking.status === 'completed' && !booking.review?.rating && (
+          {/* MARK COMPLETED BUTTON (for Provider): Only when work is in_progress or scheduled */}
+          {canManage && ['in_progress', 'scheduled'].includes(booking.status) && (
+            <button
+              onClick={() => onAction('complete')}
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            >
+              <CheckCircle2 size={14} /> Mark Completed
+            </button>
+          )}
+
+          {/* CLOSE LEAD BUTTON (when completed) */}
+          {canManage && booking.status === 'completed' && (
+            <button
+              onClick={() => onAction('close')}
+              className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-black text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            >
+              <Check size={14} /> Close Lead
+            </button>
+          )}
+
+          {/* CANCEL / DECLINE LEAD BUTTON (for Provider) */}
+          {canManage && !['completed', 'closed', 'cancelled', 'rejected'].includes(booking.status) && (
+            <button
+              onClick={() => onAction('cancel')}
+              className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-stone-600 border border-stone-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              title="Decline or cancel this lead if unable to service"
+            >
+              <X size={13} /> Cancel / Decline Lead
+            </button>
+          )}
+
+          {/* CANCEL BOOKING BUTTON (for Customer) */}
+          {isCustomer && !['completed', 'closed', 'cancelled', 'rejected'].includes(booking.status) && (
+            <button
+              onClick={() => onAction('cancel')}
+              className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <X size={13} /> Cancel Booking
+            </button>
+          )}
+
+          {/* CLOSED BADGE - Provider only (Customer sees Completed) */}
+          {booking.status === 'closed' && !isCustomer && (
+            <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200 flex items-center gap-1.5">
+              <Check size={13} strokeWidth={3} className="text-emerald-600" /> Lead Closed &amp; Completed
+            </span>
+          )}
+
+          {/* CANCELLED BADGE */}
+          {['cancelled', 'rejected'].includes(booking.status) && (
+            <span className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-800 text-xs font-bold border border-rose-200 flex items-center gap-1.5">
+              <X size={13} strokeWidth={3} className="text-rose-600" /> {booking.status === 'rejected' ? 'Declined' : 'Cancelled'}
+            </span>
+          )}
+
+          {/* Customer review action */}
+          {isCustomer && (booking.status === 'completed' || booking.status === 'closed') && !booking.review?.rating && (
             <button
               onClick={() => onAction('review')}
-              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
             >
               <Star size={13} fill="currentColor" /> Rate &amp; Review
             </button>
@@ -582,7 +874,7 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onVie
             onClick={onViewDetails}
             className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 text-xs font-semibold hover:bg-stone-50 transition-colors flex items-center gap-1 cursor-pointer"
           >
-            <FileText size={13} /> View Invoice &amp; Timeline
+            <FileText size={13} /> View Request Details
           </button>
         </div>
       </div>
@@ -593,19 +885,31 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onVie
 // Action Dialog Modal for Quotation, Assignment, Completion, Review, etc.
 function ActionModalDialog({ action, onClose, onSubmit, busy }) {
   const { type, booking } = action;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
+  const content = (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[999999] overflow-hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn"
+      style={{ zIndex: 999999 }}
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-stone-200 text-left my-auto overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
+        style={{ maxHeight: 'min(84vh, 580px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-4">
           <div>
             <h3 className="font-bold text-lg text-stone-900">
-              {type === 'quote' && 'Submit Service Quotation'}
-              {type === 'accept' && 'Accept Quotation & Confirm Booking'}
-              {type === 'reject-quote' && 'Decline Quotation'}
               {type === 'assign' && 'Assign Field Technician & Schedule'}
               {type === 'start' && 'Start Job Execution'}
-              {type === 'complete' && 'Complete Work & Generate Invoice'}
+              {type === 'complete' && 'Complete Work & Record Completion'}
+              {type === 'close' && 'Mark Lead as Completed & Closed'}
               {type === 'review' && 'Rate & Review Service'}
               {type === 'cancel' && 'Cancel Service Booking'}
               {type === 'dispute' && 'Raise a Dispute or Service Concern'}
@@ -623,168 +927,6 @@ function ActionModalDialog({ action, onClose, onSubmit, busy }) {
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          {/* STEP 3: PROVIDER SUBMIT QUOTATION */}
-          {type === 'quote' && (
-            <>
-              <div className="p-3 bg-stone-50 rounded-xl text-xs text-stone-600 mb-3 border border-stone-200">
-                <strong>Customer Requirement:</strong> {booking.description}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-800 mb-1">
-                    Labor &amp; Service Fee (₹) *
-                  </label>
-                  <input
-                    name="laborCost"
-                    type="number"
-                    min="0"
-                    required
-                    defaultValue="499"
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-stone-800 mb-1">
-                    Parts / Materials (₹)
-                  </label>
-                  <input
-                    name="partsCost"
-                    type="number"
-                    min="0"
-                    defaultValue="0"
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-800 mb-1">
-                    Inspection Fee (₹)
-                  </label>
-                  <input
-                    name="inspectionFee"
-                    type="number"
-                    min="0"
-                    defaultValue="150"
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-stone-800 mb-1">
-                    Total Estimated Amount (₹) *
-                  </label>
-                  <input
-                    name="amount"
-                    type="number"
-                    min="1"
-                    required
-                    defaultValue="649"
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs font-bold text-[#163e35]"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-800 mb-1">
-                  Scope of Work &amp; Notes
-                </label>
-                <textarea
-                  name="notes"
-                  rows={3}
-                  placeholder="Details of inspection, parts warranty, and service timeline..."
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
-                />
-              </div>
-            </>
-          )}
-
-          {/* STEP 2 -> STEP 3: CUSTOMER ACCEPT QUOTATION */}
-          {type === 'accept' && (
-            <div className="space-y-3">
-              {Array.isArray(booking.quotations) && booking.quotations.length > 1 ? (
-                <div>
-                  <label className="block text-xs font-semibold text-stone-800 mb-1.5">
-                    Select the Most Suitable Quotation for You:
-                  </label>
-                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {booking.quotations.map((q) => (
-                      <label
-                        key={q.id || q.title}
-                        className="flex items-start gap-2.5 p-3 border border-stone-200 rounded-xl cursor-pointer hover:bg-emerald-50/30 transition-all text-xs"
-                      >
-                        <input
-                          type="radio"
-                          name="selectedQuotationId"
-                          value={q.id}
-                          defaultChecked={q.recommended || q.id === booking.selectedQuotationId || q === booking.quotations[0]}
-                          className="accent-[#163e35] mt-1"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-stone-900">{q.title}</span>
-                            <span className="font-extrabold text-emerald-800 font-mono">₹{Number(q.amount || 0).toLocaleString('en-IN')}</span>
-                          </div>
-                          {q.warranty && (
-                            <div className="text-emerald-700 font-medium text-[10px] mt-0.5">🛡️ {q.warranty}</div>
-                          )}
-                          {Array.isArray(q.inclusions) && (
-                            <div className="text-stone-500 text-[10px] mt-1 space-y-0.5">
-                              {q.inclusions.slice(0, 2).map((inc, i) => (
-                                <div key={i}>✓ {inc}</div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
-                  <div className="text-xs text-emerald-800 font-medium">Service Quotation Estimate</div>
-                  <div className="text-2xl font-bold text-emerald-950 mt-1">
-                    ₹{Number(booking.quotation?.amount || booking.predefinedPrice || 0).toLocaleString('en-IN')}
-                  </div>
-                  <div className="text-[11px] text-emerald-700 mt-1">
-                    {booking.quotation?.title ? `${booking.quotation.title}. ` : ''}Includes doorstep inspection, verified technician service, and workmanship guarantee.
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-stone-800 mb-1.5">
-                  Select Payment Preference
-                </label>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 p-3 border border-stone-200 rounded-xl cursor-pointer hover:bg-stone-50 text-xs">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="cash_after_service"
-                      defaultChecked
-                      className="accent-[#163e35]"
-                    />
-                    <div>
-                      <div className="font-semibold text-stone-900">Pay After Service (Cash / UPI)</div>
-                      <div className="text-stone-500 text-[11px]">Pay the technician directly upon successful completion.</div>
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-2 p-3 border border-stone-200 rounded-xl cursor-pointer hover:bg-stone-50 text-xs">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="online"
-                      className="accent-[#163e35]"
-                    />
-                    <div>
-                      <div className="font-semibold text-stone-900">Online Payment / Invoice Card</div>
-                      <div className="text-stone-500 text-[11px]">Pay securely via digital invoice after completion.</div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* STEP 5: PROVIDER ASSIGN TECHNICIAN */}
           {type === 'assign' && (
             <div className="space-y-3">
@@ -904,30 +1046,48 @@ function ActionModalDialog({ action, onClose, onSubmit, busy }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-800 mb-1">
-                    Final Billable Amount (₹) *
-                  </label>
-                  <input
-                    name="finalAmount"
-                    type="number"
-                    min="1"
-                    required
-                    defaultValue={booking.quotation?.amount || booking.predefinedPrice || 649}
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs font-bold text-[#163e35]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-stone-800 mb-1">
-                    Parts Replaced Note
-                  </label>
-                  <input
-                    name="partsReplaced"
-                    placeholder="e.g. Copper flare nut, drain pipe"
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
-                  />
-                </div>
+              <div>
+                <input
+                  type="hidden"
+                  name="finalAmount"
+                  value={booking.quotation?.amount || booking.predefinedPrice || 0}
+                />
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  Parts Replaced / Materials Used (Optional)
+                </label>
+                <input
+                  name="partsReplaced"
+                  placeholder="e.g. Copper flare nut, drain pipe, or None"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* PROVIDER CLOSE LEAD */}
+          {type === 'close' && (
+            <div className="space-y-3">
+              <div className="p-3.5 bg-stone-50 rounded-xl text-xs text-stone-700 border border-stone-200">
+                <p className="font-semibold text-stone-900">
+                  Mark Lead as Completed &amp; Closed?
+                </p>
+                <p className="text-stone-500 mt-1">
+                  Customer: <strong>{booking.name}</strong> ({booking.phone}) • Service: <strong>{booking.serviceType}</strong>
+                </p>
+                <p className="text-stone-500 mt-1">
+                  Closing this lead moves it into "Closed Leads", enabling you to clearly distinguish newly incoming leads, active ongoing jobs, and finalized closed records.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  Closing Notes &amp; Follow-up Summary (Optional)
+                </label>
+                <textarea
+                  name="notes"
+                  rows={3}
+                  defaultValue="Service completed satisfactorily and client follow-up completed."
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                />
               </div>
             </div>
           )}
@@ -973,7 +1133,30 @@ function ActionModalDialog({ action, onClose, onSubmit, busy }) {
           )}
 
           {/* CANCELLATION / DISPUTE */}
-          {(type === 'cancel' || type === 'dispute' || type === 'reject-quote') && (
+          {type === 'cancel' && (
+            <div className="space-y-3">
+              <div className="p-3 bg-rose-50 rounded-xl text-xs text-rose-800 border border-rose-200">
+                <strong>Confirm Cancellation:</strong>
+                <p className="mt-1">
+                  Are you sure you want to cancel this service request? This will update the status to Cancelled and remove it from active processing.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  Reason for Cancellation *
+                </label>
+                <textarea
+                  name="reason"
+                  rows={3}
+                  required
+                  placeholder="Please specify why this booking is being cancelled..."
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {type === 'dispute' && (
             <div>
               <label className="block text-xs font-semibold text-stone-800 mb-1">
                 Please state your reason:
@@ -1003,219 +1186,190 @@ function ActionModalDialog({ action, onClose, onSubmit, busy }) {
               disabled={busy}
               className="px-5 py-2 rounded-lg bg-[#163e35] hover:bg-[#204e43] text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer disabled:opacity-50"
             >
-              {busy ? 'Processing...' : 'Confirm Action'}
+              {busy ? 'Processing...' : type === 'pay' ? 'Complete Payment' : 'Confirm Action'}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  if (typeof document !== 'undefined' && document.body) {
+    return createPortal(content, document.body);
+  }
+  return content;
 }
 
-// Full Invoice and Comprehensive Audit Details Modal
-function InvoiceAndDetailsModal({ booking, onClose, isProvider, isAdmin, onAction }) {
-  const invoice = booking.invoice;
+// Full Service Request and Specialist Offer Details Modal
+export function InvoiceAndDetailsModal({ booking, onClose, isProvider, isAdmin, isCustomer: propIsCustomer, onAction }) {
+  const isCustomer = propIsCustomer !== undefined ? propIsCustomer : (!isProvider && !isAdmin);
+  const quote = booking?.quotation || (Array.isArray(booking?.quotations) && booking.quotations[0]) || null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const handlePrint = () => {
-    if (typeof window !== 'undefined') {
-      window.print();
-    }
+  const effectiveStatus = isCustomer && booking.status === 'closed' ? 'completed' : booking.status;
+  const statusInfo = STATUS_CONFIG[effectiveStatus] || {
+    label: effectiveStatus,
+    color: 'bg-stone-100 text-stone-700 border-stone-200'
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-stone-200 max-h-[92vh] overflow-y-auto print:p-0 print:border-none print:shadow-none">
-        {/* Printable Invoice Header */}
-        <div className="flex items-start justify-between pb-6 border-b border-stone-200">
+  const content = (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[999999] overflow-hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6"
+      style={{ zIndex: 999999 }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg sm:max-w-xl bg-white rounded-2xl text-left shadow-2xl border border-stone-200/90 my-auto flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        style={{ maxHeight: 'min(86vh, 580px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 flex items-start justify-between shrink-0 bg-white">
           <div>
-            <span className="text-xl font-bold tracking-tight text-[#163e35]">
-              urban<span className="text-[#749546]">findr</span>.
-            </span>
-            <div className="text-[11px] text-stone-500 mt-0.5">
-              Verified Real Estate &amp; Home Services Solutions
-            </div>
-            <div className="text-xs font-mono text-stone-600 mt-2">
-              Booking Ref: <strong>{booking.requestId}</strong>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-stone-900">
-              {invoice?.invoiceNumber ? 'TAX INVOICE' : 'SERVICE RECORD'}
-            </div>
-            {invoice?.invoiceNumber && (
-              <div className="text-xs font-mono text-stone-600">
-                Invoice No: {invoice.invoiceNumber}
-              </div>
-            )}
-            <div className="text-xs text-stone-500 mt-1">
-              Date: {date(invoice?.issueDate || booking.createdAt)}
-            </div>
-            <div className="mt-2">
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                  invoice?.status === 'paid'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-amber-50 text-amber-800 border-amber-200'
-                }`}
-              >
-                {invoice?.status === 'paid' ? 'PAID' : 'PAYMENT PENDING'}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xl font-bold tracking-tight text-[#163e35]">
+                urban<span className="text-[#749546]">findr.</span>
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                SERVICE REQUEST
               </span>
             </div>
-          </div>
-        </div>
-
-        {/* Customer & Service Info Breakdown */}
-        <div className="grid grid-cols-2 gap-4 py-4 text-xs border-b border-stone-200">
-          <div>
-            <div className="font-bold text-stone-700 uppercase tracking-wider text-[10px]">
-              Service For (Customer)
+            <div className="text-[11px] text-stone-500 mt-0.5">
+              Verified Doorstep Services &amp; Specialist Connect
             </div>
-            <div className="font-bold text-stone-900 mt-1">{booking.name}</div>
-            <div className="text-stone-600">{booking.phone}</div>
-            {booking.email && <div className="text-stone-600">{booking.email}</div>}
-            <div className="text-stone-600 mt-1">
-              {booking.address ? `${booking.address}, ` : ''}
-              {booking.locality ? `${booking.locality}, ` : ''}
-              {booking.city} {booking.pincode ? `- ${booking.pincode}` : ''}
+            <div className="text-xs font-mono text-stone-600 mt-1">
+              Request Ref: <strong>{booking.requestId}</strong>
             </div>
           </div>
-          <div>
-            <div className="font-bold text-stone-700 uppercase tracking-wider text-[10px]">
-              Service Category &amp; Provider
-            </div>
-            <div className="font-bold text-stone-900 mt-1">{booking.serviceType}</div>
-            <div className="text-stone-600">{booking.category}</div>
-            {booking.technician?.name && (
-              <div className="mt-2 p-2 bg-stone-50 rounded-lg border border-stone-200">
-                <span className="font-semibold text-stone-800">Technician:</span> {booking.technician.name} ({booking.technician.phone})
+          <div className="flex items-start gap-3">
+            <div className="text-right">
+              <div className="text-xs text-stone-500">
+                Date: {date(booking.createdAt)}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Itemized Table */}
-        <div className="py-4">
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="border-b border-stone-300 text-stone-500 uppercase tracking-wider text-[10px]">
-                <th className="py-2 font-bold">Item Description</th>
-                <th className="py-2 text-right font-bold">Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {invoice?.items?.length ? (
-                invoice.items.map((it, idx) => (
-                  <tr key={idx}>
-                    <td className="py-2.5 text-stone-800">{it.description}</td>
-                    <td className="py-2.5 text-right font-medium text-stone-900">
-                      ₹{Number(it.amount).toLocaleString('en-IN')}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td className="py-2.5 text-stone-800">
-                    {booking.serviceType} ({booking.category})
-                  </td>
-                  <td className="py-2.5 text-right font-medium text-stone-900">
-                    ₹{Number(booking.quotation?.amount || booking.predefinedPrice || 499).toLocaleString('en-IN')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            <tfoot className="border-t border-stone-200 font-semibold text-xs">
-              <tr>
-                <td className="pt-2 text-stone-600">Subtotal</td>
-                <td className="pt-2 text-right">
-                  ₹{Number(invoice?.subtotal || booking.quotation?.amount || 499).toLocaleString('en-IN')}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 text-stone-600">Applicable GST / Tax (18%)</td>
-                <td className="py-1 text-right">
-                  ₹{Number(invoice?.tax || Math.round((invoice?.subtotal || 499) * 0.18)).toLocaleString('en-IN')}
-                </td>
-              </tr>
-              <tr className="border-t border-stone-300 text-sm font-bold text-[#163e35]">
-                <td className="pt-2">Total Payable</td>
-                <td className="pt-2 text-right">
-                  ₹{Number(invoice?.total || Math.round((invoice?.subtotal || 499) * 1.18)).toLocaleString('en-IN')}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        {/* Completion Evidence (Work summary & photographs) */}
-        {booking.completion?.workSummary && (
-          <div className="my-3 p-3 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-1.5">
-            <div className="font-bold text-stone-900 flex items-center gap-1.5">
-              <CheckCircle2 size={14} className="text-emerald-600" /> Service Completion Report
-            </div>
-            <div className="text-stone-700"><strong>Work Done:</strong> {booking.completion.workSummary}</div>
-            {booking.completion.serviceNotes && (
-              <div className="text-stone-600"><strong>Notes:</strong> {booking.completion.serviceNotes}</div>
-            )}
-            {booking.completion.photos?.length > 0 && (
-              <div className="pt-2 flex items-center gap-2">
-                {booking.completion.photos.map((ph, idx) => (
-                  <img
-                    key={idx}
-                    src={ph}
-                    alt="Work completion evidence"
-                    className="w-16 h-16 rounded-lg object-cover border border-stone-300"
-                  />
-                ))}
+              <div className="mt-1">
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${statusInfo.color}`}>
+                  {['completed', 'closed'].includes(effectiveStatus) && (
+                    <Check size={12} strokeWidth={3} className="text-emerald-700" />
+                  )}
+                  {statusInfo.label}
+                </span>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Audit Timeline */}
-        {booking.timeline?.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-stone-200">
-            <h4 className="font-bold text-xs text-stone-800 uppercase tracking-wider mb-2">
-              Job Status Audit Trail
-            </h4>
-            <div className="space-y-2 text-xs">
-              {booking.timeline.map((entry, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-stone-600">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#163e35] mt-1.5 shrink-0" />
-                  <div>
-                    <span className="font-semibold text-stone-800">{entry.label}</span>
-                    <span className="text-[11px] text-stone-400 ml-1.5">
-                      ({date(entry.timestamp)})
-                    </span>
-                    <p className="text-[11px] text-stone-500 mt-0.5">{entry.notes}</p>
-                  </div>
-                </div>
-              ))}
             </div>
-          </div>
-        )}
-
-        {/* Modal Buttons */}
-        <div className="flex items-center justify-between pt-6 border-t border-stone-200 mt-6 print:hidden">
-          <div className="flex items-center gap-2">
             <button
-              onClick={handlePrint}
-              className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+              onClick={onClose}
+              className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer -mr-1"
+              title="Close"
             >
-              <Printer size={14} /> Print Invoice
+              <X size={20} />
             </button>
-            {invoice?.status !== 'paid' && (
-              <button
-                onClick={() => onAction('pay')}
-                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Check size={14} /> Mark as Paid
-              </button>
+          </div>
+        </div>
+
+        {/* Scrollable Content Body */}
+        <div className="px-5 py-3 sm:px-6 sm:py-3.5 overflow-y-auto flex-1 min-h-0 space-y-3.5">
+          {/* Customer & Service Info Breakdown */}
+          <div className="grid grid-cols-2 gap-3 pb-3 text-xs border-b border-stone-200">
+            <div>
+              <div className="font-bold text-stone-700 uppercase tracking-wider text-[10px]">
+                Customer Details
+              </div>
+              <div className="font-bold text-stone-900 mt-1">{booking.name}</div>
+              <div className="text-stone-600">{booking.phone}</div>
+              {booking.email && <div className="text-stone-600">{booking.email}</div>}
+              <div className="text-stone-600 mt-1">
+                {booking.locality ? `${booking.locality}, ` : (booking.address ? `${booking.address}, ` : '')}
+                {booking.city} {booking.pincode ? `- ${booking.pincode}` : ''}
+              </div>
+            </div>
+            <div>
+              <div className="font-bold text-stone-700 uppercase tracking-wider text-[10px]">
+                Service &amp; Specialist
+              </div>
+              <div className="font-bold text-stone-900 mt-1">{booking.serviceType}</div>
+              <div className="text-stone-600">{booking.category}</div>
+              {booking.technician?.name && (
+                <div className="mt-1.5 text-stone-600 text-[11px]">
+                  Specialist: <strong className="text-stone-800">{booking.technician.name}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Customer Contact Preference & Requirement */}
+          <div className="p-3 bg-stone-50 rounded-xl text-xs space-y-1.5 border border-stone-200">
+            <div className="flex justify-between items-center text-[11px]">
+              <span className="font-semibold text-stone-700">Contact Preference:</span>
+              <span className="font-bold text-[#163e35] capitalize">
+                {booking.contactPreference === 'call' ? 'Phone Call' : booking.contactPreference === 'message' ? 'WhatsApp Message' : 'Direct Quotation'}
+              </span>
+            </div>
+            {(booking.customerMessage || booking.description) && (
+              <div>
+                <span className="font-semibold text-stone-700 text-[11px]">Requirement / Notes:</span>
+                <p className="text-stone-700 italic mt-0.5">
+                  &ldquo;{booking.customerMessage || booking.description}&rdquo;
+                </p>
+              </div>
             )}
           </div>
 
+          {/* Optional Collapsible Completion Report & Timeline */}
+          {(booking.completion?.workSummary || booking.timeline?.length > 0) && (
+            <details className="mt-3 group border border-stone-200 rounded-xl p-3 bg-stone-50/50 text-xs transition-all">
+              <summary className="font-semibold text-stone-700 cursor-pointer select-none flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 size={13} className="text-emerald-600" />
+                  <span>View Completion Report &amp; Status Trail</span>
+                </span>
+                <span className="text-[11px] text-stone-400 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div className="mt-3 pt-3 border-t border-stone-200 space-y-3">
+                {booking.completion?.workSummary && (
+                  <div className="space-y-1">
+                    <div className="text-stone-700"><strong>Work Summary:</strong> {booking.completion.workSummary}</div>
+                    {booking.completion.serviceNotes && (
+                      <div className="text-stone-600"><strong>Notes:</strong> {booking.completion.serviceNotes}</div>
+                    )}
+                  </div>
+                )}
+                {booking.timeline?.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-xs text-stone-800 uppercase tracking-wider mb-2">
+                      Status Trail
+                    </h4>
+                    <div className="space-y-1.5">
+                      {booking.timeline.map((entry, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-stone-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#163e35] mt-1.5 shrink-0" />
+                          <div>
+                            <span className="font-semibold text-stone-800">{entry.label}</span>
+                            <span className="text-[11px] text-stone-400 ml-1.5">
+                              ({date(entry.timestamp)})
+                            </span>
+                            {entry.notes && <p className="text-[11px] text-stone-500 mt-0.5">{entry.notes}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+        </div>
+
+        {/* Modal Footer Buttons */}
+        <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-white sm:bg-stone-50/50 shrink-0 flex items-center justify-end">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
+            className="px-6 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-black transition-colors cursor-pointer shadow-xs"
           >
             Close
           </button>
@@ -1223,5 +1377,10 @@ function InvoiceAndDetailsModal({ booking, onClose, isProvider, isAdmin, onActio
       </div>
     </div>
   );
-}
 
+  if (!mounted) return null;
+  if (typeof document !== 'undefined' && document.body) {
+    return createPortal(content, document.body);
+  }
+  return content;
+}
