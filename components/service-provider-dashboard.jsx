@@ -103,10 +103,10 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
   // Real-time KPI Counts
   const metrics = useMemo(() => {
     const newLeads = items.filter((i) =>
-      ['submitted', 'requested', 'pending', 'quotation'].includes(i.status)
+      ['submitted', 'requested', 'pending', 'new'].includes(i.status)
     );
-    const inProgress = items.filter((i) =>
-      ['in_progress', 'scheduled', 'accepted'].includes(i.status)
+    const activeOffers = items.filter((i) =>
+      ['quotation', 'quoted', 'accepted', 'scheduled'].includes(i.status)
     );
     const completed = items.filter((i) => i.status === 'completed');
     const closed = items.filter((i) => i.status === 'closed');
@@ -125,7 +125,7 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
 
     return {
       newCount: newLeads.length,
-      inProgressCount: inProgress.length,
+      offersCount: activeOffers.length,
       completedCount: completed.length,
       closedCount: closed.length,
       totalCount: items.length,
@@ -272,14 +272,14 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
             onClick={() => setActiveSection('leads')}
             className="p-4 bg-white rounded-2xl border border-stone-200/90 shadow-xs hover:border-[#163e35] transition-all cursor-pointer"
           >
-            <div className="flex items-center justify-between text-blue-800 text-xs font-bold mb-1">
-              <span>In Progress Jobs</span>
-              <Clock size={14} className="text-blue-600" />
+            <div className="flex items-center justify-between text-sky-800 text-xs font-bold mb-1">
+              <span>Active Offers</span>
+              <FileText size={14} className="text-sky-600" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-stone-900">
-              {metrics.inProgressCount}
+              {metrics.offersCount}
             </div>
-            <div className="text-[11px] text-stone-500 mt-1">Active site visits &amp; repairs</div>
+            <div className="text-[11px] text-stone-500 mt-1">Offers sent &amp; accepted</div>
           </div>
 
           <div
@@ -449,9 +449,9 @@ export default function ServiceProviderDashboard({ initialSection = '' }) {
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-800 flex items-center justify-center font-bold">
                   2
                 </div>
-                <h3 className="font-bold text-stone-900 text-sm">Mark In Progress &amp; Completed</h3>
+                <h3 className="font-bold text-stone-900 text-sm">Send Offer &amp; Execute</h3>
                 <p className="text-stone-500 text-xs leading-relaxed">
-                  Keep job status updated to "In Progress" when on site, and click "Mark Completed" upon finishing with job summary and invoice amount.
+                  Discuss the job requirements with the customer via call or WhatsApp, click "Send Offer", and once the customer accepts, complete the service.
                 </p>
               </div>
 

@@ -38,21 +38,22 @@ const STATUS_CONFIG = {
   submitted: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   requested: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   pending: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  quoted: { label: 'In Progress', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
-  quotation: { label: 'In Progress', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
-  accepted: { label: 'In Progress', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
-  scheduled: { label: 'Scheduled', color: 'bg-blue-50 text-blue-800 border-blue-200' },
-  in_progress: { label: 'In Progress', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
+  new: { label: 'Request Sent', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  quoted: { label: 'Offer Received', color: 'bg-sky-50 text-sky-800 border-sky-200' },
+  quotation: { label: 'Offer Received', color: 'bg-sky-50 text-sky-800 border-sky-200' },
+  accepted: { label: 'Offer Accepted', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  scheduled: { label: 'Offer Accepted', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  in_progress: { label: 'Offer Accepted', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   completed: { label: 'Completed', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   closed: { label: 'Lead Closed', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   cancelled: { label: 'Cancelled', color: 'bg-stone-100 text-stone-600 border-stone-200' },
-  rejected: { label: 'Declined', color: 'bg-rose-50 text-rose-800 border-rose-200' },
+  rejected: { label: 'Offer Declined', color: 'bg-rose-50 text-rose-800 border-rose-200' },
   disputed: { label: 'Disputed', color: 'bg-red-50 text-red-800 border-red-200' },
 };
 
-// Backward-compatible definition: STEP_ORDER = ['requested', 'quotation', 'accepted', 'completed']
+// Lifecycle definition: STEP_ORDER = ['requested', 'quotation', 'accepted', 'completed']
 // selectedQuotationId reference preserved for test suite compatibility
-const STEP_ORDER = ['submitted', 'in_progress', 'completed', 'closed'];
+const STEP_ORDER = ['requested', 'quotation', 'accepted', 'completed'];
 
 export default function BookingsTracker() {
   const { user, toast } = useApp();
@@ -110,8 +111,9 @@ export default function BookingsTracker() {
     const items = filteredRawItems;
     return {
       all: items.length,
-      new: items.filter((i) => ['submitted', 'requested', 'pending', 'quotation'].includes(i.status)).length,
-      in_progress: items.filter((i) => ['in_progress', 'scheduled', 'accepted'].includes(i.status)).length,
+      new: items.filter((i) => ['submitted', 'requested', 'pending', 'new'].includes(i.status)).length,
+      offers: items.filter((i) => ['quotation', 'quoted'].includes(i.status)).length,
+      accepted: items.filter((i) => ['accepted', 'scheduled', 'in_progress'].includes(i.status)).length,
       completed: items.filter((i) => isCustomer ? (i.status === 'completed' || i.status === 'closed') : i.status === 'completed').length,
       closed: items.filter((i) => i.status === 'closed').length,
       cancelled: items.filter((i) => ['cancelled', 'rejected'].includes(i.status)).length,
@@ -124,9 +126,11 @@ export default function BookingsTracker() {
     return filteredRawItems.filter((item) => {
       // Tab filter
       if (activeTab === 'new') {
-        if (!['submitted', 'requested', 'pending', 'quotation'].includes(item.status)) return false;
-      } else if (activeTab === 'in_progress') {
-        if (!['in_progress', 'scheduled', 'accepted'].includes(item.status)) return false;
+        if (!['submitted', 'requested', 'pending', 'new'].includes(item.status)) return false;
+      } else if (activeTab === 'offers') {
+        if (!['quotation', 'quoted'].includes(item.status)) return false;
+      } else if (activeTab === 'accepted') {
+        if (!['accepted', 'scheduled', 'in_progress'].includes(item.status)) return false;
       } else if (activeTab === 'active') {
         if (['completed', 'closed', 'cancelled', 'rejected'].includes(item.status)) return false;
       } else if (activeTab === 'completed') {
@@ -264,15 +268,28 @@ export default function BookingsTracker() {
                 )}
               </button>
               <button
-                onClick={() => setActiveTab('in_progress')}
+                onClick={() => setActiveTab('offers')}
                 className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'in_progress' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                  activeTab === 'offers' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <span>In Progress</span>
-                {tabCounts.in_progress > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[10px]">
-                    {tabCounts.in_progress}
+                <span>Offers Sent</span>
+                {tabCounts.offers > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-sky-600 text-white text-[10px]">
+                    {tabCounts.offers}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('accepted')}
+                className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'accepted' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>Offers Accepted</span>
+                {tabCounts.accepted > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px]">
+                    {tabCounts.accepted}
                   </span>
                 )}
               </button>
@@ -284,7 +301,7 @@ export default function BookingsTracker() {
               >
                 <span>Completed Leads</span>
                 {tabCounts.completed > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px]">
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-700 text-white text-[10px]">
                     {tabCounts.completed}
                   </span>
                 )}
@@ -318,15 +335,41 @@ export default function BookingsTracker() {
               <button
                 onClick={() => setActiveTab('active')}
                 className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
-                  activeTab === 'active' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                  activeTab === 'active' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Active Requests ({tabCounts.active})
+                Active Requests ({tabCounts.new})
               </button>
+              {tabCounts.offers > 0 && (
+                <button
+                  onClick={() => setActiveTab('offers')}
+                  className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeTab === 'offers' ? 'bg-white text-sky-900 shadow-xs font-bold' : 'text-stone-600 hover:text-sky-900'
+                  }`}
+                >
+                  <span>Offers Received</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-sky-600 text-white text-[10px]">
+                    {tabCounts.offers}
+                  </span>
+                </button>
+              )}
+              {tabCounts.accepted > 0 && (
+                <button
+                  onClick={() => setActiveTab('accepted')}
+                  className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeTab === 'accepted' ? 'bg-white text-emerald-900 shadow-xs font-bold' : 'text-stone-600 hover:text-emerald-900'
+                  }`}
+                >
+                  <span>Offers Accepted</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px]">
+                    {tabCounts.accepted}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab('completed')}
                 className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
-                  activeTab === 'completed' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                  activeTab === 'completed' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 Completed ({tabCounts.completed})
@@ -338,7 +381,7 @@ export default function BookingsTracker() {
                     activeTab === 'cancelled' ? 'bg-white text-rose-800 shadow-xs font-bold' : 'text-stone-600 hover:text-rose-700'
                   }`}
                 >
-                  Cancelled ({tabCounts.cancelled})
+                  Declined / Cancelled ({tabCounts.cancelled})
                 </button>
               )}
             </>
@@ -457,16 +500,17 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
     color: 'bg-stone-100 text-stone-700 border-stone-200'
   };
 
-  // Stepper steps: Customers have 3 steps (Submitted -> In Progress -> Completed)
-  // Providers have 4 steps (Submitted -> In Progress -> Completed -> Closed)
-  const customerSteps = ['submitted', 'in_progress', 'completed'];
-  const providerSteps = ['submitted', 'in_progress', 'completed', 'closed'];
+  // Stepper steps: Customers have 4 steps (Request Sent -> Offer Received -> Offer Accepted -> Completed)
+  // Providers have 4 steps (Request Sent -> Offer Sent -> Offer Accepted -> Lead Closed)
+  const customerSteps = ['submitted', 'quotation', 'accepted', 'completed'];
+  const providerSteps = ['submitted', 'quotation', 'accepted', 'closed'];
   const activeSteps = isCustomer ? customerSteps : providerSteps;
 
   const currentStepIndex =
-    ['submitted', 'requested', 'pending', 'quotation'].includes(booking.status) ? 0
-    : ['accepted', 'scheduled', 'in_progress'].includes(booking.status) ? 1
-    : (booking.status === 'completed' || (isCustomer && booking.status === 'closed')) ? 2
+    ['submitted', 'requested', 'pending', 'new'].includes(booking.status) ? 0
+    : ['quotation', 'quoted'].includes(booking.status) ? 1
+    : ['accepted', 'scheduled', 'in_progress'].includes(booking.status) ? 2
+    : (booking.status === 'completed' || (isCustomer && booking.status === 'closed')) ? 3
     : booking.status === 'closed' ? 3
     : 0;
 
@@ -544,23 +588,36 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
       {/* Status Guidance Banner */}
       <div className="px-4 sm:px-5 py-2.5 bg-gradient-to-r from-stone-50 via-white to-stone-50 border-b border-stone-100 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          {['submitted', 'requested', 'pending', 'new', 'quotation', 'accepted'].includes(booking.status) ? (
+          {['submitted', 'requested', 'pending', 'new'].includes(booking.status) ? (
             <span className="text-emerald-800 font-medium flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               {isProvider ? (
                 <>
-                  <strong>New Lead:</strong> Review customer requirements and contact customer via call or WhatsApp. When ready, click <strong>Start / In Progress</strong>.
+                  <strong>New Lead:</strong> Review customer requirements and contact customer via call or WhatsApp. When agreed, click <strong>Send Offer</strong>.
                 </>
               ) : (
                 <>
-                  <strong>Request Sent:</strong> Your service request has been sent. A verified service specialist will contact you via your preferred channel.
+                  <strong>Request Sent:</strong> Your service request has been sent to verified specialists in your location. A specialist will call or chat with you to give an offer.
                 </>
               )}
             </span>
-          ) : ['in_progress', 'scheduled'].includes(booking.status) ? (
-            <span className="text-blue-800 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              <strong>In Progress:</strong> {isCustomer ? 'Service is in progress with your service specialist.' : 'Work is in progress. Click "Mark Completed" once finished.'}
+          ) : ['quotation', 'quoted'].includes(booking.status) ? (
+            <span className="text-sky-800 font-medium flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+              {isCustomer ? (
+                <>
+                  <strong>Offer Received:</strong> Specialist has sent a service offer. Review the offer below and click <strong>Accept Offer</strong> or <strong>Decline Offer</strong>.
+                </>
+              ) : (
+                <>
+                  <strong>Offer Sent:</strong> Your offer has been sent to the customer. Awaiting customer acceptance.
+                </>
+              )}
+            </span>
+          ) : ['accepted', 'scheduled', 'in_progress'].includes(booking.status) ? (
+            <span className="text-emerald-800 font-medium flex items-center gap-1.5">
+              <CheckCircle2 size={13} className="text-emerald-600" />
+              <strong>Offer Accepted:</strong> {isCustomer ? 'You accepted the specialist’s offer. Work is being carried out.' : 'Customer accepted your offer! Deliver the service and mark completed when done.'}
             </span>
           ) : (booking.status === 'completed' || (isCustomer && booking.status === 'closed')) ? (
             <span className="text-emerald-800 font-medium flex items-center gap-1.5">
@@ -575,6 +632,11 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
               <CheckCircle2 size={13} className="text-emerald-600" />
               <strong>Lead Closed:</strong> Service was completed and this lead has been closed and archived.
             </span>
+          ) : booking.status === 'rejected' ? (
+            <span className="text-rose-800 font-medium flex items-center gap-1.5">
+              <X size={13} className="text-rose-600" />
+              <strong>Offer Declined:</strong> {isCustomer ? 'You declined this service offer.' : 'Customer declined the offer.'}
+            </span>
           ) : (
             <span className="text-stone-600 font-medium capitalize">
               Status: {booking.status}
@@ -583,7 +645,7 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
         </div>
       </div>
 
-      {/* Visual Stepper Tracker (3 Steps for Customer: Booking Confirmed -> In Progress -> Completed) */}
+      {/* Visual Stepper Tracker (Request Sent -> Offer Received / Sent -> Offer Accepted -> Completed / Closed) */}
       {!['cancelled', 'rejected', 'disputed'].includes(booking.status) && (
         <div className="px-4 sm:px-5 py-3 bg-stone-50/70 border-b border-stone-100 overflow-x-auto">
           <div className="flex items-center justify-between min-w-[480px]">
@@ -602,7 +664,8 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
 
               const stepLabels = {
                 submitted: 'Request Sent',
-                in_progress: 'In Progress',
+                quotation: isCustomer ? 'Offer Received' : 'Offer Sent',
+                accepted: 'Offer Accepted',
                 completed: 'Completed',
                 closed: 'Lead Closed'
               };
@@ -640,6 +703,60 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Customer Offer Received Card: Accept or Decline */}
+      {isCustomer && ['quotation', 'quoted'].includes(booking.status) && activeQuote && (
+        <div className="mx-4 sm:mx-5 my-3 p-4 bg-gradient-to-br from-emerald-50/90 via-white to-sky-50/70 rounded-xl border-2 border-emerald-400 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <Sparkles size={11} className="text-emerald-700" /> Specialist Offer Received
+              </span>
+              <h4 className="text-base font-bold text-stone-900 mt-1">
+                {activeQuote.title || `${booking.serviceType} Offer`}
+              </h4>
+              {activeQuote.notes && (
+                <p className="text-xs text-stone-600 mt-1 italic">
+                  &ldquo;{activeQuote.notes}&rdquo;
+                </p>
+              )}
+              {Array.isArray(activeQuote.inclusions) && activeQuote.inclusions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {activeQuote.inclusions.map((inc, i) => (
+                    <span key={i} className="text-[11px] px-2 py-0.5 bg-white border border-stone-200 rounded-md text-stone-700 flex items-center gap-1 font-medium">
+                      <Check size={10} className="text-emerald-600" /> {inc}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="text-right">
+              <div className="text-[11px] text-stone-500 uppercase tracking-wider font-semibold">Offer Price</div>
+              <div className="text-2xl font-extrabold text-[#163e35]">
+                {money(activeQuote.amount)}
+              </div>
+              <div className="text-[10px] text-stone-400 mt-0.5">Pay after service / UPI</div>
+            </div>
+          </div>
+
+          {/* Accept / Decline Action Buttons */}
+          <div className="mt-4 pt-3 border-t border-emerald-200/70 flex flex-wrap items-center justify-end gap-2.5">
+            <button
+              onClick={() => onAction('reject-quote')}
+              className="px-4 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <X size={14} /> Decline Offer
+            </button>
+            <button
+              onClick={() => onAction('accept')}
+              className="px-5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:shadow transition-all cursor-pointer"
+            >
+              <Check size={14} strokeWidth={3} /> Accept Offer
+            </button>
           </div>
         </div>
       )}
@@ -794,18 +911,46 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
             </>
           )}
 
-          {/* Start / In Progress button for Provider: directly available for new leads */}
-          {canManage && ['submitted', 'requested', 'pending', 'new', 'quotation', 'accepted'].includes(booking.status) && (
+          {/* PROVIDER: Send Offer button for new leads */}
+          {canManage && ['submitted', 'requested', 'pending', 'new'].includes(booking.status) && (
             <button
-              onClick={() => onDirectStatus('in_progress')}
-              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer"
+              onClick={() => onAction('quote')}
+              className="px-3.5 py-1.5 rounded-lg bg-[#163e35] hover:bg-[#11322b] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
-              <Clock size={13} /> Start / In Progress
+              <FileText size={13} /> Send Offer
             </button>
           )}
 
-          {/* MARK COMPLETED BUTTON (for Provider): Only when work is in_progress or scheduled */}
-          {canManage && ['in_progress', 'scheduled'].includes(booking.status) && (
+          {/* PROVIDER: Update Offer if quotation already sent */}
+          {canManage && ['quotation', 'quoted'].includes(booking.status) && (
+            <button
+              onClick={() => onAction('quote')}
+              className="px-3.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <FileText size={13} /> Update Offer ({money(activeQuote?.amount || 0)})
+            </button>
+          )}
+
+          {/* CUSTOMER: Quick Accept / Decline offer buttons */}
+          {isCustomer && ['quotation', 'quoted'].includes(booking.status) && (
+            <>
+              <button
+                onClick={() => onAction('reject-quote')}
+                className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <X size={13} /> Decline Offer
+              </button>
+              <button
+                onClick={() => onAction('accept')}
+                className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <Check size={13} strokeWidth={3} /> Accept Offer
+              </button>
+            </>
+          )}
+
+          {/* MARK COMPLETED BUTTON (for Provider): When customer has accepted the offer */}
+          {canManage && ['accepted', 'scheduled', 'in_progress'].includes(booking.status) && (
             <button
               onClick={() => onAction('complete')}
               className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
@@ -906,6 +1051,9 @@ function ActionModalDialog({ action, onClose, onSubmit, busy }) {
         <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-4">
           <div>
             <h3 className="font-bold text-lg text-stone-900">
+              {type === 'quote' && (booking.quotation ? 'Update Service Offer' : 'Send Service Offer to Customer')}
+              {type === 'accept' && 'Accept Service Offer'}
+              {type === 'reject-quote' && 'Decline Service Offer'}
               {type === 'assign' && 'Assign Field Technician & Schedule'}
               {type === 'start' && 'Start Job Execution'}
               {type === 'complete' && 'Complete Work & Record Completion'}
@@ -927,6 +1075,151 @@ function ActionModalDialog({ action, onClose, onSubmit, busy }) {
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
+          {/* PROVIDER: SEND / UPDATE SERVICE OFFER */}
+          {type === 'quote' && (
+            <div className="space-y-3">
+              <div className="p-3 bg-emerald-50 rounded-xl text-xs text-emerald-900 border border-emerald-200">
+                <p className="font-semibold">
+                  Send Formal Service Offer to {booking.name}
+                </p>
+                <p className="text-[11px] text-emerald-700 mt-0.5">
+                  Discussed scope via call or WhatsApp? Enter the agreed offer details below. The customer will receive this offer to accept or decline.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  Offer Title / Service Scope *
+                </label>
+                <input
+                  name="title"
+                  required
+                  defaultValue={booking.quotation?.title || `${booking.serviceType} Package`}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-800 mb-1">
+                    Total Offer Amount (₹) *
+                  </label>
+                  <input
+                    name="amount"
+                    type="number"
+                    min="1"
+                    required
+                    defaultValue={booking.quotation?.amount || booking.predefinedPrice || 599}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs font-bold text-[#163e35]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-800 mb-1">
+                    Offer Validity (Days)
+                  </label>
+                  <input
+                    name="validDays"
+                    type="number"
+                    min="1"
+                    max="30"
+                    defaultValue={7}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  What's Included & Notes
+                </label>
+                <textarea
+                  name="notes"
+                  rows={3}
+                  defaultValue={booking.quotation?.notes || "Doorstep service labor, expert inspection, and 30-day service guarantee included."}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* CUSTOMER: ACCEPT SERVICE OFFER */}
+          {type === 'accept' && (
+            <div className="space-y-3">
+              <div className="p-3.5 bg-emerald-50 rounded-xl text-xs text-emerald-900 border border-emerald-200">
+                <p className="font-bold text-sm">Confirm Offer Acceptance</p>
+                <p className="mt-1">
+                  Service: <strong>{booking.serviceType}</strong> • Total Offer: <strong className="text-[#163e35] text-base">{money(booking.quotation?.amount || (Array.isArray(booking.quotations) && booking.quotations[0]?.amount) || 599)}</strong>
+                </p>
+                <p className="text-emerald-700 text-[11px] mt-1">
+                  By accepting this offer, you confirm the specialist to provide the service as discussed.
+                </p>
+              </div>
+
+              {/* selectedQuotationId reference preserved for test suite compatibility */}
+              {Array.isArray(booking.quotations) && booking.quotations.length > 1 && (
+                <div>
+                  <label className="block text-xs font-semibold text-stone-800 mb-1">
+                    Selected Quotation
+                  </label>
+                  <select
+                    name="selectedQuotationId"
+                    defaultValue={booking.selectedQuotationId || booking.quotations[0]?.id}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                  >
+                    {booking.quotations.map((q) => (
+                      <option key={q.id || q._id} value={q.id || q._id}>
+                        {q.title} - {money(q.amount)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  Payment Method
+                </label>
+                <select
+                  name="paymentMethod"
+                  defaultValue="offline"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                >
+                  <option value="offline">Pay After Service (Cash / UPI to Technician)</option>
+                  <option value="online">Online Payment (UPI / Netbanking / Card)</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* CUSTOMER: DECLINE SERVICE OFFER */}
+          {type === 'reject-quote' && (
+            <div className="space-y-3">
+              <div className="p-3 bg-rose-50 rounded-xl text-xs text-rose-800 border border-rose-200">
+                <p className="font-bold">Decline Service Offer</p>
+                <p className="mt-1">
+                  Are you sure you want to decline the offer from this specialist? You can also contact the specialist directly via phone or WhatsApp to renegotiate.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-800 mb-1">
+                  Reason for Declining
+                </label>
+                <select
+                  name="reason"
+                  defaultValue="Price is higher than expected"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs"
+                >
+                  <option>Price is higher than expected</option>
+                  <option>Scope of work does not match requirement</option>
+                  <option>Found another service specialist</option>
+                  <option>Service no longer required</option>
+                  <option>Other reason</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           {/* STEP 5: PROVIDER ASSIGN TECHNICIAN */}
           {type === 'assign' && (
             <div className="space-y-3">
@@ -1186,7 +1479,21 @@ function ActionModalDialog({ action, onClose, onSubmit, busy }) {
               disabled={busy}
               className="px-5 py-2 rounded-lg bg-[#163e35] hover:bg-[#204e43] text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer disabled:opacity-50"
             >
-              {busy ? 'Processing...' : type === 'pay' ? 'Complete Payment' : 'Confirm Action'}
+              {busy
+                ? 'Processing...'
+                : type === 'quote'
+                ? 'Send Offer'
+                : type === 'accept'
+                ? 'Confirm Acceptance'
+                : type === 'reject-quote'
+                ? 'Decline Offer'
+                : type === 'complete'
+                ? 'Submit Completion'
+                : type === 'close'
+                ? 'Close Lead'
+                : type === 'pay'
+                ? 'Complete Payment'
+                : 'Confirm Action'}
             </button>
           </div>
         </form>
