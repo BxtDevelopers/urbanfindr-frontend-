@@ -82,28 +82,39 @@ export default function BookingsTracker() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [reload]);
 
-  const matchesCategory = (item, providerCategory) => {
-    if (!providerCategory) return false;
-    const pCat = String(providerCategory).toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
-    const itemSlug = String(item.categorySlug || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
-    const itemCat = String(item.category || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
-    const itemService = String(item.serviceType || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
-    return (
-      itemSlug === pCat ||
-      itemCat === pCat ||
-      itemSlug.includes(pCat) ||
-      pCat.includes(itemSlug) ||
-      itemCat.includes(pCat) ||
-      pCat.includes(itemCat) ||
-      itemService.includes(pCat)
-    );
+  const matchesProvider = (item, user) => {
+    if (!user) return false;
+    const uId = String(user._id || user.id || '');
+    const uName = String(user.name || '').toLowerCase().trim();
+    const uCompany = String(user.company || '').toLowerCase().trim();
+    const uEmail = String(user.email || '').toLowerCase().trim();
+
+    // 1. Direct Specialist ID match
+    if (uId && item.assignedSpecialistId && String(item.assignedSpecialistId) === uId) {
+      return true;
+    }
+
+    // 2. Assigned Specialist name, company, or email match
+    if (item.assignedSpecialist) {
+      const spec = String(item.assignedSpecialist).toLowerCase().trim();
+      if (uName && (spec === uName || spec.includes(uName) || uName.includes(spec))) return true;
+      if (uCompany && (spec === uCompany || spec.includes(uCompany) || uCompany.includes(spec))) return true;
+      if (uEmail && spec.includes(uEmail)) return true;
+    }
+
+    // 3. Assigned technician match
+    if (item.technician?.name) {
+      const techName = String(item.technician.name).toLowerCase().trim();
+      if (uName && (techName === uName || techName.includes(uName))) return true;
+    }
+
+    return false;
   };
 
   const filteredRawItems = useMemo(() => {
     const list = data?.items || [];
     if (isProvider) {
-      if (!user?.serviceCategory) return [];
-      return list.filter((i) => matchesCategory(i, user.serviceCategory));
+      return list.filter((i) => matchesProvider(i, user));
     }
     if (isCustomer && user) {
       const uId = String(user._id || user.id || '');

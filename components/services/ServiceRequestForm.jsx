@@ -55,6 +55,28 @@ export default function ServiceRequestForm({
   const [lastName, setLastName] = useState(user?.name ? user.name.split(' ').slice(1).join(' ') : '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [customerMessage, setCustomerMessage] = useState('');
+  const [specialists, setSpecialists] = useState([]);
+  const [selectedSpecialistId, setSelectedSpecialistId] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const fetchSpecialists = async () => {
+      try {
+        const catSlug = category?.slug || '';
+        const res = await api(`service-providers?category=${catSlug}&city=${city}`);
+        if (!active) return;
+        const list = res?.items || [];
+        setSpecialists(list);
+        if (list.length > 0) {
+          setSelectedSpecialistId(list[0]._id);
+        }
+      } catch (e) {
+        if (active) setSpecialists([]);
+      }
+    };
+    fetchSpecialists();
+    return () => { active = false; };
+  }, [category?.slug, city]);
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -119,6 +141,7 @@ export default function ServiceRequestForm({
     setSubmitting(true);
     try {
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      const selectedPro = specialists.find((p) => String(p._id) === String(selectedSpecialistId)) || specialists[0] || null;
       const payload = {
         category: category?.label || 'General Service',
         categorySlug: category?.slug || 'general',
@@ -133,7 +156,10 @@ export default function ServiceRequestForm({
         lastName: lastName.trim(),
         name: fullName,
         phone: cleanPhone,
-        email: user?.email || undefined
+        email: user?.email || undefined,
+        assignedSpecialist: selectedPro ? (selectedPro.specialist || selectedPro.name) : undefined,
+        assignedSpecialistId: selectedPro ? String(selectedPro._id) : undefined,
+        assignedSpecialistRating: selectedPro?.rating
       };
 
       const res = await api('service-requests', {
@@ -296,6 +322,26 @@ export default function ServiceRequestForm({
             ))}
           </select>
         </div>
+
+        {/* 1.5. Select Preferred Specialist */}
+        {specialists.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold text-stone-800 mb-1">
+              Select Specialist / Professional *
+            </label>
+            <select
+              value={selectedSpecialistId}
+              onChange={(e) => setSelectedSpecialistId(e.target.value)}
+              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs bg-white text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35]"
+            >
+              {specialists.map((pro) => (
+                <option key={pro._id} value={pro._id}>
+                  {pro.specialist || pro.name} ({pro.experience || 'Verified Specialist'})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* 2. Customer Contact Preference: Call / Message / Direct Quotation */}
         <div>

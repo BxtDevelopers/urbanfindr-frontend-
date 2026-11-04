@@ -97,24 +97,28 @@ export function Header() {
   const { data: requestData } = useData(user ? 'service-requests?limit=50' + providerCategoryParam : null);
 
   const newLeadsCount = useMemo(() => {
-    if (!requestData?.items || !isServiceProvider || !user?.serviceCategory) return 0;
-    const pCat = user.serviceCategory.toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
+    if (!requestData?.items || !isServiceProvider || !user) return 0;
+    const uId = String(user._id || user.id || '');
+    const uName = String(user.name || '').toLowerCase().trim();
+    const uCompany = String(user.company || '').toLowerCase().trim();
+    const uEmail = String(user.email || '').toLowerCase().trim();
+
     return requestData.items.filter((i) => {
       if (!['submitted', 'requested', 'pending', 'new', 'quotation'].includes(i.status)) return false;
-      const itemSlug = String(i.categorySlug || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
-      const itemCat = String(i.category || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
-      const itemService = String(i.serviceType || '').toLowerCase().trim().replace(/[-_ ]/g, '').replace(/s$/, '');
-      return (
-        itemSlug === pCat ||
-        itemCat === pCat ||
-        itemSlug.includes(pCat) ||
-        pCat.includes(itemSlug) ||
-        itemCat.includes(pCat) ||
-        pCat.includes(itemCat) ||
-        itemService.includes(pCat)
-      );
+      if (uId && i.assignedSpecialistId && String(i.assignedSpecialistId) === uId) return true;
+      if (i.assignedSpecialist) {
+        const spec = String(i.assignedSpecialist).toLowerCase().trim();
+        if (uName && (spec === uName || spec.includes(uName) || uName.includes(spec))) return true;
+        if (uCompany && (spec === uCompany || spec.includes(uCompany) || uCompany.includes(spec))) return true;
+        if (uEmail && spec.includes(uEmail)) return true;
+      }
+      if (i.technician?.name) {
+        const techName = String(i.technician.name).toLowerCase().trim();
+        if (uName && (techName === uName || techName.includes(uName))) return true;
+      }
+      return false;
     }).length;
-  }, [requestData?.items, isServiceProvider, user?.serviceCategory]);
+  }, [requestData?.items, isServiceProvider, user]);
 
   const customerRequestsCount = useMemo(() => {
     if (!requestData?.items || !isCustomer || !user) return 0;
