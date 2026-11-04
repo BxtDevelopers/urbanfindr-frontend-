@@ -117,12 +117,15 @@ export function Header() {
   }, [requestData?.items, isServiceProvider, user?.serviceCategory]);
 
   const customerRequestsCount = useMemo(() => {
-    if (!requestData?.items) return 0;
-    if (isCustomer) {
-      return requestData.items.length;
-    }
-    return 0;
-  }, [requestData?.items, isCustomer]);
+    if (!requestData?.items || !isCustomer || !user) return 0;
+    const uId = String(user._id || user.id || '');
+    const uEmail = String(user.email || '').toLowerCase().trim();
+    return requestData.items.filter((item) => {
+      const itemUserId = item.user?._id ? String(item.user._id) : item.user ? String(item.user) : '';
+      const itemEmail = String(item.email || '').toLowerCase().trim();
+      return (uId && itemUserId === uId) || (uEmail && itemEmail === uEmail);
+    }).length;
+  }, [requestData?.items, isCustomer, user]);
 
   useEffect(() => {
     setUserMenuOpen(false);

@@ -105,8 +105,17 @@ export default function BookingsTracker() {
       if (!user?.serviceCategory) return [];
       return list.filter((i) => matchesCategory(i, user.serviceCategory));
     }
+    if (isCustomer && user) {
+      const uId = String(user._id || user.id || '');
+      const uEmail = String(user.email || '').toLowerCase().trim();
+      return list.filter((item) => {
+        const itemUserId = item.user?._id ? String(item.user._id) : item.user ? String(item.user) : '';
+        const itemEmail = String(item.email || '').toLowerCase().trim();
+        return (uId && itemUserId === uId) || (uEmail && itemEmail === uEmail);
+      });
+    }
     return list;
-  }, [data?.items, isProvider, user?.serviceCategory]);
+  }, [data?.items, isProvider, isCustomer, user]);
 
   // Real-time Counts for all lifecycle stages
   const tabCounts = useMemo(() => {
