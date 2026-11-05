@@ -32,6 +32,7 @@ export default function ServiceRequestForm({
   category,
   initialCity = '',
   selectedServicePreload = '',
+  specialistPreload = null,
   onResetPreload
 }) {
   const { user } = useApp();
@@ -158,10 +159,11 @@ export default function ServiceRequestForm({
         email: user?.email || undefined
       };
 
-      if (specialistPreload?.name || specialistPreload?.specialist) {
-        payload.assignedSpecialist = specialistPreload.specialist || specialistPreload.name;
-        if (specialistPreload._id) payload.assignedSpecialistId = String(specialistPreload._id);
-        if (specialistPreload.rating) payload.assignedSpecialistRating = specialistPreload.rating;
+      const targetSpecialist = specialistPreload || specialists.find((s) => s._id === selectedSpecialistId) || (specialists.length > 0 ? specialists[0] : null);
+      if (targetSpecialist?.name || targetSpecialist?.specialist) {
+        payload.assignedSpecialist = targetSpecialist.specialist || targetSpecialist.name;
+        if (targetSpecialist._id) payload.assignedSpecialistId = String(targetSpecialist._id);
+        if (targetSpecialist.rating) payload.assignedSpecialistRating = targetSpecialist.rating;
       }
 
       const res = await api('service-requests', {

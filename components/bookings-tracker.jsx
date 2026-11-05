@@ -226,6 +226,23 @@ export default function BookingsTracker() {
     }
   };
 
+  // 1-Click Direct Accept for Customer (no details/amount popup needed)
+  const handleDirectAccept = async (booking) => {
+    try {
+      setBusyAction(true);
+      await api(`service-requests/${booking._id || booking.requestId}`, {
+        method: 'PATCH',
+        body: { action: 'accept' }
+      });
+      toast('Offer accepted successfully! Specialist will proceed with service.');
+      reload();
+    } catch (err) {
+      toast(err.message || 'Failed to accept offer.');
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
   // Direct status transition handler (e.g. In Progress, Completed, Closed)
   const handleDirectStatus = async (bookingId, status) => {
     try {
@@ -424,6 +441,7 @@ export default function BookingsTracker() {
               isCustomer={isCustomer}
               onAction={(type) => setActionModal({ type, booking: item })}
               onDirectStatus={(status) => handleDirectStatus(item._id, status)}
+              onDirectAccept={handleDirectAccept}
               onViewDetails={() => setSelectedBooking(item)}
             />
           ))}
@@ -460,7 +478,16 @@ export default function BookingsTracker() {
 }
 
 // Single Booking Card with Visual Stepper
-function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDirectStatus, onViewDetails }) {
+function BookingCard({
+  booking,
+  isProvider,
+  isAdmin,
+  isCustomer,
+  onAction,
+  onDirectStatus,
+  onDirectAccept = null,
+  onViewDetails
+}) {
   const canManage = isProvider || isAdmin;
   const activeQuote = booking.quotation || (Array.isArray(booking.quotations) && booking.quotations[booking.quotations.length - 1]) || null;
   const effectiveStatus = isCustomer && booking.status === 'closed' ? 'completed' : booking.status;
@@ -724,8 +751,28 @@ function BookingCard({ booking, isProvider, isAdmin, isCustomer, onAction, onDir
             </button>
           )}
 
+          {/* CUSTOMER ACCEPT & DECLINE OFFER BUTTONS */}
+          {isCustomer && (booking.offer || booking.quotation) && ['contacted', 'quotation', 'quoted', 'submitted', 'requested', 'pending'].includes(booking.status) && (
+            <>
+              <button
+                type="button"
+                onClick={() => onDirectAccept ? onDirectAccept(booking) : onAction('accept')}
+                className="px-3.5 py-1.5 rounded-lg bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+              >
+                <Check size={13} strokeWidth={2.5} /> Accept Offer
+              </button>
+              <button
+                type="button"
+                onClick={() => onAction('reject-quote')}
+                className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <X size={13} /> Decline Offer
+              </button>
+            </>
+          )}
+
           {/* CANCEL BOOKING BUTTON (for Customer) */}
-          {isCustomer && !['completed', 'closed', 'cancelled', 'rejected'].includes(booking.status) && (
+          {isCustomer && !['completed', 'closed', 'cancelled', 'rejected'].includes(booking.status) && !booking.offer && (
             <button
               onClick={() => onAction('cancel')}
               className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"

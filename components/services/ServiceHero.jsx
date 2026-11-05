@@ -24,6 +24,7 @@ export default function ServiceHero({
   initialLocality = '',
   onSearch,
   selectedService = '',
+  specialistPreload = null,
   onResetPreload
 }) {
   const [searchCity, setSearchCity] = useState(initialCity || '');
@@ -251,6 +252,7 @@ export default function ServiceHero({
                 category={category}
                 initialCity={searchCity}
                 selectedServicePreload={selectedService}
+                specialistPreload={specialistPreload}
                 onResetPreload={onResetPreload}
               />
             </div>

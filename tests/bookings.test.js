@@ -135,5 +135,14 @@ test('Shared Booking System: Form displays official quotation and customer accep
   assert.ok(trackerContent.includes("selectedQuotationId"), 'Tracker modal must allow selecting suitable quotation from options list');
 });
 
+test('Shared Booking System: ServiceRequestForm defines specialistPreload safely', () => {
+  const formContent = readFileSync(path.resolve('components/services/ServiceRequestForm.jsx'), 'utf8');
+  assert.ok(formContent.includes('specialistPreload = null'), 'ServiceRequestForm must declare specialistPreload in its parameters');
+  assert.ok(formContent.includes('const targetSpecialist = specialistPreload'), 'ServiceRequestForm must safely fallback targetSpecialist');
+});
 
-
+test('Shared Booking System: BookingsTracker defines and passes onDirectAccept safely', () => {
+  const trackerContent = readFileSync(path.resolve('components/bookings-tracker.jsx'), 'utf8');
+  assert.ok(trackerContent.includes('onDirectAccept = null') || trackerContent.includes('onDirectAccept,'), 'BookingCard must declare onDirectAccept parameter');
+  assert.ok(trackerContent.includes('onDirectAccept={handleDirectAccept}'), 'BookingsTracker must pass onDirectAccept to BookingCard');
+});

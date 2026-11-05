@@ -666,8 +666,8 @@ export function Header() {
 
 export function Footer() {
   return (
-    <footer className="bg-forest text-white">
-      <div className="wrap mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 py-12">
+    <footer className="bg-forest text-white" suppressHydrationWarning>
+      <div className="wrap mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 py-12" suppressHydrationWarning>
         <div className="col-span-2">
           <Link
             href="/"
@@ -716,6 +716,9 @@ export function Footer() {
             </Link>
             <Link href="/interiors" className="block hover:text-lime">
               Home interiors
+            </Link>
+            <Link href="/build-your-home" className="block hover:text-lime">
+              Build your home
             </Link>
             <Link href="/categories" className="block hover:text-lime">
               All categories & services
@@ -799,6 +802,8 @@ export function Footer() {
           <Link href="/projects" className="hover:text-lime">Builder Projects</Link>
           <span className="text-white/30">•</span>
           <Link href="/interiors" className="hover:text-lime">Home Interiors</Link>
+          <span className="text-white/30">•</span>
+          <Link href="/build-your-home" className="hover:text-lime">Build Your Home</Link>
           <span className="text-white/30">•</span>
           <Link href="/categories/landscapers" className="hover:text-lime">Landscapers</Link>
           <span className="text-white/30">•</span>

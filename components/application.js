@@ -19,6 +19,7 @@ import PostProperty from './post-property';
 import CategoryComingSoon from './category-coming-soon';
 import AllCategoriesPage from './all-categories';
 import PropertyDataPreview from './PropertyDataPreview';
+import BuildYourHome from './BuildYourHome';
 import { categories } from '@/lib/catalog';
 function Content() {
   const pathname = usePathname();
@@ -39,13 +40,14 @@ function Content() {
   if (root === 'home-interiors') return <Interiors id={id} />;
   if (root === 'projects') return id ? <Details id={id} project /> : <Listings projects />;
   if (root === 'interiors') return <Interiors id={id} />;
+  if (root === 'build-your-home' || root === 'build-home') return <BuildYourHome />;
   if (root === 'login' || root === 'register' || root === 'auth') return <AuthPage register={root === 'register' || id === 'register'} />;
   if (root === 'admin-login' || (root === 'admin' && id === 'login')) return <AuthPage adminLogin={true} />;
   if (root === 'forgot-password') return <ForgotPasswordPage />;
   if (root === 'reset-password') return <ResetPasswordPage />;
   if (root === 'post-property') return <PostProperty />;
   if (root === 'property-model' || root === 'property-schema') return <div className="wrap section"><PropertyDataPreview /></div>;
-  if (root === 'dashboard') return <Guard><Dashboard section={id} /></Guard>;
+  if (root === 'dashboard') return <Guard><Dashboard section={id} action={action} /></Guard>;
   if (root === 'compare') return <Compare />;
   if (root === 'admin') return <Guard roles={['admin']}><Admin /></Guard>;
   if (root === 'about') return <About />;
