@@ -11,6 +11,7 @@ import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
 import PropertyDashboardCard from '../shared/PropertyDashboardCard';
+import PropertyRequestsModal from '../shared/PropertyRequestsModal';
 import {
   House,
   Plus,
@@ -245,7 +246,7 @@ function OwnerPropertiesSection({ onPromote }) {
   const [busy, setBusy] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'approved' | 'closed'
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' (default) | 'table'
+  const [selectedPropertyForRequests, setSelectedPropertyForRequests] = useState(null);
 
   const requestsByProperty = useMemo(() => {
     const map = {};
@@ -255,20 +256,24 @@ function OwnerPropertiesSection({ onPromote }) {
         isVisit: true,
         propertyId: String(v.property?._id || v.property || ''),
         customerName: v.user?.name || 'Customer',
+        email: v.user?.email || '',
         phone: v.phone || v.user?.phone || '',
         status: v.status || 'requested',
-        note: v.note,
-        scheduledAt: v.scheduledAt
+        note: v.note || '',
+        scheduledAt: v.scheduledAt,
+        createdAt: v.createdAt || v.scheduledAt
       })),
       ...(leadsData?.items || []).map((l) => ({
         _id: l._id,
         isVisit: false,
         propertyId: String(l.property?._id || l.property || ''),
         customerName: l.name || l.user?.name || 'Customer',
+        email: l.email || l.user?.email || '',
         phone: l.phone || l.user?.phone || '',
         status: l.status || 'requested',
-        note: l.note,
-        scheduledAt: l.preferredAt
+        note: l.note || '',
+        scheduledAt: l.preferredAt,
+        createdAt: l.createdAt
       }))
     ];
 
@@ -292,6 +297,15 @@ function OwnerPropertiesSection({ onPromote }) {
       toast('Customer request accepted!');
       reloadLeads();
       reloadVisits();
+      setSelectedPropertyForRequests((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          requests: (prev.requests || []).map((r) =>
+            r._id === request._id ? { ...r, status: 'accepted' } : r
+          )
+        };
+      });
     } catch (e) {
       toast(e.message || 'Failed to accept request.');
     } finally {
@@ -489,32 +503,6 @@ function OwnerPropertiesSection({ onPromote }) {
               Closed ({items.filter((i) => i.status === 'closed' || i.status === 'archived').length})
             </button>
           </div>
-
-          {/* View Mode Switcher */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setViewMode('cards')}
-              title="Cards View"
-              className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                viewMode === 'cards' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-500 hover:text-stone-900'
-              }`}
-            >
-              <LayoutGrid size={14} />
-              <span className="hidden sm:inline">Cards</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              title="Table View"
-              className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                viewMode === 'table' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-500 hover:text-stone-900'
-              }`}
-            >
-              <List size={14} />
-              <span className="hidden sm:inline">Table</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -538,7 +526,7 @@ function OwnerPropertiesSection({ onPromote }) {
             </Link>
           )}
         </div>
-      ) : viewMode === 'cards' ? (
+      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map((prop) => (
             <PropertyDashboardCard
@@ -546,22 +534,24 @@ function OwnerPropertiesSection({ onPromote }) {
               property={prop}
               busy={busy}
               requests={requestsByProperty[String(prop._id)] || []}
+              onOpenRequests={(p, r) => setSelectedPropertyForRequests({ property: p, requests: r })}
               onAcceptRequest={handleAcceptRequest}
               onClose={handleClose}
               onReopen={handleReopen}
             />
           ))}
         </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={filteredItems}
-          searchKey="title"
-          searchPlaceholder="Search properties…"
-          emptyTitle="No properties listed yet"
-          emptySubtitle="Start reaching tenants and buyers directly with zero brokerage."
-        />
       )}
+
+      {/* Property Visit Requests Modal */}
+      <PropertyRequestsModal
+        isOpen={!!selectedPropertyForRequests}
+        onClose={() => setSelectedPropertyForRequests(null)}
+        property={selectedPropertyForRequests?.property}
+        requests={selectedPropertyForRequests?.requests || []}
+        onAcceptRequest={handleAcceptRequest}
+        busyId={busy}
+      />
     </div>
   );
 }
