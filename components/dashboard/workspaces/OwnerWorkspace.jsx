@@ -31,6 +31,7 @@ import {
   MapPin,
   TrendingUp,
   ShieldCheck,
+  Check,
   AlertCircle
 } from 'lucide-react';
 
@@ -375,6 +376,7 @@ function OwnerPropertiesSection({ onPromote }) {
 
 // Section: Owner Enquiries
 function OwnerEnquiriesSection() {
+  const { toast } = useApp();
   const { data, loading } = useData('leads?page=1&limit=50');
   const items = data?.items || [];
 
@@ -385,7 +387,7 @@ function OwnerEnquiriesSection() {
         <div>
           <span className="font-bold text-stone-900 block truncate">{row.name || 'Prospect'}</span>
           <span className="text-[11px] text-stone-500 block truncate flex items-center gap-1">
-            <Phone size={11} /> {row.phone}
+            <ShieldCheck size={11} className="text-emerald-700" /> Phone verified
           </span>
         </div>
       )
@@ -409,6 +411,45 @@ function OwnerEnquiriesSection() {
     {
       header: 'Note',
       render: (row) => <span className="text-stone-500 text-xs line-clamp-1">{row.note || '—'}</span>
+    },
+    {
+      header: 'Actions',
+      render: (row) => {
+        const cleanPhone = String(row.phone || '').replace(/\D/g, '');
+        const prospectName = row.name || 'Customer';
+        const propertyTitle = row.property?.title || 'your property listing';
+
+        return (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (cleanPhone) window.location.href = `tel:${cleanPhone}`;
+                else toast('No contact number available.');
+              }}
+              title="Call Customer"
+              className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors cursor-pointer"
+            >
+              <Phone size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (cleanPhone) {
+                  const msg = encodeURIComponent(`Hello ${prospectName}, this is regarding your enquiry for ${propertyTitle}.`);
+                  window.open(`https://wa.me/91${cleanPhone}?text=${msg}`, '_blank', 'noopener,noreferrer');
+                } else {
+                  toast('No contact number available.');
+                }
+              }}
+              title="Message Customer"
+              className="p-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg transition-colors cursor-pointer"
+            >
+              <MessageCircle size={13} />
+            </button>
+          </div>
+        );
+      }
     }
   ];
 
@@ -455,7 +496,9 @@ function OwnerVisitsSection() {
       render: (row) => (
         <div>
           <span className="font-bold text-stone-900 block truncate">{row.user?.name || 'Visitor'}</span>
-          <span className="text-[11px] text-stone-400 block truncate">{row.user?.phone || 'Phone verified'}</span>
+          <span className="text-[11px] text-stone-400 block truncate flex items-center gap-1">
+            <ShieldCheck size={11} className="text-emerald-700" /> Phone verified
+          </span>
         </div>
       )
     },
@@ -477,40 +520,79 @@ function OwnerVisitsSection() {
     },
     {
       header: 'Host Actions',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          {row.status === 'requested' && (
+      render: (row) => {
+        const rawPhone = row.phone || row.user?.phone || '';
+        const cleanPhone = String(rawPhone).replace(/\D/g, '');
+        const guestName = row.user?.name || 'Visitor';
+        const propertyTitle = row.property?.title || 'your property listing';
+
+        return (
+          <div className="flex items-center gap-1.5">
+            {/* Call button - button element prevents browser URL preview from revealing mobile number on hover */}
             <button
               type="button"
-              disabled={busy === row._id}
-              onClick={() => updateVisit(row._id, 'confirmed')}
-              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold"
+              onClick={() => {
+                if (cleanPhone) window.location.href = `tel:${cleanPhone}`;
+                else toast('No contact number available for this visitor.');
+              }}
+              title="Call Customer"
+              className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors cursor-pointer"
             >
-              Confirm
+              <Phone size={13} />
             </button>
-          )}
-          {row.status === 'confirmed' && (
+
+            {/* Text / WhatsApp button - button element prevents browser URL preview from revealing mobile number on hover */}
             <button
               type="button"
-              disabled={busy === row._id}
-              onClick={() => updateVisit(row._id, 'completed')}
-              className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white rounded text-xs font-bold"
+              onClick={() => {
+                if (cleanPhone) {
+                  const msg = encodeURIComponent(`Hello ${guestName}, this is regarding your visit request for ${propertyTitle}.`);
+                  window.open(`https://wa.me/91${cleanPhone}?text=${msg}`, '_blank', 'noopener,noreferrer');
+                } else {
+                  toast('No contact number available for this visitor.');
+                }
+              }}
+              title="Message Customer"
+              className="p-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg transition-colors cursor-pointer"
             >
-              Mark Done
+              <MessageCircle size={13} />
             </button>
-          )}
-          {['requested', 'confirmed'].includes(row.status) && (
-            <button
-              type="button"
-              disabled={busy === row._id}
-              onClick={() => updateVisit(row._id, 'cancelled')}
-              className="text-xs text-rose-600 hover:text-rose-800 font-semibold"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-      )
+
+            {/* Confirm button */}
+            {row.status === 'requested' && (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => updateVisit(row._id, 'confirmed')}
+                className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+              >
+                <Check size={12} />
+                <span>Confirm</span>
+              </button>
+            )}
+            {row.status === 'confirmed' && (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => updateVisit(row._id, 'completed')}
+                className="px-2.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-bold cursor-pointer"
+              >
+                Mark Done
+              </button>
+            )}
+            {['requested', 'confirmed'].includes(row.status) && (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => updateVisit(row._id, 'cancelled')}
+                className="text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        );
+      }
     }
   ];
 

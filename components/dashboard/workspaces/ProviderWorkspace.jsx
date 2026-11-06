@@ -1219,22 +1219,25 @@ function ProviderEnquiriesSection({ onSelectSection }) {
             )}
             {cleanPhone && (
               <>
-                <a
-                  href={`tel:${cleanPhone}`}
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = `tel:${cleanPhone}`; }}
                   title="Call Customer"
                   className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors cursor-pointer"
                 >
                   <Phone size={13} />
-                </a>
-                <a
-                  href={`https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(row.customerName)},%20this%20is%20regarding%20your%20property%20enquiry%20for%20${encodeURIComponent(row.title)}.`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="WhatsApp"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = encodeURIComponent(`Hello ${row.customerName}, this is regarding your property enquiry for ${row.title}.`);
+                    window.open(`https://wa.me/91${cleanPhone}?text=${text}`, '_blank', 'noopener,noreferrer');
+                  }}
+                  title="Message Customer"
                   className="p-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg transition-colors cursor-pointer"
                 >
                   <MessageCircle size={13} />
-                </a>
+                </button>
               </>
             )}
           </div>

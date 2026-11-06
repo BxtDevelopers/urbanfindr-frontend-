@@ -223,4 +223,6 @@ test('Business Dashboard System: Service Provider and Owner can post, edit, and 
   assert.ok(ownerWs.includes("handleClose"), 'OwnerWorkspace must provide handleClose action');
   assert.ok(ownerWs.includes("/edit"), 'OwnerWorkspace must provide edit property link');
   assert.ok(!ownerWs.includes("header: 'Promotion'"), 'Owner properties table must not show promotion column');
+  assert.ok(ownerWs.includes("tel:") && ownerWs.includes("wa.me"), 'OwnerWorkspace must provide call and text actions');
+  assert.ok(ownerWs.includes("Confirm"), 'OwnerWorkspace must provide visit confirmation');
 });
