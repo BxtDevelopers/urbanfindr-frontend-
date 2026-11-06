@@ -111,7 +111,14 @@ export function WorkspaceProvider({ children, initialWorkspace, initialSection }
     if (initialWorkspace && WORKSPACE_CONFIG[initialWorkspace]) {
       return initialWorkspace;
     }
-    // 3. Fallback based on user primary role
+    // 3. Fallback based on user preference stored in localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('havenest_active_account_mode');
+        if (stored === 'customer' || stored === 'provider') return stored;
+      } catch (e) {}
+    }
+    // 4. Fallback based on user primary role
     if (user?.role === 'owner') return 'owner';
     if (user?.role === 'broker') return 'broker';
     if (user?.role === 'builder') return 'builder';
@@ -162,6 +169,9 @@ export function WorkspaceProvider({ children, initialWorkspace, initialSection }
   const switchWorkspace = useCallback((targetType) => {
     if (!WORKSPACE_CONFIG[targetType]) return;
     setActiveWorkspace(targetType);
+    try {
+      localStorage.setItem('havenest_active_account_mode', targetType === 'provider' ? 'provider' : 'customer');
+    } catch (e) {}
     router.push(WORKSPACE_CONFIG[targetType].path);
     toast(`Switched to ${WORKSPACE_CONFIG[targetType].label}`);
   }, [router, toast]);

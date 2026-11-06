@@ -17,6 +17,7 @@ import {
   User,
   Wrench,
   Bell,
+  Briefcase,
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
 
@@ -81,7 +82,8 @@ function CityPickerModal({ onClose }) {
 }
 
 export function Header() {
-  const { user, roleMeta, logout } = useApp();
+  const { user, roleMeta, logout, toast } = useApp();
+  const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
@@ -92,6 +94,41 @@ export function Header() {
 
   const isServiceProvider = user?.role === 'service_provider' || user?.role === 'service-provider';
   const isCustomer = user && !isServiceProvider && user.role !== 'admin';
+
+  // Track active account mode: 'provider' (Business Account) or 'customer' (User Account)
+  const [activeAccountMode, setActiveAccountMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('havenest_active_account_mode');
+        if (stored === 'provider' || stored === 'customer') return stored;
+      } catch (e) {}
+    }
+    if (pathname.startsWith('/dashboard/provider')) return 'provider';
+    if (pathname.startsWith('/dashboard/customer')) return 'customer';
+    if (user?.role === 'service_provider' || user?.role === 'service-provider') return 'provider';
+    return 'customer';
+  });
+
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/provider')) {
+      setActiveAccountMode('provider');
+      try { localStorage.setItem('havenest_active_account_mode', 'provider'); } catch (e) {}
+    } else if (pathname.startsWith('/dashboard/customer')) {
+      setActiveAccountMode('customer');
+      try { localStorage.setItem('havenest_active_account_mode', 'customer'); } catch (e) {}
+    } else if (user?.role === 'service_provider' || user?.role === 'service-provider') {
+      try {
+        const stored = localStorage.getItem('havenest_active_account_mode');
+        if (stored === 'customer' || stored === 'provider') {
+          setActiveAccountMode(stored);
+        }
+      } catch (e) {}
+    }
+  }, [pathname, user]);
+
+  const isServiceProviderDashboard =
+    pathname.startsWith('/dashboard/provider') ||
+    (pathname === '/dashboard' && (activeAccountMode === 'provider' || isServiceProvider));
 
   const providerCategoryParam = isServiceProvider && user?.serviceCategory ? '&category=' + user.serviceCategory : '';
   const { data: requestData } = useData(user ? 'service-requests?limit=50' + providerCategoryParam : null);
@@ -261,7 +298,7 @@ export function Header() {
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 sm:w-60 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in">
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in">
                   {/* User Profile Header */}
                   <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-2.5 mb-1">
                     <div className="w-8 h-8 rounded-full bg-forest/10 text-forest font-bold text-sm flex items-center justify-center shrink-0">
@@ -272,7 +309,11 @@ export function Header() {
                         {user.name || 'User'}
                       </p>
                       <p className="text-[11px] text-stone-500 truncate capitalize">
-                        {user.email || roleMeta?.label || user.role}
+                        {activeAccountMode === 'provider'
+                          ? 'Service Provider Account'
+                          : user.role === 'admin'
+                          ? 'Administrator'
+                          : 'Customer Account'}
                       </p>
                     </div>
                   </div>
@@ -280,13 +321,66 @@ export function Header() {
                   {/* Dropdown Options */}
                   <div className="space-y-0.5 pt-1">
                     <Link
-                      href={user.role === 'admin' ? '/admin' : '/dashboard'}
+                      href={
+                        user.role === 'admin'
+                          ? '/admin'
+                          : activeAccountMode === 'provider'
+                          ? '/dashboard/provider'
+                          : '/dashboard/customer'
+                      }
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
                     >
                       <LayoutDashboard size={15} className="text-stone-500" />
                       <span>Dashboard</span>
                     </Link>
+
+                    {/* Switch User Account / Business Account option */}
+                    {activeAccountMode === 'provider' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          try {
+                            localStorage.setItem('havenest_active_account_mode', 'customer');
+                          } catch (e) {}
+                          setActiveAccountMode('customer');
+                          router.push('/dashboard/customer');
+                          if (toast) toast('Switched to User Account');
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <User size={15} className="text-stone-500" />
+                          <span>Switch to User Account</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                          User
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          try {
+                            localStorage.setItem('havenest_active_account_mode', 'provider');
+                          } catch (e) {}
+                          setActiveAccountMode('provider');
+                          router.push('/dashboard/provider');
+                          if (toast) toast('Switched to Business Account');
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Briefcase size={15} className="text-stone-500" />
+                          <span>Switch to Business Account</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          Business
+                        </span>
+                      </button>
+                    )}
 
                     {user.role === 'admin' && (
                       <Link
@@ -596,11 +690,64 @@ export function Header() {
             ) : (
               <>
                 <Link
-                  href="/dashboard"
+                  href={activeAccountMode === 'provider' ? '/dashboard/provider' : '/dashboard/customer'}
                   onClick={() => setOpen(false)}
                 >
-                  {`My dashboard (${roleMeta?.shortLabel || 'Account'})`}
+                  {`My dashboard (${activeAccountMode === 'provider' ? 'Service Provider' : 'Customer'})`}
                 </Link>
+
+                {activeAccountMode === 'provider' ? (
+                  <button
+                    style={{
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      padding: 0,
+                      fontSize: 16,
+                      color: '#163e35',
+                      fontWeight: 600,
+                    }}
+                    onClick={() => {
+                      setOpen(false);
+                      try {
+                        localStorage.setItem('havenest_active_account_mode', 'customer');
+                      } catch (e) {}
+                      setActiveAccountMode('customer');
+                      router.push('/dashboard/customer');
+                      if (toast) toast('Switched to User Account');
+                    }}
+                  >
+                    Switch to User Account
+                  </button>
+                ) : (
+                  <button
+                    style={{
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      padding: 0,
+                      fontSize: 16,
+                      color: '#163e35',
+                      fontWeight: 600,
+                    }}
+                    onClick={() => {
+                      setOpen(false);
+                      try {
+                        localStorage.setItem('havenest_active_account_mode', 'provider');
+                      } catch (e) {}
+                      setActiveAccountMode('provider');
+                      router.push('/dashboard/provider');
+                      if (toast) toast('Switched to Business Account');
+                    }}
+                  >
+                    Switch to Business Account
+                  </button>
+                )}
+
                 <button
                   style={{
                     textAlign: 'left',
@@ -631,28 +778,28 @@ export function Header() {
       )}
 
       {/* Discovery navbar */}
-      <nav
-        className="discovery-nav"
-        aria-label="More ways to explore"
-      >
-        <Link href="/properties">
-          All properties
-        </Link>
+      {!isServiceProviderDashboard && (
+        <nav
+          className="discovery-nav"
+          aria-label="More ways to explore"
+        >
+          <Link href="/properties">
+            All properties
+          </Link>
 
-        <Link href="/cities">
-          Explore by city
-        </Link>
+          <Link href="/cities">
+            Explore by city
+          </Link>
 
-        <Link href="/#featured-properties">
-          Featured properties
-        </Link>
+          <Link href="/#featured-properties">
+            Featured properties
+          </Link>
 
-        <Link href="/#latest-listings">
-          Latest listings
-        </Link>
-
-
-      </nav>
+          <Link href="/#latest-listings">
+            Latest listings
+          </Link>
+        </nav>
+      )}
 
       {/* Builder projects city picker */}
       {showProjectsModal && (

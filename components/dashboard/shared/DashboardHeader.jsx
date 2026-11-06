@@ -135,31 +135,6 @@ export default function DashboardHeader({
             onClose={() => setNotificationOpen(false)}
           />
         </div>
-
-        {/* User Profile Pill */}
-        <div className="flex items-center gap-2.5 pl-2 border-l border-[#e6e8e1]">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-xs shrink-0"
-            style={{
-              backgroundColor: currentConfig.bgBadge,
-              color: currentConfig.accentColor,
-              border: `1px solid ${currentConfig.accentColor}33`
-            }}
-          >
-            {user?.name ? user.name[0] : 'U'}
-          </div>
-          <div className="hidden md:block text-left">
-            <span className="text-xs font-bold text-stone-900 block truncate max-w-[120px]">
-              {user?.name || 'User'}
-            </span>
-            <span
-              className="text-[10px] font-semibold block truncate"
-              style={{ color: currentConfig.accentColor }}
-            >
-              {currentConfig.shortLabel}
-            </span>
-          </div>
-        </div>
       </div>
     </header>
   );

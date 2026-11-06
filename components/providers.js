@@ -226,9 +226,28 @@ export function Providers({ children }) {
     >
       {children}
       {toast && (
-        <div role="status" className="toast">
-          <span className="whitespace-pre-line">{toast}</span>
-          <button aria-label="Dismiss message" onClick={() => setToast(null)}>
+        <div
+          role="status"
+          className="toast cursor-pointer"
+          onClick={() => {
+            if (typeof toast === 'object') {
+              if (toast.onClick) toast.onClick();
+              if (toast.href) window.location.href = toast.href;
+            } else if (typeof toast === 'string' && (toast.includes('dashboard') || toast.includes('Visit requested'))) {
+              window.location.href = '/dashboard/visits';
+            }
+          }}
+        >
+          <span className="whitespace-pre-line">
+            {typeof toast === 'object' ? toast.message || '' : toast}
+          </span>
+          <button
+            aria-label="Dismiss message"
+            onClick={(e) => {
+              e.stopPropagation();
+              setToast(null);
+            }}
+          >
             ×
           </button>
         </div>

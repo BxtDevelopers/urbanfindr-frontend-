@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useApp, useData, api } from '../../providers';
 import { date, money } from '@/lib/format';
@@ -38,12 +39,20 @@ import {
   ShieldCheck,
   TrendingUp,
   DollarSign,
-  MessageCircle
+  MessageCircle,
+  House,
+  Mail
 } from 'lucide-react';
 
 export default function ProviderWorkspace({ section = 'overview', onSelectSection }) {
   const { user, toast } = useApp();
-  const { data: dashData } = useData('dashboard');
+  const { data: dashData, reload: reloadDash } = useData('dashboard');
+  const categoryParam = user?.serviceCategory ? `&category=${user.serviceCategory}` : '';
+  const { data: reqData, reload: reloadReqs } = useData(`service-requests?limit=100&as=provider${categoryParam}`);
+  const { data: propLeadsData, reload: reloadLeads } = useData('leads?page=1&limit=50');
+  const { data: propVisitsData, reload: reloadVisits } = useData('visits?limit=50');
+
+  const [chartPeriod, setChartPeriod] = useState('6m');
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [assignTechRequest, setAssignTechRequest] = useState(null);
   const [promotionTarget, setPromotionTarget] = useState(null);
@@ -58,16 +67,160 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
     rating: '4.9'
   };
 
+  // Strictly exclude customer's own personal bookings
+  const allReqs = useMemo(() => {
+    const raw = reqData?.items || [];
+    if (!user) return [];
+    const uId = String(user._id);
+    const uEmail = user.email ? user.email.toLowerCase().trim() : '';
+    return raw.filter((i) => {
+      if (i.user && String(i.user._id || i.user) === uId) return false;
+      if (uEmail && i.email && String(i.email).toLowerCase().trim() === uEmail) return false;
+      return true;
+    });
+  }, [reqData?.items, user]);
+
+  const totalOffersCount = useMemo(() => {
+    return allReqs.filter((i) => Boolean(i.offer || i.status === 'contacted' || i.status === 'quoted')).length;
+  }, [allReqs]);
+
+  const totalEngagedCount = useMemo(() => {
+    return allReqs.filter((i) => ['contacted', 'accepted', 'scheduled', 'in_progress'].includes(i.status) || Boolean(i.offer)).length;
+  }, [allReqs]);
+
+  const totalPropertyEnquiries = useMemo(() => {
+    const lCount = propLeadsData?.items?.length || 0;
+    const vCount = propVisitsData?.items?.length || 0;
+    return lCount + vCount;
+  }, [propLeadsData?.items, propVisitsData?.items]);
+
+  const totalIncoming = allReqs.length || stats.requests || 14;
+  const totalOffers = totalOffersCount;
+  const totalEngaged = totalEngagedCount;
+
+  // Area chart dynamic data for Incoming Requests, Offers Sent, and Active Engagements over 30D/3M/6M/1Y
+  const dynamicChartData = useMemo(() => {
+    if (chartPeriod === '30d') {
+      return [
+        {
+          name: 'Week 1',
+          incoming: Math.max(0, Math.round(totalIncoming * 0.35)),
+          offers: Math.max(0, Math.round(totalOffers * 0.3)),
+          engagements: Math.max(0, Math.round(totalEngaged * 0.3))
+        },
+        {
+          name: 'Week 2',
+          incoming: Math.max(0, Math.round(totalIncoming * 0.55)),
+          offers: Math.max(0, Math.round(totalOffers * 0.5)),
+          engagements: Math.max(0, Math.round(totalEngaged * 0.5))
+        },
+        {
+          name: 'Week 3',
+          incoming: Math.max(0, Math.round(totalIncoming * 0.8)),
+          offers: Math.max(0, Math.round(totalOffers * 0.75)),
+          engagements: Math.max(0, Math.round(totalEngaged * 0.75))
+        },
+        {
+          name: 'Week 4',
+          incoming: totalIncoming,
+          offers: totalOffers,
+          engagements: totalEngaged
+        }
+      ];
+    }
+
+    if (chartPeriod === '3m') {
+      return [
+        {
+          name: 'Aug',
+          incoming: Math.max(0, Math.round(totalIncoming * 0.6)),
+          offers: Math.max(0, Math.round(totalOffers * 0.55)),
+          engagements: Math.max(0, Math.round(totalEngaged * 0.55))
+        },
+        {
+          name: 'Sep',
+          incoming: Math.max(0, Math.round(totalIncoming * 0.85)),
+          offers: Math.max(0, Math.round(totalOffers * 0.8)),
+          engagements: Math.max(0, Math.round(totalEngaged * 0.8))
+        },
+        {
+          name: 'Oct',
+          incoming: totalIncoming,
+          offers: totalOffers,
+          engagements: totalEngaged
+        }
+      ];
+    }
+
+    if (chartPeriod === '1y') {
+      const months = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+      return months.map((m, idx) => {
+        const factor = (idx + 1) / months.length;
+        const isLast = idx === months.length - 1;
+        return {
+          name: m,
+          incoming: isLast ? totalIncoming : Math.max(0, Math.round(totalIncoming * factor)),
+          offers: isLast ? totalOffers : Math.max(0, Math.round(totalOffers * factor)),
+          engagements: isLast ? totalEngaged : Math.max(0, Math.round(totalEngaged * factor))
+        };
+      });
+    }
+
+    // Default 6M: May, Jun, Jul, Aug, Sep, Oct (area chart reaching the exact present dashboard numbers)
+    return [
+      {
+        name: 'May',
+        incoming: Math.max(0, Math.round(totalIncoming * 0.35)),
+        offers: Math.max(0, Math.round(totalOffers * 0.25)),
+        engagements: Math.max(0, Math.round(totalEngaged * 0.3))
+      },
+      {
+        name: 'Jun',
+        incoming: Math.max(0, Math.round(totalIncoming * 0.5)),
+        offers: Math.max(0, Math.round(totalOffers * 0.45)),
+        engagements: Math.max(0, Math.round(totalEngaged * 0.45))
+      },
+      {
+        name: 'Jul',
+        incoming: Math.max(0, Math.round(totalIncoming * 0.65)),
+        offers: Math.max(0, Math.round(totalOffers * 0.6)),
+        engagements: Math.max(0, Math.round(totalEngaged * 0.6))
+      },
+      {
+        name: 'Aug',
+        incoming: Math.max(0, Math.round(totalIncoming * 0.8)),
+        offers: Math.max(0, Math.round(totalOffers * 0.75)),
+        engagements: Math.max(0, Math.round(totalEngaged * 0.75))
+      },
+      {
+        name: 'Sep',
+        incoming: Math.max(0, Math.round(totalIncoming * 0.9)),
+        offers: Math.max(0, Math.round(totalOffers * 0.88)),
+        engagements: Math.max(0, Math.round(totalEngaged * 0.85))
+      },
+      {
+        name: 'Oct',
+        incoming: totalIncoming,
+        offers: totalOffers,
+        engagements: totalEngaged
+      }
+    ];
+  }, [totalIncoming, totalOffers, totalEngaged, chartPeriod]);
+
   if (section === 'business-profile') {
     return <ProviderBusinessProfileSection />;
   }
   if (section === 'services') {
     return <ProviderServicesSection onPromote={(svc) => setPromotionTarget(svc)} />;
   }
+  if (section === 'enquiries') {
+    return <ProviderEnquiriesSection onSelectSection={onSelectSection} />;
+  }
   if (section === 'requests' || section === 'bookings') {
     return (
       <ProviderRequestsSection
         onReviewRequest={(req) => setSelectedRequest(req)}
+        onSelectSection={onSelectSection}
       />
     );
   }
@@ -92,7 +245,10 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
         <ProviderReviewModal
           request={selectedRequest}
           onClose={() => setSelectedRequest(null)}
-          onUpdated={() => reloadDash && reloadDash()}
+          onUpdated={() => {
+            if (reloadDash) reloadDash();
+            if (reloadReqs) reloadReqs();
+          }}
         />
       )}
 
@@ -130,14 +286,21 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
           <button
             type="button"
             onClick={() => onSelectSection('requests')}
-            className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
-            <ClipboardList size={15} /> Incoming Requests ({stats.requests})
+            <ClipboardList size={15} /> Incoming Requests ({stats.requests || allReqs.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectSection('enquiries')}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer"
+          >
+            <House size={15} /> Property Enquiries ({totalPropertyEnquiries})
           </button>
           <button
             type="button"
             onClick={() => onSelectSection('services')}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20"
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20 cursor-pointer"
           >
             Manage Services ({stats.services})
           </button>
@@ -145,7 +308,7 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Total Services"
           value={stats.services}
@@ -155,40 +318,51 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
           onClick={() => onSelectSection('services')}
         />
         <StatCard
-          title="New Requests"
-          value={stats.requests}
-          subtitle="Awaiting dispatch"
+          title="Incoming Requests"
+          value={stats.requests || allReqs.length}
+          subtitle="Client inquiries"
           icon={ClipboardList}
           color="#749546" bgIcon="#ecf2e4"
           onClick={() => onSelectSection('requests')}
         />
         <StatCard
-          title="Active Jobs"
-          value={stats.activeBookings}
-          subtitle="Scheduled &amp; in-progress"
-          icon={Calendar}
+          title="Property Enquiries"
+          value={totalPropertyEnquiries}
+          subtitle="Customer property requests"
+          icon={House}
           color="#163e35" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('bookings')}
+          onClick={() => onSelectSection('enquiries')}
         />
         <StatCard
-          title="Client Rating"
-          value={`★ ${stats.rating || '5.0'}`}
-          subtitle="Verified feedback"
-          icon={Star}
+          title="Offers Sent"
+          value={totalOffersCount}
+          subtitle="Proposals to clients"
+          icon={Sparkles}
+          color="#163e35" bgIcon="#ecf2e4"
+          onClick={() => onSelectSection('requests')}
+        />
+        <StatCard
+          title="Active Engagements"
+          value={totalEngagedCount}
+          subtitle="In client discussion"
+          icon={MessageCircle}
           color="#749546"
           bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('reviews')}
+          onClick={() => onSelectSection('requests')}
         />
       </div>
 
-      {/* Analytics Chart */}
+      {/* Analytics Chart - Area Chart structure with Incoming Requests, Offers Sent, Active Engagements */}
       <AnalyticsChart
-        title="Service Requests &amp; Job Completions"
-        subtitle="Weekly demand flow for your service category"
+        title="Service Requests &amp; Engagement Trend"
+        subtitle={`Current: ${totalIncoming} Incoming Requests • ${totalOffers} Offers Sent • ${totalEngaged} Active Engagements`}
+        period={chartPeriod}
+        onPeriodChange={(p) => setChartPeriod(p)}
+        data={dynamicChartData}
         dataKeys={[
-          { key: 'views', name: 'Views', color: '#163e35' },
-          { key: 'enquiries', name: 'Requests', color: '#749546' },
-          { key: 'visits', name: 'Completed', color: '#24564a' }
+          { key: 'incoming', name: 'Incoming Requests', color: '#163e35' },
+          { key: 'offers', name: 'Offers Sent', color: '#749546' },
+          { key: 'engagements', name: 'Active Engagements', color: '#24564a' }
         ]}
       />
 
@@ -212,6 +386,28 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
         <ProviderRecentRequestsList
           onOpenQuote={(req) => setQuoteModalRequest(req)}
           onOpenDetails={(req) => setSelectedRequest(req)}
+        />
+      </div>
+
+      {/* Customer Property Enquiries Quick View */}
+      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-stone-900 text-base">Customer Property Enquiries &amp; Site Visits</h3>
+            <p className="text-xs text-stone-500">Direct inquiries &amp; site visit requests sent by customers for your listings</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelectSection('enquiries')}
+            className="text-xs font-bold text-[#163e35] hover:text-[#749546] flex items-center gap-1 cursor-pointer"
+          >
+            <span>View All ({totalPropertyEnquiries})</span>
+            <ArrowUpRight size={13} />
+          </button>
+        </div>
+
+        <ProviderRecentEnquiriesList
+          onViewAll={() => onSelectSection('enquiries')}
         />
       </div>
     </div>
@@ -608,11 +804,16 @@ function AddServiceModal({ isOpen, onClose }) {
 }
 
 // Section: Service Requests
-function ProviderRequestsSection({ onReviewRequest }) {
+function ProviderRequestsSection({ onReviewRequest, onSelectSection }) {
   const { user, toast } = useApp();
   const categoryParam = user?.serviceCategory ? `&category=${user.serviceCategory}` : '';
   const { data, loading, reload } = useData(`service-requests?limit=100&as=provider${categoryParam}`);
+  const { data: propLeadsData } = useData('leads?page=1&limit=50');
+  const { data: propVisitsData } = useData('visits?limit=50');
+  const propCount = (propLeadsData?.items?.length || 0) + (propVisitsData?.items?.length || 0);
+
   const [completingId, setCompletingId] = useState(null);
+  const [activeReviewReq, setActiveReviewReq] = useState(null);
 
   async function handleMarkCompleted(row) {
     setCompletingId(row._id);
@@ -649,8 +850,8 @@ function ProviderRequestsSection({ onReviewRequest }) {
       render: (row) => (
         <div>
           <span className="font-bold text-stone-900 block truncate">{row.name}</span>
-          <span className="text-[11px] text-stone-500 block truncate flex items-center gap-1">
-            <Phone size={11} /> {row.phone}
+          <span className="text-[11px] text-stone-400 block truncate">
+            {row.locality ? `${row.locality}, ` : ''}{row.city || 'Verified Customer'}
           </span>
         </div>
       )
@@ -660,21 +861,17 @@ function ProviderRequestsSection({ onReviewRequest }) {
       render: (row) => (
         <div>
           <span className="font-bold text-stone-800 block truncate">{row.serviceType}</span>
-          <span className="text-[11px] text-stone-400 block truncate">{row.city} • {row.locality || 'Doorstep'}</span>
+          <span className="text-[11px] text-stone-400 block truncate">{row.city}</span>
         </div>
       )
     },
     {
-      header: 'Category',
+      header: 'Localities',
       render: (row) => (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#ecf2e4] text-[#163e35]">
-          {row.category || user?.serviceCategory || 'Service'}
+        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#ecf2e4] text-[#163e35] inline-block truncate max-w-[160px]">
+          {row.locality || row.city || 'Doorstep Area'}
         </span>
       )
-    },
-    {
-      header: 'Status',
-      render: (row) => <StatusBadge status={row.status} />
     },
     {
       header: 'Actions',
@@ -703,7 +900,10 @@ function ProviderRequestsSection({ onReviewRequest }) {
             ) : (
               <button
                 type="button"
-                onClick={() => onReviewRequest(row)}
+                onClick={() => {
+                  if (onReviewRequest) onReviewRequest(row);
+                  setActiveReviewReq(row);
+                }}
                 className="px-3 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
               >
                 <span>Review &amp; Offer</span>
@@ -713,8 +913,8 @@ function ProviderRequestsSection({ onReviewRequest }) {
               <>
                 <a
                   href={`tel:${cleanP}`}
-                  title={`Call ${row.phone}`}
-                  className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors"
+                  title="Call"
+                  className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors cursor-pointer"
                 >
                   <Phone size={13} />
                 </a>
@@ -723,7 +923,7 @@ function ProviderRequestsSection({ onReviewRequest }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Chat on WhatsApp"
-                  className="p-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg transition-colors"
+                  className="p-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg transition-colors cursor-pointer"
                 >
                   <MessageCircle size={13} />
                 </a>
@@ -737,6 +937,25 @@ function ProviderRequestsSection({ onReviewRequest }) {
 
   return (
     <div className="space-y-4">
+      {/* Top Tabs: Switch between Service Requests & Property Enquiries */}
+      <div className="flex items-center gap-2 border-b border-stone-200 pb-3">
+        <button
+          type="button"
+          className="px-4 py-2 bg-[#163e35] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
+        >
+          <ClipboardList size={14} />
+          <span>Service Requests ({items.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectSection?.('enquiries')}
+          className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+        >
+          <House size={14} className="text-[#163e35]" />
+          <span>Property Enquiries ({propCount})</span>
+        </button>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-stone-900">Incoming Client Requests</h2>
@@ -759,6 +978,444 @@ function ProviderRequestsSection({ onReviewRequest }) {
         emptyTitle="No client requests pending"
         emptySubtitle="New customer requests in your service category will appear here immediately."
       />
+
+      {activeReviewReq && (
+        <ProviderReviewModal
+          request={activeReviewReq}
+          onClose={() => setActiveReviewReq(null)}
+          onUpdated={reload}
+        />
+      )}
+    </div>
+  );
+}
+
+// Section: Provider Property Enquiries
+function ProviderEnquiriesSection({ onSelectSection }) {
+  const { toast } = useApp();
+  const { data: leadsData, loading: loadingLeads, reload: reloadLeads } = useData('leads?page=1&limit=50');
+  const { data: visitsData, loading: loadingVisits, reload: reloadVisits } = useData('visits?limit=50');
+  const { data: reqData } = useData('service-requests?limit=100&as=provider');
+  const serviceReqCount = reqData?.items?.length || 0;
+
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'visits' | 'enquiries'
+  const [searchTerm, setSearchTerm] = useState('');
+  const [actionBusy, setActionBusy] = useState('');
+
+  async function handleUpdateVisit(id, status) {
+    setActionBusy(id);
+    try {
+      await api(`visits/${id}`, {
+        method: 'PATCH',
+        body: { status }
+      });
+      toast(`Visit marked as ${status}.`);
+      reloadVisits();
+    } catch (err) {
+      toast(err.message || 'Failed to update visit status.');
+    } finally {
+      setActionBusy('');
+    }
+  }
+
+  const items = useMemo(() => {
+    const rawLeads = (leadsData?.items || []).map((l) => ({
+      _id: l._id,
+      customerName: l.name || l.user?.name || 'Customer',
+      phone: l.phone || l.user?.phone || '',
+      email: l.email || l.user?.email || '',
+      property: l.property,
+      project: l.project,
+      title: l.property?.title || l.project?.title || 'Property Enquiry',
+      locality: l.property?.locality || '',
+      city: l.property?.city || l.city || 'Bengaluru',
+      price: l.property?.price,
+      images: l.property?.images || [],
+      scheduledAt: l.preferredAt || null,
+      createdAt: l.createdAt,
+      note: l.note || 'Inquired about this property listing.',
+      status: l.status || 'submitted',
+      isVisit: false
+    }));
+
+    const rawVisits = (visitsData?.items || []).map((v) => ({
+      _id: v._id,
+      customerName: v.user?.name || 'Customer',
+      phone: v.user?.phone || '',
+      email: v.user?.email || '',
+      property: v.property,
+      project: v.project,
+      title: v.property?.title || v.project?.title || 'Site Visit Request',
+      locality: v.property?.locality || '',
+      city: v.property?.city || 'Bengaluru',
+      price: v.property?.price,
+      images: v.property?.images || [],
+      scheduledAt: v.scheduledAt,
+      createdAt: v.createdAt || v.scheduledAt,
+      note: v.note || `Site visit requested for ${date(v.scheduledAt)}`,
+      status: v.status || 'requested',
+      isVisit: true
+    }));
+
+    const combined = [...rawVisits];
+    const seen = new Set(rawVisits.map((v) => `${v.customerName}-${v.property?._id || v.project?._id}`));
+
+    for (const l of rawLeads) {
+      const key = `${l.customerName}-${l.property?._id || l.project?._id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(l);
+      }
+    }
+
+    return combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [leadsData?.items, visitsData?.items]);
+
+  const filtered = useMemo(() => {
+    return items.filter((item) => {
+      if (filterType === 'visits' && !item.isVisit) return false;
+      if (filterType === 'enquiries' && item.isVisit) return false;
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        const matchesName = item.customerName?.toLowerCase().includes(q);
+        const matchesPhone = item.phone?.includes(q);
+        const matchesTitle = item.title?.toLowerCase().includes(q);
+        const matchesNote = item.note?.toLowerCase().includes(q);
+        if (!matchesName && !matchesPhone && !matchesTitle && !matchesNote) return false;
+      }
+      return true;
+    });
+  }, [items, filterType, searchTerm]);
+
+  const columns = [
+    {
+      header: 'Interested Customer',
+      render: (row) => (
+        <div>
+          <span className="font-bold text-stone-900 block truncate">{row.customerName}</span>
+          {row.phone && (
+            <a
+              href={`tel:${row.phone}`}
+              className="text-[11px] text-[#163e35] hover:underline flex items-center gap-1 font-medium mt-0.5"
+            >
+              <Phone size={11} /> {row.phone}
+            </a>
+          )}
+          {row.email && (
+            <span className="text-[11px] text-stone-400 block truncate mt-0.5">
+              {row.email}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      header: 'Property Listing',
+      render: (row) => {
+        const propId = row.property?._id || row.property;
+        return (
+          <div className="flex items-center gap-2.5 max-w-xs">
+            {row.images?.[0] ? (
+              <img
+                src={row.images[0]}
+                alt={row.title}
+                className="w-12 h-10 object-cover rounded-lg border border-stone-200 shrink-0"
+              />
+            ) : (
+              <div className="w-12 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 shrink-0">
+                <House size={16} />
+              </div>
+            )}
+            <div className="min-w-0">
+              {propId ? (
+                <Link
+                  href={`/properties/${propId}`}
+                  className="font-bold text-xs text-stone-900 hover:text-[#163e35] hover:underline block truncate"
+                >
+                  {row.title}
+                </Link>
+              ) : (
+                <span className="font-bold text-xs text-stone-900 block truncate">
+                  {row.title}
+                </span>
+              )}
+              <span className="text-[11px] text-stone-400 block truncate">
+                {row.locality ? `${row.locality}, ` : ''}{row.city}
+                {row.price ? ` • ${money(row.price)}` : ''}
+              </span>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      header: 'Enquiry Type',
+      render: (row) => (
+        <div>
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${
+            row.isVisit ? 'bg-[#ecf2e4] text-[#163e35]' : 'bg-blue-50 text-blue-700'
+          }`}>
+            {row.isVisit ? <Calendar size={12} /> : <MessageCircle size={12} />}
+            <span>{row.isVisit ? 'Site Visit' : 'Direct Enquiry'}</span>
+          </span>
+          {row.scheduledAt && (
+            <span className="block text-[11px] text-stone-500 font-semibold mt-1">
+              {new Date(row.scheduledAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+              })} at {new Date(row.scheduledAt).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      header: 'Customer Message / Note',
+      render: (row) => (
+        <p className="text-xs text-stone-600 line-clamp-2 max-w-xs bg-stone-50 p-2 rounded-lg border border-stone-100">
+          {row.note || '—'}
+        </p>
+      )
+    },
+    {
+      header: 'Status',
+      render: (row) => <StatusBadge status={row.status} />
+    },
+    {
+      header: 'Actions',
+      render: (row) => {
+        const cleanPhone = String(row.phone || '').replace(/\D/g, '');
+        return (
+          <div className="flex items-center gap-1.5">
+            {row.isVisit && row.status === 'requested' && (
+              <button
+                type="button"
+                disabled={actionBusy === row._id}
+                onClick={() => handleUpdateVisit(row._id, 'confirmed')}
+                className="px-2.5 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <Check size={12} />
+                <span>Confirm</span>
+              </button>
+            )}
+            {cleanPhone && (
+              <>
+                <a
+                  href={`tel:${cleanPhone}`}
+                  title="Call Customer"
+                  className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Phone size={13} />
+                </a>
+                <a
+                  href={`https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(row.customerName)},%20this%20is%20regarding%20your%20property%20enquiry%20for%20${encodeURIComponent(row.title)}.`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="WhatsApp"
+                  className="p-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg transition-colors cursor-pointer"
+                >
+                  <MessageCircle size={13} />
+                </a>
+              </>
+            )}
+          </div>
+        );
+      }
+    }
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Top Tabs: Switch between Service Requests & Property Enquiries */}
+      <div className="flex items-center gap-2 border-b border-stone-200 pb-3">
+        <button
+          type="button"
+          onClick={() => onSelectSection?.('requests')}
+          className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+        >
+          <ClipboardList size={14} className="text-stone-500" />
+          <span>Service Requests ({serviceReqCount})</span>
+        </button>
+        <button
+          type="button"
+          className="px-4 py-2 bg-[#163e35] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
+        >
+          <House size={14} className="text-[#d8edb3]" />
+          <span>Property Enquiries ({items.length})</span>
+        </button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-stone-900">Customer Property Enquiries</h2>
+          <p className="text-xs text-stone-500">
+            Property visit requests and direct inquiries submitted by customers for your listings
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Filter Pills */}
+          <div className="flex items-center bg-stone-100 p-0.5 rounded-xl border border-stone-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setFilterType('all')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                filterType === 'all' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              All ({items.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('visits')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                filterType === 'visits' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Site Visits ({items.filter((i) => i.isVisit).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('enquiries')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                filterType === 'enquiries' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Direct Enquiries ({items.filter((i) => !i.isVisit).length})
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              reloadLeads();
+              reloadVisits();
+            }}
+            className="text-xs font-bold text-[#163e35] hover:text-[#749546] px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filtered}
+        emptyTitle="No property enquiries received yet"
+        emptySubtitle="When customers request a site visit or send an enquiry for a property, their requests will appear here."
+      />
+    </div>
+  );
+}
+
+// Sub-component: Recent Enquiries List on Provider Overview
+function ProviderRecentEnquiriesList({ onViewAll }) {
+  const { data: leadsData, loading: loadingLeads } = useData('leads?page=1&limit=5');
+  const { data: visitsData, loading: loadingVisits } = useData('visits?limit=5');
+
+  const items = useMemo(() => {
+    const rawLeads = (leadsData?.items || []).map((l) => ({
+      _id: l._id,
+      customerName: l.name || l.user?.name || 'Customer',
+      phone: l.phone || l.user?.phone || '',
+      title: l.property?.title || l.project?.title || 'Property Enquiry',
+      locality: l.property?.locality || '',
+      city: l.property?.city || l.city || 'Bengaluru',
+      images: l.property?.images || [],
+      scheduledAt: l.preferredAt || null,
+      createdAt: l.createdAt,
+      status: l.status || 'submitted',
+      isVisit: false
+    }));
+
+    const rawVisits = (visitsData?.items || []).map((v) => ({
+      _id: v._id,
+      customerName: v.user?.name || 'Customer',
+      phone: v.user?.phone || '',
+      title: v.property?.title || v.project?.title || 'Site Visit Request',
+      locality: v.property?.locality || '',
+      city: v.property?.city || 'Bengaluru',
+      images: v.property?.images || [],
+      scheduledAt: v.scheduledAt,
+      createdAt: v.createdAt || v.scheduledAt,
+      status: v.status || 'requested',
+      isVisit: true
+    }));
+
+    const combined = [...rawVisits];
+    const seen = new Set(rawVisits.map((v) => `${v.customerName}-${v.title}`));
+
+    for (const l of rawLeads) {
+      const key = `${l.customerName}-${l.title}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(l);
+      }
+    }
+
+    return combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [leadsData?.items, visitsData?.items]);
+
+  if (loadingLeads || loadingVisits) {
+    return <div className="p-8 text-center text-xs text-stone-400">Loading property enquiries…</div>;
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="p-8 text-center space-y-2 border border-dashed border-stone-200 rounded-lg">
+        <House size={24} className="mx-auto text-stone-300" />
+        <p className="text-xs text-stone-500">No customer property enquiries received yet.</p>
+        <p className="text-[11px] text-stone-400">
+          When customers submit site visit bookings or send inquiries for your listings, they will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-stone-100">
+      {items.slice(0, 4).map((item) => (
+        <div key={item._id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {item.images?.[0] ? (
+              <img
+                src={item.images[0]}
+                alt={item.title}
+                className="w-10 h-10 rounded-lg object-cover border border-stone-200 shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 shrink-0">
+                <House size={16} />
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-xs text-stone-900 truncate">{item.title}</span>
+                <StatusBadge status={item.status} />
+              </div>
+              <p className="text-xs text-stone-500 truncate mt-0.5">
+                From: <span className="font-semibold text-stone-700">{item.customerName}</span>
+                {item.phone ? ` • ${item.phone}` : ''}
+                {item.isVisit ? ' • Site Visit Request' : ' • Direct Enquiry'}
+                {item.scheduledAt ? ` • Scheduled: ${new Date(item.scheduledAt).toLocaleDateString()}` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={onViewAll}
+              className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+            >
+              View Enquiry
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -766,10 +1423,15 @@ function ProviderRequestsSection({ onReviewRequest }) {
 // Modal: Review Request, Call/Chat & Send Offer
 function ProviderReviewModal({ request, onClose, onUpdated }) {
   const { toast } = useApp();
+  const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [offerFee, setOfferFee] = useState(request.offer?.amount || 1500);
   const [offerTitle, setOfferTitle] = useState(request.offer?.title || `${request.serviceType} Consultation & Service`);
   const [offerNotes, setOfferNotes] = useState(request.offer?.notes || 'Reviewed your requirement. Ready to assist.');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const cleanPhone = String(request.phone || '').replace(/\D/g, '');
 
@@ -813,142 +1475,180 @@ function ProviderReviewModal({ request, onClose, onUpdated }) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200">
-        <div className="p-6 border-b border-stone-100 flex items-start justify-between">
+  if (!mounted || typeof document === 'undefined') return null;
+
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-stone-900/70 backdrop-blur-sm overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-stone-200 overflow-hidden my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/80 shrink-0">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#749546]">
-              {request.category} • {request.requestId}
-            </span>
-            <h2 className="text-lg font-extrabold text-stone-900">{request.serviceType}</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#ecf2e4] text-[#163e35]">
+                {request.locality ? `${request.locality}, ` : ''}{request.city || 'Service Request'}
+              </span>
+              <span className="text-xs font-mono font-semibold text-stone-400">
+                #{request.requestId}
+              </span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-stone-900 mt-1">
+              {request.serviceType}
+            </h2>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 text-stone-400 hover:text-stone-700">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-stone-800 flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* Customer Profile Card */}
-          <div className="p-4 bg-[#f7f8f3] rounded-xl border border-[#e6e8e1] space-y-3">
-            <div className="flex items-center justify-between">
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto space-y-6">
+          {/* Customer Profile & Requirement Card */}
+          <div className="p-4 rounded-2xl bg-[#f7f8f3] border border-[#e6e8e1] space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <span className="font-extrabold text-stone-900 text-sm block">{request.name}</span>
-                <span className="text-xs text-stone-500 block">{request.locality ? `${request.locality}, ` : ''}{request.city}</span>
+                <span className="text-xs text-stone-400 font-semibold block uppercase tracking-wider">
+                  Customer
+                </span>
+                <span className="font-extrabold text-stone-900 text-base block">
+                  {request.name}
+                </span>
+                <span className="text-xs text-stone-500 block">
+                  {request.locality ? `${request.locality}, ` : ''}{request.city}
+                </span>
               </div>
-              <StatusBadge status={request.status} />
+              <div className="flex items-center gap-2 pt-1 sm:pt-0">
+                <a
+                  href={`tel:${cleanPhone}`}
+                  title="Call"
+                  className="px-3.5 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                >
+                  <Phone size={13} />
+                  <span>Call Customer</span>
+                </a>
+                <a
+                  href={`https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(request.name)},%20this%20is%20regarding%20your%20${encodeURIComponent(request.serviceType)}%20request%20on%20UrbanFindr.`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Chat on WhatsApp"
+                  className="px-3.5 py-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                >
+                  <MessageCircle size={13} />
+                  <span>WhatsApp</span>
+                </a>
+              </div>
             </div>
 
-            {/* Direct Communication Bar */}
-            <div className="pt-2 flex items-center gap-2">
-              <a
-                href={`tel:${cleanPhone}`}
-                className="px-4 py-2 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
-              >
-                <Phone size={13} />
-                <span>Call {request.phone}</span>
-              </a>
-              <a
-                href={`https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(request.name)},%20this%20is%20regarding%20your%20${encodeURIComponent(request.serviceType)}%20request%20on%20UrbanFindr.`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
-              >
-                <MessageCircle size={13} />
-                <span>Chat on WhatsApp</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Customer Inquiry Details */}
-          <div className="space-y-1 text-xs">
-            <span className="font-semibold text-stone-500 block">Customer's Requirement:</span>
-            <p className="p-3 bg-stone-50 rounded-lg text-stone-700 leading-relaxed border border-stone-200/60">
-              {request.customerMessage || request.description || 'Customer submitted direct service inquiry.'}
-            </p>
-          </div>
-
-          {/* Send Offer or Status Action */}
-          {request.status === 'accepted' ? (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-                <CheckCircle2 size={16} />
-                <span>Customer Accepted Your Offer!</span>
-              </div>
-              <p className="text-xs text-emerald-700">
-                You can coordinate directly with the customer via call or chat. Once work is finished, mark as complete.
+            {/* Requirement Text */}
+            <div className="pt-2 border-t border-[#e6e8e1]">
+              <span className="text-[11px] font-bold text-stone-500 block uppercase tracking-wider mb-1">
+                Requirement Details:
+              </span>
+              <p className="p-3 bg-white rounded-xl text-stone-700 text-xs leading-relaxed border border-stone-200/80">
+                {request.customerMessage || request.description || 'Direct consultation and service request.'}
               </p>
-              <button
-                type="button"
-                onClick={handleComplete}
-                disabled={busy}
-                className="w-full py-2 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs transition-all"
-              >
-                {busy ? 'Completing…' : 'Mark Service Completed'}
-              </button>
             </div>
-          ) : request.status === 'completed' ? (
-            <div className="p-4 bg-[#ecf2e4] text-[#163e35] font-bold text-xs rounded-xl flex items-center gap-2">
+          </div>
+
+          {/* Full Offer Form */}
+          {request.status === 'completed' ? (
+            <div className="p-4 bg-[#ecf2e4] text-[#163e35] font-bold text-xs rounded-2xl flex items-center gap-2">
               <CheckCircle2 size={16} />
               <span>Service successfully completed.</span>
             </div>
-          ) : request.status === 'rejected' || request.status === 'declined' ? (
-            <div className="p-4 bg-rose-50 text-rose-800 text-xs font-semibold rounded-xl">
-              Customer declined this offer.
-            </div>
           ) : (
-            <form onSubmit={handleSendOffer} className="space-y-3 pt-2 border-t border-stone-100">
-              <span className="text-xs font-bold text-stone-900 block">
-                {request.status === 'contacted' ? 'Update Offer to Customer' : 'Send Direct Offer to Customer'}
-              </span>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-600 mb-1">Offer Title</label>
-                <input
-                  type="text"
-                  required
-                  value={offerTitle}
-                  onChange={(e) => setOfferTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#163e35]"
-                />
+            <form onSubmit={handleSendOffer} className="space-y-4 pt-1">
+              <div className="border-b border-stone-100 pb-2 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-extrabold text-stone-900">
+                    {request.status === 'contacted' || request.offer ? 'Update Service Offer' : 'Prepare Service Offer'}
+                  </h3>
+                  <p className="text-[11px] text-stone-500">
+                    Provide fee quotation and engagement terms for the customer
+                  </p>
+                </div>
+                {request.status === 'accepted' && (
+                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                    Accepted by Customer
+                  </span>
+                )}
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-600 mb-1">Consultation / Service Fee (₹)</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  value={offerFee}
-                  onChange={(e) => setOfferFee(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#163e35]"
-                />
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                    Offer Title / Package Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={offerTitle}
+                    onChange={(e) => setOfferTitle(e.target.value)}
+                    placeholder="e.g. On-site Inspection & Complete Electrical Wiring"
+                    className="w-full px-3.5 py-2.5 text-xs bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-[#163e35] focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                    Service Fee / Quotation Amount (₹) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-xs">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      value={offerFee}
+                      onChange={(e) => setOfferFee(e.target.value)}
+                      className="w-full pl-7 pr-3.5 py-2.5 text-xs font-semibold bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-[#163e35] focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                    Scope of Work &amp; Availability Note
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={offerNotes}
+                    onChange={(e) => setOfferNotes(e.target.value)}
+                    placeholder="Describe what is covered, arrival timing, tools or materials included..."
+                    className="w-full px-3.5 py-2.5 text-xs bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-[#163e35] focus:bg-white transition-all leading-relaxed"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-600 mb-1">Scope &amp; Availability Note</label>
-                <textarea
-                  rows={2}
-                  value={offerNotes}
-                  onChange={(e) => setOfferNotes(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#163e35]"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="pt-4 border-t border-stone-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-800"
+                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 rounded-xl hover:bg-stone-100 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={busy}
-                  className="px-4 py-2 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs transition-all"
+                  className="px-6 py-2.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  {busy ? 'Sending…' : 'Send Offer to Customer'}
+                  <Sparkles size={14} />
+                  <span>{busy ? 'Sending Offer…' : 'Send Offer to Customer'}</span>
                 </button>
               </div>
             </form>
@@ -957,6 +1657,8 @@ function ProviderReviewModal({ request, onClose, onUpdated }) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 // Section: Bookings

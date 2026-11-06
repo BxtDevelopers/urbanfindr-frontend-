@@ -591,9 +591,6 @@ function BookingCard({
           <div className="font-semibold text-stone-900 flex items-center gap-1.5">
             <User size={13} className="text-[#163e35]" /> {booking.name}
           </div>
-          <div className="text-stone-600 flex items-center gap-1.5">
-            <Phone size={13} className="text-stone-400" /> {booking.phone}
-          </div>
           <div className="text-stone-600 flex items-start gap-1.5">
             <MapPin size={13} className="text-stone-400 mt-0.5 shrink-0" />
             <span>
@@ -650,9 +647,10 @@ function BookingCard({
               </div>
               <a
                 href={`tel:${booking.technician.phone}`}
+                title="Call"
                 className="mt-1 text-[11px] font-bold text-[#163e35] hover:underline inline-flex items-center gap-1"
               >
-                <Phone size={11} /> Call {booking.technician.phone}
+                <Phone size={11} /> Call Specialist
               </a>
             </div>
           ) : (
@@ -749,26 +747,6 @@ function BookingCard({
             >
               <CheckCircle2 size={14} /> Mark Completed
             </button>
-          )}
-
-          {/* CUSTOMER ACCEPT & DECLINE OFFER BUTTONS */}
-          {isCustomer && (booking.offer || booking.quotation) && ['contacted', 'quotation', 'quoted', 'submitted', 'requested', 'pending'].includes(booking.status) && (
-            <>
-              <button
-                type="button"
-                onClick={() => onDirectAccept ? onDirectAccept(booking) : onAction('accept')}
-                className="px-3.5 py-1.5 rounded-lg bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
-              >
-                <Check size={13} strokeWidth={2.5} /> Accept Offer
-              </button>
-              <button
-                type="button"
-                onClick={() => onAction('reject-quote')}
-                className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                <X size={13} /> Decline Offer
-              </button>
-            </>
           )}
 
           {/* CANCEL BOOKING BUTTON (for Customer) */}
@@ -1149,7 +1127,7 @@ function ActionModalDialog({ action, onClose, onSubmit, busy }) {
                   Mark Lead as Completed &amp; Closed?
                 </p>
                 <p className="text-stone-500 mt-1">
-                  Customer: <strong>{booking.name}</strong> ({booking.phone}) • Service: <strong>{booking.serviceType}</strong>
+                  Customer: <strong>{booking.name}</strong> • Service: <strong>{booking.serviceType}</strong>
                 </p>
                 <p className="text-stone-500 mt-1">
                   Closing this lead moves it into "Closed Leads", enabling you to clearly distinguish newly incoming leads, active ongoing jobs, and finalized closed records.
@@ -1372,7 +1350,7 @@ export function InvoiceAndDetailsModal({ booking, onClose, isProvider, isAdmin, 
                 Customer Details
               </div>
               <div className="font-bold text-stone-900 mt-1">{booking.name}</div>
-              <div className="text-stone-600">{booking.phone}</div>
+              <div className="text-stone-400 text-xs">Contact verified</div>
               {booking.email && <div className="text-stone-600">{booking.email}</div>}
               <div className="text-stone-600 mt-1">
                 {booking.locality ? `${booking.locality}, ` : (booking.address ? `${booking.address}, ` : '')}

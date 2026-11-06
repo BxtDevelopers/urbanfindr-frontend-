@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp, useData, api } from '../../providers';
 import { date, money } from '@/lib/format';
@@ -58,10 +58,7 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
   if (section === 'saved-searches') {
     return <SavedSearchesSection />;
   }
-  if (section === 'enquiries') {
-    return <PropertyEnquiriesSection />;
-  }
-  if (section === 'visits') {
+  if (section === 'visits' || section === 'enquiries') {
     return <PropertyVisitsSection />;
   }
   if (section === 'requests' || section === 'bookings') {
@@ -131,12 +128,12 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
           onClick={() => onSelectSection('visits')}
         />
         <StatCard
-          title="Property Enquiries"
-          value={stats.enquiries}
-          subtitle="Direct owner & broker chats"
-          icon={ClipboardList}
+          title="Saved Searches"
+          value={stats.savedSearches}
+          subtitle="Alerts & preferences"
+          icon={Search}
           color="#163e35" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('enquiries')}
+          onClick={() => onSelectSection('saved-searches')}
         />
         <StatCard
           title="Service Bookings"
@@ -246,10 +243,55 @@ function CustomerRecentBookingsList({ onSelectSection }) {
 
 // Sub-component: Recent Visits List
 function CustomerRecentVisitsList({ onSelectSection }) {
-  const { data, loading } = useData('visits?limit=4');
-  const items = data?.items || [];
+  const { data: visitsData, loading: loadingVisits } = useData('visits?limit=10');
+  const { data: leadsData } = useData('leads?limit=10');
 
-  if (loading) {
+  const items = useMemo(() => {
+    const rawVisits = (visitsData?.items || []).map((v) => ({
+      _id: v._id,
+      title: v.property?.title || v.project?.title || 'Property Visit',
+      property: v.property,
+      project: v.project,
+      images: v.property?.images || [],
+      scheduledAt: v.scheduledAt,
+      createdAt: v.createdAt || v.scheduledAt,
+      status: v.status || 'requested',
+      ownerName: v.owner?.name || 'Property Host',
+      locality: v.property?.locality || '',
+      city: v.property?.city || 'Bengaluru'
+    }));
+
+    const rawLeads = (leadsData?.items || [])
+      .filter((l) => l.preferredAt || l.status === 'site_visit_scheduled')
+      .map((l) => ({
+        _id: l._id,
+        title: l.property?.title || l.project?.title || 'Property Visit',
+        property: l.property,
+        project: l.project,
+        images: l.property?.images || [],
+        scheduledAt: l.preferredAt || l.createdAt,
+        createdAt: l.createdAt,
+        status: l.status === 'site_visit_scheduled' ? 'requested' : l.status,
+        ownerName: l.manager?.name || 'Property Host',
+        locality: l.property?.locality || '',
+        city: l.property?.city || l.city || 'Bengaluru'
+      }));
+
+    const combined = [...rawVisits];
+    const seen = new Set(rawVisits.map((v) => String(v.property?._id || v.project?._id || v._id)));
+
+    for (const l of rawLeads) {
+      const idKey = String(l.property?._id || l.project?._id || l._id);
+      if (!seen.has(idKey)) {
+        seen.add(idKey);
+        combined.push(l);
+      }
+    }
+
+    return combined.sort((a, b) => new Date(b.scheduledAt || b.createdAt) - new Date(a.scheduledAt || a.createdAt));
+  }, [visitsData?.items, leadsData?.items]);
+
+  if (loadingVisits) {
     return <div className="p-8 text-center text-xs text-stone-400">Loading scheduled visits…</div>;
   }
 
@@ -267,58 +309,143 @@ function CustomerRecentVisitsList({ onSelectSection }) {
 
   return (
     <div className="divide-y divide-stone-100">
-      {items.slice(0, 3).map((v) => (
-        <div key={v._id} className="py-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-xs text-stone-900 truncate">
-                {v.property?.title || v.project?.title || 'Property Visit'}
-              </span>
-              <StatusBadge status={v.status} />
+      {items.slice(0, 4).map((v) => {
+        const d = v.scheduledAt ? new Date(v.scheduledAt) : null;
+        const formattedDate = d
+          ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+          : '—';
+        const formattedTime = d
+          ? d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          : '';
+
+        return (
+          <div key={v._id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              {v.images?.[0] ? (
+                <img
+                  src={v.images[0]}
+                  alt={v.title}
+                  className="w-11 h-11 rounded-lg object-cover border border-stone-200 shrink-0"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 shrink-0">
+                  <Calendar size={18} />
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs text-stone-900 truncate">
+                    {v.title}
+                  </span>
+                  <StatusBadge status={v.status} />
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-[#163e35] font-semibold mt-0.5">
+                  <Calendar size={12} className="text-[#059669]" />
+                  <span>{formattedDate} • {formattedTime}</span>
+                </div>
+                <p className="text-[11px] text-stone-400 truncate">
+                  Host: {v.ownerName}{v.locality ? ` • ${v.locality}` : ''}
+                </p>
+              </div>
             </div>
-            <p className="text-[11px] text-stone-400 truncate mt-0.5">
-              Scheduled for: {date(v.scheduledAt)}
-            </p>
+            <button
+              type="button"
+              onClick={() => onSelectSection('visits')}
+              className="text-xs font-bold text-[#163e35] hover:text-[#059669] px-3 py-1.5 rounded-lg bg-[#ecf2e4] hover:bg-[#d8edb3] transition-colors shrink-0 self-start sm:self-auto cursor-pointer"
+            >
+              View Visit
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onSelectSection('visits')}
-            className="text-xs font-semibold text-stone-600 hover:text-stone-900 px-2.5 py-1 rounded bg-stone-50 hover:bg-stone-100 border border-stone-200 shrink-0"
-          >
-            Details
-          </button>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 // Section: Property Enquiries
 function PropertyEnquiriesSection() {
-  const { data, loading } = useData('leads?page=1&limit=50');
-  const items = (data?.items || []).filter((l) => l.kind === 'property' || l.kind === 'project' || !l.kind);
+  const { data: leadsData } = useData('leads?page=1&limit=50');
+  const { data: visitsData } = useData('visits?limit=50');
+
+  const items = useMemo(() => {
+    const leadItems = (leadsData?.items || []).map((l) => ({
+      ...l,
+      title: l.property?.title || l.project?.title || l.service || l.note || 'Property Enquiry',
+      isVisit: false
+    }));
+
+    // Also include site visits booked via the property form so every visited/enquired property shows here
+    const visitItems = (visitsData?.items || []).map((v) => ({
+      _id: v._id,
+      createdAt: v.createdAt || v.scheduledAt,
+      property: v.property,
+      project: v.project,
+      title: v.property?.title || v.project?.title || 'Property Site Visit Enquiry',
+      city: v.property?.city || 'Bengaluru',
+      budget: v.property?.price || undefined,
+      note: v.note || `Site visit scheduled for ${date(v.scheduledAt)}`,
+      status: v.status === 'confirmed' ? 'confirmed' : 'visit_scheduled',
+      isVisit: true
+    }));
+
+    // Combine and deduplicate if same property is in both
+    const merged = [...leadItems];
+    const seen = new Set(leadItems.map((l) => String(l.property?._id || l.project?._id || l._id)));
+
+    for (const v of visitItems) {
+      const idKey = String(v.property?._id || v.project?._id || v._id);
+      if (!seen.has(idKey)) {
+        seen.add(idKey);
+        merged.push(v);
+      }
+    }
+
+    return merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [leadsData?.items, visitsData?.items]);
 
   const columns = [
     {
       header: 'Listing / Property',
       render: (row) => (
-        <div>
-          <span className="font-bold text-stone-900 block truncate">
-            {row.property?.title || row.project?.title || row.service || 'Property Inquiry'}
-          </span>
-          <span className="text-[11px] text-stone-400 block truncate">
-            {row.city || 'Bengaluru'}
-          </span>
+        <div className="flex items-center gap-3">
+          {row.property?.images?.[0] ? (
+            <img
+              src={row.property.images[0]}
+              alt={row.property.title || 'Listing'}
+              className="w-12 h-10 object-cover rounded-lg border border-stone-200 shrink-0"
+            />
+          ) : null}
+          <div className="min-w-0">
+            <span className="font-bold text-stone-900 block truncate max-w-[220px]">
+              {row.property?.title || row.project?.title || row.service || row.note || 'Property Inquiry'}
+            </span>
+            <span className="text-[11px] text-stone-400 block truncate">
+              {row.property?.locality ? `${row.property.locality}, ` : ''}{row.city || row.property?.city || 'Bengaluru'}
+            </span>
+          </div>
         </div>
       )
     },
     {
       header: 'Enquiry Date',
-      render: (row) => <span className="text-stone-600">{date(row.createdAt)}</span>
+      render: (row) => <span className="text-stone-600 text-xs font-medium">{date(row.createdAt)}</span>
     },
     {
-      header: 'Budget / Offer',
-      render: (row) => <span className="font-semibold text-stone-800">{row.budget ? money(row.budget) : '—'}</span>
+      header: 'Budget / Note',
+      render: (row) => (
+        <div className="space-y-0.5">
+          {row.note ? (
+            <span className="text-xs text-stone-800 line-clamp-1 max-w-[220px] block">
+              {row.note}
+            </span>
+          ) : null}
+          {row.budget ? (
+            <span className="font-bold text-[#163e35] text-xs block">
+              {money(row.budget)}
+            </span>
+          ) : !row.note ? <span className="text-stone-400 text-xs">—</span> : null}
+        </div>
+      )
     },
     {
       header: 'Status',
@@ -328,15 +455,23 @@ function PropertyEnquiriesSection() {
       header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-2">
-          {row.property?._id && (
+          {row.property?._id ? (
             <Link
               href={`/properties/${row.property._id}`}
-              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
+              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 text-xs"
             >
               <span>View</span>
               <ExternalLink size={12} />
             </Link>
-          )}
+          ) : row.project?._id ? (
+            <Link
+              href={`/projects/${row.project._id}`}
+              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 text-xs"
+            >
+              <span>View</span>
+              <ExternalLink size={12} />
+            </Link>
+          ) : null}
         </div>
       )
     }
@@ -369,9 +504,60 @@ function PropertyEnquiriesSection() {
 // Section: Property Visits
 function PropertyVisitsSection() {
   const { toast } = useApp();
-  const { data, loading, reload } = useData('visits?page=1&limit=50');
-  const items = data?.items || [];
+  const { data: visitsData, loading: loadingVisits, reload: reloadVisits } = useData('visits?page=1&limit=50');
+  const { data: leadsData, reload: reloadLeads } = useData('leads?page=1&limit=50');
   const [busy, setBusy] = useState('');
+
+  const items = useMemo(() => {
+    const rawVisits = (visitsData?.items || []).map((v) => ({
+      _id: v._id,
+      title: v.property?.title || v.project?.title || 'Property Visit',
+      property: v.property,
+      project: v.project,
+      images: v.property?.images || [],
+      scheduledAt: v.scheduledAt,
+      createdAt: v.createdAt || v.scheduledAt,
+      status: v.status || 'requested',
+      owner: v.owner,
+      ownerName: v.owner?.name || 'Property Host',
+      locality: v.property?.locality || '',
+      city: v.property?.city || 'Bengaluru',
+      price: v.property?.price,
+      note: v.note || ''
+    }));
+
+    const rawLeads = (leadsData?.items || [])
+      .filter((l) => l.preferredAt || l.status === 'site_visit_scheduled')
+      .map((l) => ({
+        _id: l._id,
+        title: l.property?.title || l.project?.title || 'Property Visit',
+        property: l.property,
+        project: l.project,
+        images: l.property?.images || [],
+        scheduledAt: l.preferredAt || l.createdAt,
+        createdAt: l.createdAt,
+        status: l.status === 'site_visit_scheduled' ? 'requested' : l.status,
+        owner: l.manager,
+        ownerName: l.manager?.name || 'Property Host',
+        locality: l.property?.locality || '',
+        city: l.property?.city || l.city || 'Bengaluru',
+        price: l.property?.price,
+        note: l.note || ''
+      }));
+
+    const combined = [...rawVisits];
+    const seen = new Set(rawVisits.map((v) => String(v.property?._id || v.project?._id || v._id)));
+
+    for (const l of rawLeads) {
+      const idKey = String(l.property?._id || l.project?._id || l._id);
+      if (!seen.has(idKey)) {
+        seen.add(idKey);
+        combined.push(l);
+      }
+    }
+
+    return combined.sort((a, b) => new Date(b.scheduledAt || b.createdAt) - new Date(a.scheduledAt || a.createdAt));
+  }, [visitsData?.items, leadsData?.items]);
 
   async function handleCancel(id) {
     if (!window.confirm('Are you sure you want to cancel this scheduled property visit?')) return;
@@ -379,7 +565,8 @@ function PropertyVisitsSection() {
     try {
       await api(`visits/${id}`, { method: 'PATCH', body: { status: 'cancelled' } });
       toast('Visit has been cancelled.');
-      reload();
+      reloadVisits();
+      reloadLeads();
     } catch (e) {
       toast(e.message);
     } finally {
@@ -390,20 +577,84 @@ function PropertyVisitsSection() {
   const columns = [
     {
       header: 'Property / Project',
-      render: (row) => (
-        <div>
-          <span className="font-bold text-stone-900 block truncate">
-            {row.property?.title || row.project?.title || 'Listing'}
-          </span>
-          <span className="text-[11px] text-stone-400 block truncate">
-            Host: {row.owner?.name || 'Owner'}
-          </span>
-        </div>
-      )
+      render: (row) => {
+        const propId = row.property?._id || row.property;
+        return (
+          <div className="flex items-center gap-3 max-w-sm">
+            {row.images?.[0] ? (
+              <img
+                src={row.images[0]}
+                alt={row.title}
+                className="w-14 h-12 rounded-xl object-cover border border-stone-200 shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-12 rounded-xl bg-stone-100 flex items-center justify-center text-stone-400 shrink-0">
+                <Calendar size={20} />
+              </div>
+            )}
+            <div className="min-w-0">
+              {propId ? (
+                <Link
+                  href={`/properties/${propId}`}
+                  className="font-bold text-xs sm:text-sm text-stone-900 hover:text-[#163e35] hover:underline block truncate"
+                >
+                  {row.title}
+                </Link>
+              ) : (
+                <span className="font-bold text-xs sm:text-sm text-stone-900 block truncate">
+                  {row.title}
+                </span>
+              )}
+              <span className="text-[11px] text-stone-400 block truncate">
+                Host: <strong className="text-stone-600">{row.ownerName}</strong>
+                {row.locality ? ` • ${row.locality}, ${row.city}` : ` • ${row.city}`}
+                {row.price ? ` • ${money(row.price)}` : ''}
+              </span>
+            </div>
+          </div>
+        );
+      }
     },
     {
       header: 'Scheduled Date & Time',
-      render: (row) => <span className="font-semibold text-stone-800">{date(row.scheduledAt)}</span>
+      render: (row) => {
+        const d = row.scheduledAt ? new Date(row.scheduledAt) : null;
+        if (!d || isNaN(d.getTime())) return <span className="text-stone-400 text-xs">—</span>;
+        const formattedDate = d.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        const formattedTime = d.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        return (
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-[#ecf2e4] text-[#163e35] shrink-0">
+              <Calendar size={15} />
+            </div>
+            <div>
+              <span className="font-bold text-xs text-stone-900 block">
+                {formattedDate}
+              </span>
+              <span className="text-[11px] text-[#059669] font-bold block">
+                {formattedTime}
+              </span>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      header: 'Note / Request',
+      render: (row) => (
+        <span className="text-xs text-stone-600 line-clamp-2 max-w-xs">
+          {row.note || 'Site visit tour'}
+        </span>
+      )
     },
     {
       header: 'Status',
@@ -411,28 +662,31 @@ function PropertyVisitsSection() {
     },
     {
       header: 'Actions',
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          {row.property?._id && (
-            <Link
-              href={`/properties/${row.property._id}`}
-              className="text-stone-700 hover:text-stone-900 font-semibold"
-            >
-              Listing
-            </Link>
-          )}
-          {['requested', 'confirmed'].includes(row.status) && (
-            <button
-              type="button"
-              disabled={busy === row._id}
-              onClick={() => handleCancel(row._id)}
-              className="text-rose-600 hover:text-rose-800 font-semibold text-xs"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-      )
+      render: (row) => {
+        const propId = row.property?._id || row.property;
+        return (
+          <div className="flex items-center gap-2.5">
+            {propId && (
+              <Link
+                href={`/properties/${propId}`}
+                className="px-2.5 py-1 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+              >
+                View Listing
+              </Link>
+            )}
+            {['requested', 'confirmed'].includes(row.status) && (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => handleCancel(row._id)}
+                className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+              >
+                {busy === row._id ? 'Cancelling…' : 'Cancel'}
+              </button>
+            )}
+          </div>
+        );
+      }
     }
   ];
 
@@ -440,16 +694,28 @@ function PropertyVisitsSection() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-stone-900">My Property Visits</h2>
-          <p className="text-xs text-stone-500">Scheduled in-person property tours and site visits</p>
+          <h2 className="text-xl font-bold text-stone-900">My Scheduled Property Visits</h2>
+          <p className="text-xs text-stone-500">
+            In-person property tours and site visits scheduled with hosts
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            reloadVisits();
+            reloadLeads();
+          }}
+          className="text-xs font-bold text-[#163e35] hover:text-[#059669] px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer self-start sm:self-auto"
+        >
+          Refresh Visits
+        </button>
       </div>
 
       <DataTable
         columns={columns}
         data={items}
-        emptyTitle="No property visits scheduled"
-        emptySubtitle="When you request an in-person tour on any listing, it will be organized here."
+        emptyTitle="No property visits scheduled yet"
+        emptySubtitle="When you choose a date and time on any property listing to schedule a visit, it will appear here."
       />
     </div>
   );
@@ -742,30 +1008,6 @@ function CustomerRequestsSection() {
                       <p className="text-xs text-stone-700 italic border-l-2 border-[#163e35] pl-3 py-0.5">
                         &ldquo;{item.offer?.notes || item.quotation?.notes}&rdquo;
                       </p>
-                    )}
-
-                    {/* Customer Action Buttons: Accept or Decline Offer */}
-                    {isOfferPending && (
-                      <div className="pt-2 flex items-center gap-3 border-t border-[#163e35]/10">
-                        <button
-                          type="button"
-                          onClick={() => handleAccept(item)}
-                          disabled={actingId === item._id}
-                          className="px-4 py-2 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <Check size={14} />
-                          <span>{actingId === item._id ? 'Accepting…' : 'Accept Offer'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDecline(item)}
-                          disabled={actingId === item._id}
-                          className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-lg border border-rose-200 flex items-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <X size={14} />
-                          <span>{actingId === item._id ? 'Declining…' : 'Decline Offer'}</span>
-                        </button>
-                      </div>
                     )}
 
                     {isAccepted && (

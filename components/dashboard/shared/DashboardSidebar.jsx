@@ -52,14 +52,11 @@ export default function DashboardSidebar({
   const navItems = {
     customer: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-      { id: 'enquiries', label: 'Property Enquiries', icon: ClipboardList },
       { id: 'visits', label: 'Property Visits', icon: Calendar },
       { id: 'favorites', label: 'Saved Properties', icon: Heart },
       { id: 'saved-searches', label: 'Saved Searches', icon: Search },
       { id: 'requests', label: 'My Service Requests', icon: Wrench },
-      { id: 'payments', label: 'Payments & Invoices', icon: CreditCard },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
-      { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'profile', label: 'My Profile & Settings', icon: Settings }
     ],
     owner: [
@@ -71,7 +68,6 @@ export default function DashboardSidebar({
       { id: 'performance', label: 'Listing Performance', icon: BarChart3 },
       { id: 'promotions', label: 'Promotions', icon: Sparkles },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
-      { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'profile', label: 'Profile Settings', icon: Settings }
     ],
     broker: [
@@ -101,9 +97,9 @@ export default function DashboardSidebar({
     provider: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
       { id: 'business-profile', label: 'Business Profile', icon: Building2 },
+      { id: 'enquiries', label: 'Property Enquiries', icon: House },
       { id: 'requests', label: 'Client Requests & Offers', icon: ClipboardList },
       { id: 'services', label: 'My Services', icon: Wrench },
-      { id: 'technicians', label: 'Technicians / Team', icon: Users },
       { id: 'reviews', label: 'Reviews', icon: Star },
       { id: 'promotions', label: 'Promotions', icon: Sparkles },
       { id: 'profile', label: 'Settings', icon: Settings }

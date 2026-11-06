@@ -117,12 +117,6 @@ function UnifiedDashboardInner({ initialSection = '', initialAction = '' }) {
     if (activeSection === 'bookings' && activeWorkspace === 'customer') {
       return (
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-stone-900">My Service Bookings</h2>
-            <p className="text-xs text-stone-500">
-              Track doorstep bookings across electricians, plumbers, interior designers, and home cleaning
-            </p>
-          </div>
           <BookingsTracker />
         </div>
       );

@@ -2,16 +2,167 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Phone,MessageCircle,CalendarDays,ArrowRight,Mail } from 'lucide-react';
-import { useApp,api } from './providers';
-import { Field,Submit } from './ui';
-import { cities,money } from '@/lib/format';
-export function ConnectPanel({item,project=false}){const {user,toast}=useApp(),router=useRouter();const [busy,setBusy]=useState(false),[contact,setContact]=useState(null),[showVisit,setShowVisit]=useState(false),[showEnquiry,setShowEnquiry]=useState(false);const ref=project?{project:item._id}:{property:item._id};
- async function chat(){setBusy(true);try{const thread=await api('threads',{method:'POST',body:ref});router.push(`/dashboard/messages?thread=${thread._id}`);}catch(e){toast(e.message);}finally{setBusy(false);}}
- async function owner(){setBusy(true);try{setContact(await api(`contact/${item._id}`));}catch(e){toast(e.message);}finally{setBusy(false);}}
- async function visit(e){e.preventDefault();setBusy(true);const form=new FormData(e.currentTarget);try{await api('visits',{method:'POST',body:{...ref,scheduledAt:new Date(form.get('scheduledAt')).toISOString(),note:form.get('note')}});toast('Visit requested. Track confirmation in your dashboard.');setShowVisit(false);}catch(e){toast(e.message);}finally{setBusy(false);}}
- async function enquiry(e){e.preventDefault();setBusy(true);const form=new FormData(e.currentTarget);try{await api('leads',{method:'POST',body:{property:item._id,source:'enquiry',name:form.get('name')||user.name,email:form.get('email')||user.email,phone:form.get('phone')||user.phone,city:item.city||'Hyderabad',note:form.get('note')||`Email inquiry regarding ${item.title}`}});toast('Your email inquiry has been sent.');setShowEnquiry(false);}catch(e){toast(e.message);}finally{setBusy(false);}}
- return <div className="panel side-sticky"><p className="eyebrow">{project?'MAKE YOUR NEXT MOVE':'MAKE THE CONNECTION'}</p><h3>{project?'Meet your future home.':'Your home, one hello away.'}</h3><p className="muted text-sm leading-6 my-4">{project?'Ask the project coordinator about availability, pricing and your visit.':`Connect directly with ${item.owner?.name||'the owner'}. Ask your questions and plan a visit.`}</p>{user?<div className="space-y-3">{!project&&<button className="btn w-full" disabled={busy} onClick={owner}><Phone size={16}/>Contact owner</button>}{contact&&<div className="bg-cream p-4 rounded text-sm"><strong>{contact.name}</strong><a className="block text-link mt-2" href={`tel:${contact.phone}`}>{contact.phone||'Phone not provided. Use messaging.'}</a></div>}<button className="btn-outline w-full" disabled={busy} onClick={()=>setShowEnquiry(!showEnquiry)}><Mail size={16}/>Send Email Enquiry</button>{showEnquiry&&<form onSubmit={enquiry} className="space-y-3 pt-3 bg-stone-50 p-3.5 rounded-xl border border-stone-200"><Field label="Your name"><input name="name" required defaultValue={user.name}/></Field><Field label="Email address"><input name="email" type="email" required defaultValue={user.email}/></Field><Field label="Phone number"><input name="phone" type="tel" required defaultValue={user.phone}/></Field><Field label="Message"><textarea name="note" maxLength={1000} placeholder="I am interested in this listing. Please email or call me with details." required/></Field><Submit busy={busy}>Send Email Enquiry</Submit></form>}<button className="btn-outline w-full" disabled={busy} onClick={chat}><MessageCircle size={16}/>Message {project?'coordinator':'owner'}</button><button className="btn-outline w-full" onClick={()=>setShowVisit(!showVisit)}><CalendarDays size={16}/>Schedule a site visit</button>{showVisit&&<form onSubmit={visit} className="space-y-3 pt-3"><Field label="Visit date & time (your local time)"><input name="scheduledAt" required type="datetime-local" min={new Date(Date.now()+60000-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16)}/></Field><Field label="A note for your host"><textarea name="note" maxLength={1000} placeholder="Anything you’d like to know?"/></Field><Submit busy={busy}>Request visit</Submit></form>}</div>:<Link className="btn w-full" href={`/login?next=${project?'/projects/':'/properties/'}${item._id}`}>Log in to connect<ArrowRight size={16}/></Link>}<p className="text-xs muted mt-5 leading-5">A request is not a confirmed appointment. Your host will update the status in your dashboard.</p></div>;
+import { MessageCircle, CalendarDays, ArrowRight } from 'lucide-react';
+import CalendarTimePicker from './CalendarTimePicker';
+import { useApp, api } from './providers';
+import { Field, Submit } from './ui';
+import { cities, money } from '@/lib/format';
+
+export function ConnectPanel({ item, project = false }) {
+  const { user, toast } = useApp();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const ref = project ? { project: item._id } : { property: item._id };
+
+  async function chat() {
+    setBusy(true);
+    try {
+      const thread = await api('threads', { method: 'POST', body: ref });
+      router.push(`/dashboard/messages?thread=${thread._id}`);
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function visit(e) {
+    e.preventDefault();
+    setBusy(true);
+    const form = new FormData(e.currentTarget);
+    const scheduledAtVal = form.get('scheduledAt');
+    if (!scheduledAtVal) {
+      toast('Please select a visit date and time.');
+      setBusy(false);
+      return;
+    }
+    const noteVal = form.get('note')?.trim() || '';
+
+    try {
+      // 1. Submit site visit
+      await api('visits', {
+        method: 'POST',
+        body: {
+          ...ref,
+          scheduledAt: new Date(scheduledAtVal).toISOString(),
+          note: noteVal
+        }
+      });
+
+      // 2. Also register official property enquiry (Lead) so this property goes straight to Property Enquiries in the dashboard
+      try {
+        await api('leads', {
+          method: 'POST',
+          body: project
+            ? {
+                project: item._id,
+                name: user.name,
+                phone: user.phone || '',
+                city: item.city || 'Bengaluru',
+                budget: item.price || 1000000,
+                note: noteVal || 'Project tour inquiry',
+                kind: 'project',
+                preferredAt: new Date(scheduledAtVal).toISOString()
+              }
+            : {
+                property: item._id,
+                source: 'enquiry',
+                note: noteVal || `Site visit enquiry scheduled for ${new Date(scheduledAtVal).toLocaleDateString()}`,
+                budget: item.price || 0,
+                city: item.city || 'Bengaluru',
+                preferredAt: new Date(scheduledAtVal).toISOString()
+              }
+        });
+      } catch (lErr) {
+        console.warn('Lead sync:', lErr);
+      }
+
+      e.target?.reset?.();
+      toast({
+        message: 'Visit requested! Click here to view in your dashboard →',
+        href: '/dashboard/customer?section=visits',
+        onClick: () => router.push('/dashboard/customer?section=visits')
+      });
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="panel side-sticky space-y-4">
+      <div>
+        <p className="eyebrow">{project ? 'MAKE YOUR NEXT MOVE' : 'PLAN YOUR VISIT'}</p>
+        <h3 className="text-xl font-bold text-stone-900 mt-1">
+          {project ? 'Schedule a Project Tour' : 'Book an In-Person Site Visit'}
+        </h3>
+        <p className="muted text-xs leading-5 mt-2">
+          {project
+            ? 'Pick a date on the calendar below to tour sample flats with the project coordinator.'
+            : `Choose your preferred date and time on the calendar to visit this property directly with ${item.owner?.name || 'the owner'}.`}
+        </p>
+      </div>
+
+      {user ? (
+        <div className="space-y-3">
+          {/* Calendar Visit Booking Form */}
+          <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-xs text-stone-800">
+              <CalendarDays size={15} className="text-[#163e35]" />
+              <span>Select Visit Date &amp; Time</span>
+            </div>
+
+            <form onSubmit={visit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1.5">
+                  Visit Date &amp; Time (Calendar)
+                </label>
+                <CalendarTimePicker name="scheduledAt" />
+              </div>
+
+              <Field label="A note for your host (optional)">
+                <textarea
+                  name="note"
+                  maxLength={1000}
+                  rows={2}
+                  placeholder="Anything specific you'd like to inspect or ask?"
+                  className="w-full text-xs bg-white border border-stone-200 rounded-lg p-2.5 focus:outline-none focus:border-[#163e35]"
+                />
+              </Field>
+
+              <button
+                type="submit"
+                disabled={busy}
+                className="btn w-full bg-[#163e35] hover:bg-[#24564a] text-white text-xs font-bold py-2.5 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <CalendarDays size={15} />
+                <span>{busy ? 'Requesting Visit…' : 'Schedule Site Visit'}</span>
+              </button>
+            </form>
+          </div>
+
+          <button
+            type="button"
+            className="btn-outline w-full text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-stone-100 transition-colors cursor-pointer"
+            disabled={busy}
+            onClick={chat}
+          >
+            <MessageCircle size={15} />
+            <span>Message {project ? 'Coordinator' : 'Owner'}</span>
+          </button>
+        </div>
+      ) : (
+        <Link className="btn w-full text-xs py-2.5 rounded-xl" href={`/login?next=${project ? '/projects/' : '/properties/'}${item._id}`}>
+          Log in to schedule visit<ArrowRight size={15} />
+        </Link>
+      )}
+
+      <p className="text-xs text-stone-400 mt-4 leading-5 text-center">
+        Your host will receive this request and update confirmation in your dashboard.
+      </p>
+    </div>
+  );
 }
 export function EnquiryForm({project,design,estimate,estimateOptions,service='Full home'}){const {user,toast}=useApp();const [busy,setBusy]=useState(false),[success,setSuccess]=useState(false);
  async function submit(e){e.preventDefault();setBusy(true);const form=new FormData(e.currentTarget);const input=Object.fromEntries(form);try{await api('leads',{method:'POST',body:{...input,kind:project?'project':'interior',...(project?{project:project._id}:{}),...(design?{design:design._id}:{}),budget:Number(input.budget),...(input.preferredAt?{preferredAt:new Date(input.preferredAt).toISOString()}:{preferredAt:undefined})}});setSuccess(true);toast('Your enquiry has been sent.');}catch(e){toast(e.message);}finally{setBusy(false);}}

@@ -18,7 +18,7 @@ const STATUS_MAP = {
   submitted: { label: 'Submitted', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Clock },
   requested: { label: 'Requested', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Clock },
   pending: { label: 'Pending Review', color: '#749546', bg: '#f7f8f3', border: '#e6e8e1', icon: Clock },
-  new: { label: 'New Lead', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Sparkles },
+  new: { label: 'Submitted', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Clock },
   uncontacted: { label: 'New Inquiry', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Clock },
   contacted: { label: 'Contacted', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Check },
   connected: { label: 'Connected', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Check },
