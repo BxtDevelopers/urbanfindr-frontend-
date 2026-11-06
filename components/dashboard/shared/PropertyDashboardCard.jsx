@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { money } from '@/lib/format';
 import { propertyImages } from '@/lib/media';
@@ -38,14 +38,42 @@ export default function PropertyDashboardCard({
   const bathrooms = property.bathrooms;
   const area = property.area || property.builtUpArea || property.carpetArea;
 
-  // Find customer request for this property if any
-  const pendingRequest = requests.find(
-    (r) => r.status === 'requested' || r.status === 'new' || r.status === 'uncontacted' || r.status === 'submitted'
-  ) || requests[0];
+  // Track seen request IDs in local state and localStorage so viewed requests clear the number badge
+  const [seenIds, setSeenIds] = useState(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const stored = localStorage.getItem(`seen_requests_${property._id}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Calculate unseen / new requests
+  const unseenRequests = useMemo(() => {
+    return requests.filter((r) => {
+      if (seenIds.has(String(r._id))) return false;
+      if (r.status === 'accepted' || r.status === 'confirmed' || r.status === 'completed' || r.status === 'cancelled') {
+        return false;
+      }
+      return true;
+    });
+  }, [requests, seenIds]);
+
+  const hasNewRequests = unseenRequests.length > 0;
 
   function handleOpen(e) {
     e.preventDefault();
     e.stopPropagation();
+
+    // Mark current requests as seen so the number badge clears
+    const updatedSeen = new Set(seenIds);
+    requests.forEach((r) => updatedSeen.add(String(r._id)));
+    setSeenIds(updatedSeen);
+    try {
+      localStorage.setItem(`seen_requests_${property._id}`, JSON.stringify([...updatedSeen]));
+    } catch {}
+
     if (onOpenRequests) {
       onOpenRequests(property, requests);
     } else {
@@ -133,31 +161,25 @@ export default function PropertyDashboardCard({
                 type="button"
                 onClick={handleOpen}
                 className="w-full p-2.5 bg-[#ecf2e4] hover:bg-[#d8edb3] rounded-xl border border-[#d6dcd3] flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs group/btn"
-                title="Click to view visit requests and customer details"
+                title="Click to view visit requests"
               >
-                <div className="min-w-0 text-left">
-                  <div className="text-xs font-bold text-[#163e35] flex items-center gap-1.5 truncate">
-                    <Calendar size={13} className="text-[#163e35] shrink-0" />
-                    <span>Visit Request</span>
-                    {requests.length > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-[#163e35] text-[#d8edb3] text-[10px] font-bold">
-                        {requests.length}
-                      </span>
-                    )}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-white/80 text-[#163e35] shrink-0 border border-[#d6dcd3]">
+                    <Calendar size={14} />
                   </div>
-                  <div className="text-[11px] text-stone-600 font-medium flex items-center gap-1 mt-0.5">
-                    {pendingRequest ? (
-                      pendingRequest.status === 'accepted' || pendingRequest.status === 'confirmed' ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-[#163e35]">
-                          <Check size={11} /> {pendingRequest.customerName} (Accepted)
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-bold text-[#163e35] whitespace-nowrap">
+                      Visit Request
+                    </span>
+                    {/* Pulsing live dotted notification indicator when new request has arrived */}
+                    {hasNewRequests && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300 shrink-0">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 font-medium text-stone-600 truncate">
-                          <Clock size={11} /> From {pendingRequest.customerName}
-                        </span>
-                      )
-                    ) : (
-                      <span className="text-stone-500">View customer requests</span>
+                        <span>{unseenRequests.length} New</span>
+                      </span>
                     )}
                   </div>
                 </div>

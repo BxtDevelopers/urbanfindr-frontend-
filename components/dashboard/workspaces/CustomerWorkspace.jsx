@@ -8,6 +8,8 @@ import { propertyImages } from '@/lib/media';
 import StatCard from '../shared/StatCard';
 import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
+import PropertyDashboardCard from '../shared/PropertyDashboardCard';
+import PropertyRequestsModal from '../shared/PropertyRequestsModal';
 import BookingsTracker from '../../bookings-tracker';
 import InteriorProjectHub from '../../interior/InteriorProjectHub';
 import {
@@ -32,6 +34,7 @@ import {
   MapPin,
   Sparkles,
   House,
+  Plus,
   ShieldCheck,
   Check,
   X,
@@ -52,6 +55,9 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
     messages: 0
   };
 
+  if (section === 'properties' || section === 'my-properties') {
+    return <CustomerPropertiesSection onSelectSection={onSelectSection} />;
+  }
   if (section === 'favorites') {
     return <SavedPropertiesSection />;
   }
@@ -95,8 +101,22 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
+            href="/post-property"
+            className="whitespace-nowrap shrink-0 px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all inline-flex items-center gap-1.5 shadow-sm"
+          >
+            <Plus size={15} className="shrink-0" />
+            <span className="whitespace-nowrap">Add New Property</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => onSelectSection('properties')}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20"
+          >
+            My Properties ({stats.properties || 0})
+          </button>
+          <Link
             href="/properties"
-            className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 border border-white/20"
           >
             <Search size={14} /> Explore Properties
           </Link>
@@ -110,7 +130,15 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard
+          title="My Properties"
+          value={stats.properties || 0}
+          subtitle="Manage your posted homes"
+          icon={House}
+          color="#163e35" bgIcon="#ecf2e4"
+          onClick={() => onSelectSection('properties')}
+        />
         <StatCard
           title="Saved Homes"
           value={stats.favorites}
@@ -1449,6 +1477,255 @@ function CustomerProfileSection() {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// ==========================================
+// CUSTOMER PROPERTIES SECTION
+// ==========================================
+function CustomerPropertiesSection({ onSelectSection }) {
+  const { toast } = useApp();
+  const { data: propertiesData, loading, reload } = useData('properties?mine=true&limit=100');
+  const { data: leadsData, reload: reloadLeads } = useData('leads?page=1&limit=100');
+  const { data: visitsData, reload: reloadVisits } = useData('visits?limit=100');
+
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [busy, setBusy] = useState('');
+  const [selectedPropertyForRequests, setSelectedPropertyForRequests] = useState(null);
+
+  const items = propertiesData?.items || [];
+
+  // Group customer visit requests and inquiries by propertyId
+  const requestsByProperty = useMemo(() => {
+    const map = {};
+    const visits = visitsData?.items || [];
+    const leads = leadsData?.items || [];
+
+    const all = [
+      ...visits.map((v) => ({
+        _id: v._id,
+        propertyId: String(v.property?._id || v.property || ''),
+        isVisit: true,
+        type: 'Visit Request',
+        customerName: v.user?.name || v.customerName || 'Customer',
+        email: v.user?.email || v.email || '',
+        phone: v.user?.phone || v.phone || '',
+        status: v.status || 'requested',
+        note: v.notes || v.note || '',
+        scheduledAt: v.date ? `${v.date} ${v.timeSlot || ''}`.trim() : null,
+        createdAt: v.createdAt
+      })),
+      ...leads.map((l) => ({
+        _id: l._id,
+        propertyId: String(l.property?._id || l.property || ''),
+        isVisit: false,
+        type: 'Inquiry Request',
+        customerName: l.name || l.user?.name || 'Customer',
+        email: l.email || l.user?.email || '',
+        phone: l.phone || l.user?.phone || '',
+        status: l.status || 'requested',
+        note: l.note || '',
+        scheduledAt: l.preferredAt,
+        createdAt: l.createdAt
+      }))
+    ];
+
+    for (const req of all) {
+      if (req.propertyId) {
+        if (!map[req.propertyId]) map[req.propertyId] = [];
+        map[req.propertyId].push(req);
+      }
+    }
+    return map;
+  }, [visitsData?.items, leadsData?.items]);
+
+  async function handleAcceptRequest(request) {
+    setBusy(request._id);
+    try {
+      if (request.isVisit) {
+        await api(`visits/${request._id}`, { method: 'PATCH', body: { status: 'accepted' } });
+      } else {
+        await api(`leads/${request._id}`, { method: 'PATCH', body: { status: 'accepted' } });
+      }
+      toast('Customer request accepted!');
+      reloadLeads();
+      reloadVisits();
+      setSelectedPropertyForRequests((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          requests: (prev.requests || []).map((r) =>
+            r._id === request._id ? { ...r, status: 'accepted' } : r
+          )
+        };
+      });
+    } catch (e) {
+      toast(e.message || 'Failed to accept request.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function handleClose(id) {
+    if (!window.confirm('Close this property? It will be removed from the public website so visitors cannot see it, but will stay saved in your dashboard.')) return;
+    setBusy(id);
+    try {
+      await api(`properties/${id}`, { method: 'PATCH', body: { status: 'closed' } });
+      toast('Property closed. It is now hidden from the public website.');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to close property.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function handleReopen(id) {
+    if (!window.confirm('Re-open this property listing so visitors can see it on the website again?')) return;
+    setBusy(id);
+    try {
+      await api(`properties/${id}`, { method: 'PATCH', body: { status: 'approved' } });
+      toast('Property re-opened and visible on the website.');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to re-open property.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (statusFilter === 'approved' && item.status !== 'approved' && item.status !== 'active') return false;
+      if (statusFilter === 'closed' && item.status !== 'closed' && item.status !== 'archived') return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const matchesTitle = item.title?.toLowerCase().includes(q);
+        const matchesLocality = item.locality?.toLowerCase().includes(q);
+        const matchesCity = item.city?.toLowerCase().includes(q);
+        const matchesType = item.type?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesLocality && !matchesCity && !matchesType) return false;
+      }
+      return true;
+    });
+  }, [items, statusFilter, search]);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl font-bold text-stone-900">My Properties</h2>
+          <p className="text-xs text-stone-500">
+            Manage all your posted residential and commercial listings. Closed properties remain visible here in your dashboard cards but are hidden from visitors on the website.
+          </p>
+        </div>
+        <Link
+          href="/post-property"
+          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
+        >
+          <Plus size={15} className="shrink-0" />
+          <span className="whitespace-nowrap">Add New Property</span>
+        </Link>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-stone-200 shadow-xs">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search properties by title, locality, city, or type…"
+            className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-[#163e35]/20 focus:border-[#163e35]"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter Pills */}
+          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'all' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              All ({items.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('approved')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'approved' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Active ({items.filter((i) => i.status !== 'closed' && i.status !== 'archived').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('closed')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'closed' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Closed ({items.filter((i) => i.status === 'closed' || i.status === 'archived').length})
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="p-12 text-center text-xs text-stone-400">Loading your properties…</div>
+      ) : filteredItems.length === 0 ? (
+        <div className="p-12 text-center space-y-3 bg-white rounded-2xl border border-stone-200 shadow-xs">
+          <House size={32} className="mx-auto text-stone-300" />
+          <h3 className="font-bold text-sm text-stone-800">No properties match your filter</h3>
+          <p className="text-xs text-stone-500 max-w-sm mx-auto">
+            {items.length === 0
+              ? 'Start reaching buyers and tenants directly with zero brokerage.'
+              : 'Try clearing your search or filter pills to see other properties.'}
+          </p>
+          {items.length === 0 && (
+            <Link
+              href="/post-property"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs whitespace-nowrap"
+            >
+              <Plus size={14} className="shrink-0" />
+              <span className="whitespace-nowrap">Add New Property</span>
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map((prop) => (
+            <PropertyDashboardCard
+              key={prop._id}
+              property={prop}
+              busy={busy}
+              requests={requestsByProperty[String(prop._id)] || []}
+              onOpenRequests={(p, r) => setSelectedPropertyForRequests({ property: p, requests: r })}
+              onAcceptRequest={handleAcceptRequest}
+              onClose={handleClose}
+              onReopen={handleReopen}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Property Visit Requests Modal */}
+      {selectedPropertyForRequests && (
+        <PropertyRequestsModal
+          property={selectedPropertyForRequests.property}
+          requests={selectedPropertyForRequests.requests}
+          busy={busy}
+          onClose={() => setSelectedPropertyForRequests(null)}
+          onAcceptRequest={handleAcceptRequest}
+        />
+      )}
     </div>
   );
 }

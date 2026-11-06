@@ -82,10 +82,10 @@ export default function DashboardHeader({
       {/* Right: Quick actions, notifications, user avatar */}
       <div className="flex items-center gap-3 shrink-0">
         {/* Workspace Quick Action */}
-        {activeWorkspace === 'owner' || activeWorkspace === 'broker' ? (
+        {activeWorkspace === 'owner' || activeWorkspace === 'broker' || activeWorkspace === 'customer' ? (
           <Link
             href="/post-property"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs transition-all"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs transition-all whitespace-nowrap"
           >
             <Plus size={15} />
             <span>Post Property</span>

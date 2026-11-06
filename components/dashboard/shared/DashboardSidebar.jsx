@@ -52,6 +52,8 @@ export default function DashboardSidebar({
   const navItems = {
     customer: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+      { id: 'properties', label: 'My Properties', icon: House },
+      { id: 'add-property', label: 'Add Property', icon: PlusCircle, isAction: true },
       { id: 'visits', label: 'Property Visits', icon: Calendar },
       { id: 'favorites', label: 'Saved Properties', icon: Heart },
       { id: 'saved-searches', label: 'Saved Searches', icon: Search },
