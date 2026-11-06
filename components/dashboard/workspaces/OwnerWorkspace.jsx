@@ -98,7 +98,7 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/post-property"
-            className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+            className="whitespace-nowrap shrink-0 px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
           >
             <Plus size={15} /> Add New Property
           </Link>
@@ -382,7 +382,7 @@ function OwnerPropertiesSection({ onPromote }) {
         </div>
         <Link
           href="/post-property"
-          className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 self-start cursor-pointer shadow-xs transition-all hover:shadow"
+          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow"
         >
           <Plus size={15} /> Add New Property
         </Link>
@@ -520,12 +520,12 @@ function OwnerEnquiriesSection() {
     try {
       await api(`leads/${id}`, {
         method: 'PATCH',
-        body: { status: 'confirmed' }
+        body: { status: 'accepted' }
       });
-      toast('Enquiry confirmed!');
+      toast('Request accepted!');
       reload();
     } catch (e) {
-      toast(e.message || 'Failed to update enquiry.');
+      toast(e.message || 'Failed to accept request.');
     } finally {
       setBusyId('');
     }
@@ -579,9 +579,10 @@ function OwnerEnquiriesSection() {
                 disabled={busyId === row._id}
                 onClick={() => handleAcceptLead(row._id)}
                 className="px-2.5 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                title="Confirm and accept request"
               >
                 <Check size={12} />
-                <span>{busyId === row._id ? 'Confirming…' : 'Confirm'}</span>
+                <span>{busyId === row._id ? 'Accepting…' : 'Accept'}</span>
               </button>
             )}
             <button
@@ -721,19 +722,20 @@ function OwnerVisitsSection() {
               <MessageCircle size={13} />
             </button>
 
-            {/* Confirm button */}
+            {/* Accept / Confirm button */}
             {row.status === 'requested' && (
               <button
                 type="button"
                 disabled={busy === row._id}
-                onClick={() => updateVisit(row._id, 'confirmed')}
-                className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                onClick={() => updateVisit(row._id, 'accepted')}
+                className="px-2.5 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                title="Confirm and accept visit request"
               >
                 <Check size={12} />
-                <span>Confirm</span>
+                <span>Accept</span>
               </button>
             )}
-            {row.status === 'confirmed' && (
+            {(row.status === 'confirmed' || row.status === 'accepted') && (
               <button
                 type="button"
                 disabled={busy === row._id}

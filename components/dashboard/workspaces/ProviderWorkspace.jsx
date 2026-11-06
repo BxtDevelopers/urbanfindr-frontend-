@@ -1034,14 +1034,14 @@ function ProviderEnquiriesSection({ onSelectSection }) {
       if (row.isVisit) {
         await api(`visits/${row._id}`, {
           method: 'PATCH',
-          body: { status: 'confirmed' }
+          body: { status: 'accepted' }
         });
-        toast('Site visit request confirmed!');
+        toast('Site visit request accepted!');
         reloadVisits();
       } else {
         await api(`leads/${row._id}`, {
           method: 'PATCH',
-          body: { status: 'confirmed' }
+          body: { status: 'accepted' }
         });
         toast('Property enquiry request accepted!');
         reloadLeads();
@@ -1374,11 +1374,11 @@ function ProviderRecentEnquiriesList({ onViewAll }) {
     setBusyId(item._id);
     try {
       if (item.isVisit) {
-        await api(`visits/${item._id}`, { method: 'PATCH', body: { status: 'confirmed' } });
-        toast('Site visit request confirmed!');
+        await api(`visits/${item._id}`, { method: 'PATCH', body: { status: 'accepted' } });
+        toast('Site visit request accepted!');
         reloadVisits?.();
       } else {
-        await api(`leads/${item._id}`, { method: 'PATCH', body: { status: 'confirmed' } });
+        await api(`leads/${item._id}`, { method: 'PATCH', body: { status: 'accepted' } });
         toast('Property enquiry accepted!');
         reloadLeads?.();
       }
@@ -2626,7 +2626,7 @@ function ProviderPropertiesSection({ onPromote }) {
         </div>
         <Link
           href="/post-property"
-          className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 self-start cursor-pointer shadow-xs transition-all hover:shadow"
+          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow"
         >
           <Plus size={15} /> Add New Property
         </Link>
