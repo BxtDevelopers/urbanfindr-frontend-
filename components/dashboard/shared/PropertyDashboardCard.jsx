@@ -122,9 +122,9 @@ export default function PropertyDashboardCard({
                   {pendingRequest.isVisit ? 'Visit Request' : 'Inquiry'} from {pendingRequest.customerName}
                 </div>
                 <div className="text-[11px] text-stone-600 font-medium flex items-center gap-1 mt-0.5">
-                  {pendingRequest.status === 'accepted' ? (
+                  {pendingRequest.status === 'accepted' || pendingRequest.status === 'confirmed' ? (
                     <span className="inline-flex items-center gap-1 font-bold text-[#163e35]">
-                      <Check size={11} /> Accepted
+                      <Check size={11} /> {pendingRequest.status === 'confirmed' ? 'Confirmed' : 'Accepted'}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 font-medium text-stone-500">
@@ -134,7 +134,7 @@ export default function PropertyDashboardCard({
                 </div>
               </div>
 
-              {pendingRequest.status !== 'accepted' && (
+              {pendingRequest.status !== 'accepted' && pendingRequest.status !== 'confirmed' && (
                 <button
                   type="button"
                   disabled={busy === pendingRequest._id}

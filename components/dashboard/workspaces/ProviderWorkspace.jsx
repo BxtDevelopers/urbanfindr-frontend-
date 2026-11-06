@@ -2672,7 +2672,7 @@ function ProviderPropertiesSection({ onPromote }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-xl font-bold text-stone-900">My Properties</h2>
           <p className="text-xs text-stone-500">
             Manage all your direct residential and commercial listings. Closed properties remain visible here in your dashboard cards but are removed from the public website.
@@ -2680,9 +2680,10 @@ function ProviderPropertiesSection({ onPromote }) {
         </div>
         <Link
           href="/post-property"
-          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow"
+          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
         >
-          <Plus size={15} /> Add New Property
+          <Plus size={15} className="shrink-0" />
+          <span className="whitespace-nowrap">Add New Property</span>
         </Link>
       </div>
 

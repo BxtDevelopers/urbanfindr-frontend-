@@ -243,8 +243,29 @@ function CustomerRecentBookingsList({ onSelectSection }) {
 
 // Sub-component: Recent Visits List
 function CustomerRecentVisitsList({ onSelectSection }) {
-  const { data: visitsData, loading: loadingVisits } = useData('visits?limit=10');
-  const { data: leadsData } = useData('leads?limit=10');
+  const { data: visitsData, loading: loadingVisits, reload: reloadVisits } = useData('visits?limit=10');
+  const { data: leadsData, reload: reloadLeads } = useData('leads?limit=10');
+  const { toast } = useApp();
+  const [cancellingId, setCancellingId] = useState('');
+
+  async function handleCancel(v) {
+    if (!window.confirm('Are you sure you want to cancel this scheduled property visit?')) return;
+    setCancellingId(v._id);
+    try {
+      if (v.isVisit) {
+        await api(`visits/${v._id}`, { method: 'PATCH', body: { status: 'cancelled' } });
+      } else {
+        await api(`leads/${v._id}`, { method: 'PATCH', body: { status: 'cancelled' } });
+      }
+      toast('Visit request has been cancelled.');
+      reloadVisits?.();
+      reloadLeads?.();
+    } catch (e) {
+      toast(e.message || 'Failed to cancel.');
+    } finally {
+      setCancellingId('');
+    }
+  }
 
   const items = useMemo(() => {
     const rawVisits = (visitsData?.items || []).map((v) => ({
@@ -258,7 +279,8 @@ function CustomerRecentVisitsList({ onSelectSection }) {
       status: v.status || 'requested',
       ownerName: v.owner?.name || 'Property Host',
       locality: v.property?.locality || '',
-      city: v.property?.city || 'Bengaluru'
+      city: v.property?.city || 'Bengaluru',
+      isVisit: true
     }));
 
     const rawLeads = (leadsData?.items || [])
@@ -274,7 +296,8 @@ function CustomerRecentVisitsList({ onSelectSection }) {
         status: l.status === 'site_visit_scheduled' ? 'requested' : l.status,
         ownerName: l.manager?.name || 'Property Host',
         locality: l.property?.locality || '',
-        city: l.property?.city || l.city || 'Bengaluru'
+        city: l.property?.city || l.city || 'Bengaluru',
+        isVisit: false
       }));
 
     const combined = [...rawVisits];
@@ -348,13 +371,25 @@ function CustomerRecentVisitsList({ onSelectSection }) {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => onSelectSection('visits')}
-              className="text-xs font-bold text-[#163e35] hover:text-[#059669] px-3 py-1.5 rounded-lg bg-[#ecf2e4] hover:bg-[#d8edb3] transition-colors shrink-0 self-start sm:self-auto cursor-pointer"
-            >
-              View Visit
-            </button>
+            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => onSelectSection('visits')}
+                className="text-xs font-bold text-[#163e35] hover:text-[#059669] px-3 py-1.5 rounded-lg bg-[#ecf2e4] hover:bg-[#d8edb3] transition-colors cursor-pointer"
+              >
+                View Visit
+              </button>
+              {!['cancelled', 'rejected', 'completed', 'closed'].includes(v.status) && (
+                <button
+                  type="button"
+                  disabled={cancellingId === v._id}
+                  onClick={() => handleCancel(v)}
+                  className="text-xs font-semibold text-rose-600 hover:text-rose-800 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer border border-rose-200"
+                >
+                  {cancellingId === v._id ? 'Cancelling…' : 'Cancel'}
+                </button>
+              )}
+            </div>
           </div>
         );
       })}
@@ -364,8 +399,29 @@ function CustomerRecentVisitsList({ onSelectSection }) {
 
 // Section: Property Enquiries
 function PropertyEnquiriesSection() {
-  const { data: leadsData } = useData('leads?page=1&limit=50');
-  const { data: visitsData } = useData('visits?limit=50');
+  const { toast } = useApp();
+  const { data: leadsData, reload: reloadLeads } = useData('leads?page=1&limit=50');
+  const { data: visitsData, reload: reloadVisits } = useData('visits?limit=50');
+  const [busyId, setBusyId] = useState('');
+
+  async function handleCancelEnquiry(row) {
+    if (!window.confirm('Are you sure you want to cancel this enquiry?')) return;
+    setBusyId(row._id);
+    try {
+      if (row.isVisit) {
+        await api(`visits/${row._id}`, { method: 'PATCH', body: { status: 'cancelled' } });
+      } else {
+        await api(`leads/${row._id}`, { method: 'PATCH', body: { status: 'cancelled' } });
+      }
+      toast('Enquiry has been cancelled.');
+      reloadLeads?.();
+      reloadVisits?.();
+    } catch (e) {
+      toast(e.message || 'Failed to cancel.');
+    } finally {
+      setBusyId('');
+    }
+  }
 
   const items = useMemo(() => {
     const leadItems = (leadsData?.items || []).map((l) => ({
@@ -384,7 +440,7 @@ function PropertyEnquiriesSection() {
       city: v.property?.city || 'Bengaluru',
       budget: v.property?.price || undefined,
       note: v.note || `Site visit scheduled for ${date(v.scheduledAt)}`,
-      status: v.status === 'confirmed' ? 'confirmed' : 'visit_scheduled',
+      status: v.status || 'requested',
       isVisit: true
     }));
 
@@ -472,6 +528,16 @@ function PropertyEnquiriesSection() {
               <ExternalLink size={12} />
             </Link>
           ) : null}
+          {!['cancelled', 'rejected', 'completed', 'closed'].includes(row.status) && (
+            <button
+              type="button"
+              disabled={busyId === row._id}
+              onClick={() => handleCancelEnquiry(row)}
+              className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border border-rose-200"
+            >
+              {busyId === row._id ? 'Cancelling…' : 'Cancel'}
+            </button>
+          )}
         </div>
       )
     }
@@ -523,7 +589,8 @@ function PropertyVisitsSection() {
       locality: v.property?.locality || '',
       city: v.property?.city || 'Bengaluru',
       price: v.property?.price,
-      note: v.note || ''
+      note: v.note || '',
+      isVisit: true
     }));
 
     const rawLeads = (leadsData?.items || [])
@@ -542,7 +609,8 @@ function PropertyVisitsSection() {
         locality: l.property?.locality || '',
         city: l.property?.city || l.city || 'Bengaluru',
         price: l.property?.price,
-        note: l.note || ''
+        note: l.note || '',
+        isVisit: false
       }));
 
     const combined = [...rawVisits];
@@ -559,16 +627,20 @@ function PropertyVisitsSection() {
     return combined.sort((a, b) => new Date(b.scheduledAt || b.createdAt) - new Date(a.scheduledAt || a.createdAt));
   }, [visitsData?.items, leadsData?.items]);
 
-  async function handleCancel(id) {
+  async function handleCancel(row) {
     if (!window.confirm('Are you sure you want to cancel this scheduled property visit?')) return;
-    setBusy(id);
+    setBusy(row._id);
     try {
-      await api(`visits/${id}`, { method: 'PATCH', body: { status: 'cancelled' } });
+      if (row.isVisit) {
+        await api(`visits/${row._id}`, { method: 'PATCH', body: { status: 'cancelled' } });
+      } else {
+        await api(`leads/${row._id}`, { method: 'PATCH', body: { status: 'cancelled' } });
+      }
       toast('Visit has been cancelled.');
       reloadVisits();
       reloadLeads();
     } catch (e) {
-      toast(e.message);
+      toast(e.message || 'Failed to cancel visit.');
     } finally {
       setBusy('');
     }
@@ -674,12 +746,12 @@ function PropertyVisitsSection() {
                 View Listing
               </Link>
             )}
-            {['requested', 'confirmed'].includes(row.status) && (
+            {!['cancelled', 'rejected', 'completed', 'closed'].includes(row.status) && (
               <button
                 type="button"
                 disabled={busy === row._id}
-                onClick={() => handleCancel(row._id)}
-                className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                onClick={() => handleCancel(row)}
+                className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border border-rose-200"
               >
                 {busy === row._id ? 'Cancelling…' : 'Cancel'}
               </button>

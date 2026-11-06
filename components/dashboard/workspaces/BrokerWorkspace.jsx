@@ -308,15 +308,16 @@ function BrokerListingsSection({ onPromote }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-xl font-bold text-stone-900">Broker Portfolio Listings</h2>
           <p className="text-xs text-stone-500">Manage client listings, pricing, and promotional reach</p>
         </div>
         <Link
           href="/post-property"
-          className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 self-start"
+          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
         >
-          <Plus size={15} /> Add New Listing
+          <Plus size={15} className="shrink-0" />
+          <span className="whitespace-nowrap">Add New Listing</span>
         </Link>
       </div>
 
