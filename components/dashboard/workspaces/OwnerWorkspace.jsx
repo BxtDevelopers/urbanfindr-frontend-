@@ -10,6 +10,7 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
+import PropertyDashboardCard from '../shared/PropertyDashboardCard';
 import {
   House,
   Plus,
@@ -32,7 +33,15 @@ import {
   TrendingUp,
   ShieldCheck,
   Check,
-  AlertCircle
+  AlertCircle,
+  LayoutGrid,
+  List,
+  Search,
+  BedDouble,
+  Bath,
+  Maximize,
+  RotateCcw,
+  XCircle
 } from 'lucide-react';
 
 export default function OwnerWorkspace({ section = 'overview', onSelectSection }) {
@@ -231,6 +240,9 @@ function OwnerPropertiesSection({ onPromote }) {
   const { data, loading, reload } = useData('properties?mine=true&limit=100');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'approved' | 'closed'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' (default) | 'table'
 
   async function handleClose(id) {
     if (!window.confirm('Close this property? It will be removed from the public website so visitors cannot see it, but will stay saved in your dashboard.')) return;
@@ -260,6 +272,22 @@ function OwnerPropertiesSection({ onPromote }) {
     }
   }
 
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (statusFilter === 'approved' && item.status !== 'approved' && item.status !== 'active') return false;
+      if (statusFilter === 'closed' && item.status !== 'closed' && item.status !== 'archived') return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const matchesTitle = item.title?.toLowerCase().includes(q);
+        const matchesLocality = item.locality?.toLowerCase().includes(q);
+        const matchesCity = item.city?.toLowerCase().includes(q);
+        const matchesType = item.type?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesLocality && !matchesCity && !matchesType) return false;
+      }
+      return true;
+    });
+  }, [items, statusFilter, search]);
+
   const columns = [
     {
       header: 'Property',
@@ -275,6 +303,11 @@ function OwnerPropertiesSection({ onPromote }) {
             <span className="text-[11px] text-stone-400 block truncate">
               {row.locality}, {row.city} • {row.type}
             </span>
+            {row.status === 'closed' && (
+              <span className="inline-block mt-0.5 text-[10px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                Hidden from website
+              </span>
+            )}
           </div>
         </div>
       )
@@ -300,14 +333,14 @@ function OwnerPropertiesSection({ onPromote }) {
         <div className="flex items-center gap-3">
           <Link
             href={`/properties/${row._id}`}
-            className="text-stone-700 hover:text-stone-900 font-semibold"
+            className="text-stone-700 hover:text-stone-900 font-semibold text-xs"
             title="Preview"
           >
             View
           </Link>
           <Link
             href={`/properties/${row._id}/edit`}
-            className="text-teal-800 hover:text-teal-900 font-semibold"
+            className="text-teal-800 hover:text-teal-900 font-semibold text-xs"
             title="Edit"
           >
             Edit
@@ -317,7 +350,7 @@ function OwnerPropertiesSection({ onPromote }) {
               type="button"
               disabled={busy === row._id}
               onClick={() => handleClose(row._id)}
-              className="text-rose-600 hover:text-rose-800 font-semibold"
+              className="text-rose-600 hover:text-rose-800 font-semibold text-xs cursor-pointer"
               title="Close listing and remove from public website"
             >
               Close
@@ -327,7 +360,7 @@ function OwnerPropertiesSection({ onPromote }) {
               type="button"
               disabled={busy === row._id}
               onClick={() => handleReopen(row._id)}
-              className="text-emerald-700 hover:text-emerald-900 font-semibold"
+              className="text-emerald-700 hover:text-emerald-900 font-semibold text-xs cursor-pointer"
               title="Re-open listing to make it visible on website"
             >
               Re-open
@@ -339,37 +372,138 @@ function OwnerPropertiesSection({ onPromote }) {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-stone-900">My Properties</h2>
           <p className="text-xs text-stone-500">
-            Manage all your direct residential and commercial listings. Closed properties remain visible here but are hidden from visitors on the website.
+            Manage all your direct residential and commercial listings. Closed properties remain visible here in your dashboard cards but are hidden from visitors on the website.
           </p>
         </div>
         <Link
           href="/post-property"
-          className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 self-start"
+          className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 self-start cursor-pointer shadow-xs transition-all hover:shadow"
         >
           <Plus size={15} /> Add New Property
         </Link>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={items}
-        searchKey="title"
-        searchPlaceholder="Search your properties by title, locality or city…"
-        filterKey="status"
-        filterOptions={[
-          { value: 'approved', label: 'Approved & Active' },
-          { value: 'closed', label: 'Closed (Hidden from site)' },
-          { value: 'pending', label: 'Pending Approval' },
-          { value: 'archived', label: 'Archived' }
-        ]}
-        emptyTitle="No properties listed yet"
-        emptySubtitle="Start reaching tenants and buyers directly with zero brokerage."
-      />
+      {/* Filter, Search & View Switcher Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-stone-200 shadow-xs">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search properties by title, locality, city, or type…"
+            className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-[#163e35]/20 focus:border-[#163e35]"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter Pills */}
+          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'all' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              All ({items.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('approved')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'approved' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Active ({items.filter((i) => i.status !== 'closed' && i.status !== 'archived').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('closed')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'closed' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Closed ({items.filter((i) => i.status === 'closed' || i.status === 'archived').length})
+            </button>
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              title="Cards View"
+              className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                viewMode === 'cards' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              <LayoutGrid size={14} />
+              <span className="hidden sm:inline">Cards</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              title="Table View"
+              className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                viewMode === 'table' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              <List size={14} />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="p-12 text-center text-xs text-stone-400">Loading your properties…</div>
+      ) : filteredItems.length === 0 ? (
+        <div className="p-12 text-center space-y-3 bg-white rounded-2xl border border-stone-200 shadow-xs">
+          <House size={32} className="mx-auto text-stone-300" />
+          <h3 className="font-bold text-sm text-stone-800">No properties match your filter</h3>
+          <p className="text-xs text-stone-500 max-w-sm mx-auto">
+            {items.length === 0
+              ? 'Start reaching tenants and buyers directly with zero brokerage.'
+              : 'Try clearing your search or filter pills to see other properties.'}
+          </p>
+          {items.length === 0 && (
+            <Link
+              href="/post-property"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+            >
+              <Plus size={14} /> Post Property
+            </Link>
+          )}
+        </div>
+      ) : viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map((prop) => (
+            <PropertyDashboardCard
+              key={prop._id}
+              property={prop}
+              busy={busy}
+              onClose={handleClose}
+              onReopen={handleReopen}
+            />
+          ))}
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredItems}
+          searchKey="title"
+          searchPlaceholder="Search properties…"
+          emptyTitle="No properties listed yet"
+          emptySubtitle="Start reaching tenants and buyers directly with zero brokerage."
+        />
+      )}
     </div>
   );
 }
@@ -377,8 +511,25 @@ function OwnerPropertiesSection({ onPromote }) {
 // Section: Owner Enquiries
 function OwnerEnquiriesSection() {
   const { toast } = useApp();
-  const { data, loading } = useData('leads?page=1&limit=50');
+  const { data, loading, reload } = useData('leads?page=1&limit=50');
   const items = data?.items || [];
+  const [busyId, setBusyId] = useState('');
+
+  async function handleAcceptLead(id) {
+    setBusyId(id);
+    try {
+      await api(`leads/${id}`, {
+        method: 'PATCH',
+        body: { status: 'confirmed' }
+      });
+      toast('Enquiry confirmed!');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to update enquiry.');
+    } finally {
+      setBusyId('');
+    }
+  }
 
   const columns = [
     {
@@ -418,9 +569,21 @@ function OwnerEnquiriesSection() {
         const cleanPhone = String(row.phone || '').replace(/\D/g, '');
         const prospectName = row.name || 'Customer';
         const propertyTitle = row.property?.title || 'your property listing';
+        const isPending = row.status === 'new' || row.status === 'uncontacted' || row.status === 'requested' || row.status === 'submitted';
 
         return (
           <div className="flex items-center gap-1.5">
+            {isPending && (
+              <button
+                type="button"
+                disabled={busyId === row._id}
+                onClick={() => handleAcceptLead(row._id)}
+                className="px-2.5 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <Check size={12} />
+                <span>{busyId === row._id ? 'Confirming…' : 'Confirm'}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -444,6 +607,14 @@ function OwnerEnquiriesSection() {
               }}
               title="Message Customer"
               className="p-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg transition-colors cursor-pointer"
+            >
+              <MessageCircle size={13} />
+            </button>
+          </div>
+        );
+      }
+    }
+  ];
             >
               <MessageCircle size={13} />
             </button>

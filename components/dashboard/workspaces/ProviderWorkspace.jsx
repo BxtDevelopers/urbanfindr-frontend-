@@ -12,6 +12,7 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
+import PropertyDashboardCard from '../shared/PropertyDashboardCard';
 import { InvoiceAndDetailsModal } from '../../bookings-tracker';
 import {
   Wrench,
@@ -42,7 +43,16 @@ import {
   DollarSign,
   MessageCircle,
   House,
-  Mail
+  Mail,
+  LayoutGrid,
+  List,
+  Search,
+  Eye,
+  BedDouble,
+  Bath,
+  Maximize,
+  RotateCcw,
+  XCircle
 } from 'lucide-react';
 
 export default function ProviderWorkspace({ section = 'overview', onSelectSection }) {
@@ -1018,6 +1028,31 @@ function ProviderEnquiriesSection({ onSelectSection }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [actionBusy, setActionBusy] = useState('');
 
+  async function handleAcceptRequest(row) {
+    setActionBusy(row._id);
+    try {
+      if (row.isVisit) {
+        await api(`visits/${row._id}`, {
+          method: 'PATCH',
+          body: { status: 'confirmed' }
+        });
+        toast('Site visit request confirmed!');
+        reloadVisits();
+      } else {
+        await api(`leads/${row._id}`, {
+          method: 'PATCH',
+          body: { status: 'confirmed' }
+        });
+        toast('Property enquiry request accepted!');
+        reloadLeads();
+      }
+    } catch (err) {
+      toast(err.message || 'Failed to update request.');
+    } finally {
+      setActionBusy('');
+    }
+  }
+
   async function handleUpdateVisit(id, status) {
     setActionBusy(id);
     try {
@@ -1109,14 +1144,11 @@ function ProviderEnquiriesSection({ onSelectSection }) {
       render: (row) => (
         <div>
           <span className="font-bold text-stone-900 block truncate">{row.customerName}</span>
-          {row.phone && (
-            <a
-              href={`tel:${row.phone}`}
-              className="text-[11px] text-[#163e35] hover:underline flex items-center gap-1 font-medium mt-0.5"
-            >
-              <Phone size={11} /> {row.phone}
-            </a>
-          )}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[11px] text-stone-500 font-semibold flex items-center gap-1">
+              <ShieldCheck size={11} className="text-emerald-700" /> Phone verified
+            </span>
+          </div>
           {row.email && (
             <span className="text-[11px] text-stone-400 block truncate mt-0.5">
               {row.email}
@@ -1204,17 +1236,18 @@ function ProviderEnquiriesSection({ onSelectSection }) {
       header: 'Actions',
       render: (row) => {
         const cleanPhone = String(row.phone || '').replace(/\D/g, '');
+        const isPending = row.status === 'requested' || row.status === 'submitted' || row.status === 'new' || row.status === 'uncontacted';
         return (
           <div className="flex items-center gap-1.5">
-            {row.isVisit && row.status === 'requested' && (
+            {isPending && (
               <button
                 type="button"
                 disabled={actionBusy === row._id}
-                onClick={() => handleUpdateVisit(row._id, 'confirmed')}
+                onClick={() => handleAcceptRequest(row)}
                 className="px-2.5 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
               >
                 <Check size={12} />
-                <span>Confirm</span>
+                <span>{actionBusy === row._id ? 'Accepting…' : 'Accept'}</span>
               </button>
             )}
             {cleanPhone && (
@@ -1332,8 +1365,29 @@ function ProviderEnquiriesSection({ onSelectSection }) {
 
 // Sub-component: Recent Enquiries List on Provider Overview
 function ProviderRecentEnquiriesList({ onViewAll }) {
-  const { data: leadsData, loading: loadingLeads } = useData('leads?page=1&limit=5');
-  const { data: visitsData, loading: loadingVisits } = useData('visits?limit=5');
+  const { data: leadsData, loading: loadingLeads, reload: reloadLeads } = useData('leads?page=1&limit=5');
+  const { data: visitsData, loading: loadingVisits, reload: reloadVisits } = useData('visits?limit=5');
+  const { toast } = useApp();
+  const [busyId, setBusyId] = useState('');
+
+  async function handleAccept(item) {
+    setBusyId(item._id);
+    try {
+      if (item.isVisit) {
+        await api(`visits/${item._id}`, { method: 'PATCH', body: { status: 'confirmed' } });
+        toast('Site visit request confirmed!');
+        reloadVisits?.();
+      } else {
+        await api(`leads/${item._id}`, { method: 'PATCH', body: { status: 'confirmed' } });
+        toast('Property enquiry accepted!');
+        reloadLeads?.();
+      }
+    } catch (e) {
+      toast(e.message || 'Failed to accept request.');
+    } finally {
+      setBusyId('');
+    }
+  }
 
   const items = useMemo(() => {
     const rawLeads = (leadsData?.items || []).map((l) => ({
@@ -1396,45 +1450,92 @@ function ProviderRecentEnquiriesList({ onViewAll }) {
 
   return (
     <div className="divide-y divide-stone-100">
-      {items.slice(0, 4).map((item) => (
-        <div key={item._id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {item.images?.[0] ? (
-              <img
-                src={item.images[0]}
-                alt={item.title}
-                className="w-10 h-10 rounded-lg object-cover border border-stone-200 shrink-0"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 shrink-0">
-                <House size={16} />
+      {items.slice(0, 4).map((item) => {
+        const cleanPhone = String(item.phone || '').replace(/\D/g, '');
+        const isPending = item.status === 'requested' || item.status === 'submitted' || item.status === 'new' || item.status === 'uncontacted';
+        return (
+          <div key={item._id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              {item.images?.[0] ? (
+                <img
+                  src={item.images[0]}
+                  alt={item.title}
+                  className="w-10 h-10 rounded-lg object-cover border border-stone-200 shrink-0"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 shrink-0">
+                  <House size={16} />
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs text-stone-900 truncate">{item.title}</span>
+                  <StatusBadge status={item.status} />
+                </div>
+                <p className="text-xs text-stone-500 truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <span>From: <strong className="font-semibold text-stone-700">{item.customerName}</strong></span>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-semibold">
+                    <ShieldCheck size={11} /> Phone verified
+                  </span>
+                  <span>•</span>
+                  <span>{item.isVisit ? 'Site Visit Request' : 'Direct Enquiry'}</span>
+                  {item.scheduledAt && (
+                    <>
+                      <span>•</span>
+                      <span>Scheduled: {new Date(item.scheduledAt).toLocaleDateString()}</span>
+                    </>
+                  )}
+                </p>
               </div>
-            )}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-xs text-stone-900 truncate">{item.title}</span>
-                <StatusBadge status={item.status} />
-              </div>
-              <p className="text-xs text-stone-500 truncate mt-0.5">
-                From: <span className="font-semibold text-stone-700">{item.customerName}</span>
-                {item.phone ? ` • ${item.phone}` : ''}
-                {item.isVisit ? ' • Site Visit Request' : ' • Direct Enquiry'}
-                {item.scheduledAt ? ` • Scheduled: ${new Date(item.scheduledAt).toLocaleDateString()}` : ''}
-              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+              {isPending && (
+                <button
+                  type="button"
+                  disabled={busyId === item._id}
+                  onClick={() => handleAccept(item)}
+                  className="px-2.5 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Check size={12} />
+                  <span>{busyId === item._id ? 'Accepting…' : 'Accept'}</span>
+                </button>
+              )}
+              {cleanPhone && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = `tel:${cleanPhone}`; }}
+                    title="Call Customer"
+                    className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Phone size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const text = encodeURIComponent(`Hello ${item.customerName}, this is regarding your property request for ${item.title}.`);
+                      window.open(`https://wa.me/91${cleanPhone}?text=${text}`, '_blank', 'noopener,noreferrer');
+                    }}
+                    title="Message Customer"
+                    className="p-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg transition-colors cursor-pointer"
+                  >
+                    <MessageCircle size={13} />
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={onViewAll}
+                className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              >
+                View All
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            <button
-              type="button"
-              onClick={onViewAll}
-              className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-            >
-              View Enquiry
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -2383,6 +2484,9 @@ function ProviderPropertiesSection({ onPromote }) {
   const { data, loading, reload } = useData('properties?mine=true&limit=100');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'approved' | 'closed'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' (default) | 'table'
 
   async function handleClose(id) {
     if (!window.confirm('Close this property? It will be removed from the public website so visitors cannot see it, but will stay saved in your dashboard.')) return;
@@ -2411,6 +2515,22 @@ function ProviderPropertiesSection({ onPromote }) {
       setBusy('');
     }
   }
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (statusFilter === 'approved' && item.status !== 'approved' && item.status !== 'active') return false;
+      if (statusFilter === 'closed' && item.status !== 'closed' && item.status !== 'archived') return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const matchesTitle = item.title?.toLowerCase().includes(q);
+        const matchesLocality = item.locality?.toLowerCase().includes(q);
+        const matchesCity = item.city?.toLowerCase().includes(q);
+        const matchesType = item.type?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesLocality && !matchesCity && !matchesType) return false;
+      }
+      return true;
+    });
+  }, [items, statusFilter, search]);
 
   const columns = [
     {
@@ -2496,37 +2616,138 @@ function ProviderPropertiesSection({ onPromote }) {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-stone-900">My Properties</h2>
           <p className="text-xs text-stone-500">
-            Manage all your direct residential and commercial listings. Closed properties remain visible here but are hidden from visitors on the website.
+            Manage all your direct residential and commercial listings. Closed properties remain visible here in your dashboard cards but are removed from the public website.
           </p>
         </div>
         <Link
           href="/post-property"
-          className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 self-start cursor-pointer shadow-sm"
+          className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 self-start cursor-pointer shadow-xs transition-all hover:shadow"
         >
           <Plus size={15} /> Add New Property
         </Link>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={items}
-        searchKey="title"
-        searchPlaceholder="Search your properties by title, locality or city…"
-        filterKey="status"
-        filterOptions={[
-          { value: 'approved', label: 'Approved & Active' },
-          { value: 'closed', label: 'Closed (Hidden from site)' },
-          { value: 'pending', label: 'Pending Approval' },
-          { value: 'archived', label: 'Archived' }
-        ]}
-        emptyTitle="No properties listed yet"
-        emptySubtitle="Post your first property listing to reach buyers and tenants directly."
-      />
+      {/* Filter, Search & View Switcher Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-stone-200 shadow-xs">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search properties by title, locality, city, or type…"
+            className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-[#163e35]/20 focus:border-[#163e35]"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter Pills */}
+          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'all' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              All ({items.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('approved')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'approved' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Active ({items.filter((i) => i.status !== 'closed' && i.status !== 'archived').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('closed')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'closed' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Closed ({items.filter((i) => i.status === 'closed' || i.status === 'archived').length})
+            </button>
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              title="Cards View"
+              className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                viewMode === 'cards' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              <LayoutGrid size={14} />
+              <span className="hidden sm:inline">Cards</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              title="Table View"
+              className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                viewMode === 'table' ? 'bg-white text-stone-900 shadow-xs font-bold' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              <List size={14} />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="p-12 text-center text-xs text-stone-400">Loading your properties…</div>
+      ) : filteredItems.length === 0 ? (
+        <div className="p-12 text-center space-y-3 bg-white rounded-2xl border border-stone-200 shadow-xs">
+          <House size={32} className="mx-auto text-stone-300" />
+          <h3 className="font-bold text-sm text-stone-800">No properties match your filter</h3>
+          <p className="text-xs text-stone-500 max-w-sm mx-auto">
+            {items.length === 0
+              ? 'Post your first property listing to reach buyers and tenants directly.'
+              : 'Try clearing your search or filter pills to see other properties.'}
+          </p>
+          {items.length === 0 && (
+            <Link
+              href="/post-property"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+            >
+              <Plus size={14} /> Post Property
+            </Link>
+          )}
+        </div>
+      ) : viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map((prop) => (
+            <PropertyDashboardCard
+              key={prop._id}
+              property={prop}
+              busy={busy}
+              onClose={handleClose}
+              onReopen={handleReopen}
+            />
+          ))}
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredItems}
+          searchKey="title"
+          searchPlaceholder="Search properties…"
+          emptyTitle="No properties listed yet"
+          emptySubtitle="Post your first property listing to reach buyers and tenants directly."
+        />
+      )}
     </div>
   );
 }
