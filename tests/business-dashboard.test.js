@@ -194,3 +194,30 @@ test('Build Your Home: Page, Hero section, Stats section (300+ Homes, no cities)
   assert.ok(buildContent.includes('#163e35'), 'BuildYourHome must use brand dark green (#163e35)');
   assert.ok(buildContent.includes('#749546') || buildContent.includes('#d8edb3'), 'BuildYourHome must use brand green/lime accent');
 });
+
+test('Business Dashboard System: Service Provider and Owner can post, edit, and close properties under My Properties', () => {
+  const models = readFileSync(path.resolve('lib/models.js'), 'utf8');
+  assert.ok(models.includes("'closed'"), 'Property model status enum must include closed');
+
+  const apiContent = readFileSync(path.resolve('lib/api.js'), 'utf8');
+  assert.ok(apiContent.includes("'closed'"), 'lib/api.js publicationStatuses must include closed');
+  assert.ok(apiContent.includes("service_provider"), 'lib/api.js must authorize service_provider to post and manage properties');
+  assert.ok(apiContent.includes("status==='closed'") || apiContent.includes("action==='close'"), 'lib/api.js PATCH must handle closing a property');
+
+  const sidebar = readFileSync(path.resolve('components/dashboard/shared/DashboardSidebar.jsx'), 'utf8');
+  assert.ok(sidebar.includes("id: 'properties'") && sidebar.includes("label: 'My Properties'"), 'Sidebar must include My Properties for providers');
+  assert.ok(sidebar.includes("id: 'add-property'") && sidebar.includes("label: 'Add Property'"), 'Sidebar must include Add Property for providers');
+
+  const appContent = readFileSync(path.resolve('components/application.js'), 'utf8');
+  assert.ok(appContent.includes("'service_provider'"), 'components/application.js must permit service_provider to access /properties/:id/edit');
+
+  const providerWs = readFileSync(path.resolve('components/dashboard/workspaces/ProviderWorkspace.jsx'), 'utf8');
+  assert.ok(providerWs.includes("ProviderPropertiesSection"), 'ProviderWorkspace must render ProviderPropertiesSection');
+  assert.ok(providerWs.includes("My Properties"), 'ProviderWorkspace must display My Properties');
+  assert.ok(providerWs.includes("handleClose"), 'ProviderWorkspace must provide handleClose action');
+  assert.ok(providerWs.includes("/edit"), 'ProviderPropertiesSection must provide edit property link');
+
+  const ownerWs = readFileSync(path.resolve('components/dashboard/workspaces/OwnerWorkspace.jsx'), 'utf8');
+  assert.ok(ownerWs.includes("handleClose"), 'OwnerWorkspace must provide handleClose action');
+  assert.ok(ownerWs.includes("/edit"), 'OwnerWorkspace must provide edit property link');
+});

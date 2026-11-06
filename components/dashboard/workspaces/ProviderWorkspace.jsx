@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useApp, useData, api } from '../../providers';
 import { date, money } from '@/lib/format';
 import { serviceCategories } from '@/lib/serviceCategories';
+import { propertyImages } from '@/lib/media';
 import StatCard from '../shared/StatCard';
 import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
@@ -51,6 +52,9 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
   const { data: reqData, reload: reloadReqs } = useData(`service-requests?limit=100&as=provider${categoryParam}`);
   const { data: propLeadsData, reload: reloadLeads } = useData('leads?page=1&limit=50');
   const { data: propVisitsData, reload: reloadVisits } = useData('visits?limit=50');
+  const { data: myPropsData, reload: reloadMyProps } = useData('properties?mine=true&limit=100');
+  const myProperties = myPropsData?.items || [];
+  const totalMyProperties = myPropsData?.total ?? myProperties.length;
 
   const [chartPeriod, setChartPeriod] = useState('6m');
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -207,6 +211,9 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
     ];
   }, [totalIncoming, totalOffers, totalEngaged, chartPeriod]);
 
+  if (section === 'properties') {
+    return <ProviderPropertiesSection onPromote={(prop) => setPromotionTarget(prop)} />;
+  }
   if (section === 'business-profile') {
     return <ProviderBusinessProfileSection />;
   }
@@ -292,10 +299,23 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
           </button>
           <button
             type="button"
+            onClick={() => onSelectSection('properties')}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer"
+          >
+            <House size={15} /> My Properties ({totalMyProperties})
+          </button>
+          <Link
+            href="/post-property"
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus size={15} /> Add Property
+          </Link>
+          <button
+            type="button"
             onClick={() => onSelectSection('enquiries')}
             className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer"
           >
-            <House size={15} /> Property Enquiries ({totalPropertyEnquiries})
+            <ClipboardList size={15} /> Property Enquiries ({totalPropertyEnquiries})
           </button>
           <button
             type="button"
@@ -308,7 +328,15 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        <StatCard
+          title="My Properties"
+          value={totalMyProperties}
+          subtitle={`${myProperties.filter(p => p.status === 'approved').length} active listings`}
+          icon={House}
+          color="#163e35" bgIcon="#ecf2e4"
+          onClick={() => onSelectSection('properties')}
+        />
         <StatCard
           title="Total Services"
           value={stats.services}
@@ -2354,6 +2382,180 @@ function ProviderSettingsSection() {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Section: My Properties for Service Provider & Business Accounts
+function ProviderPropertiesSection({ onPromote }) {
+  const { toast } = useApp();
+  const { data, loading, reload } = useData('properties?mine=true&limit=100');
+  const items = data?.items || [];
+  const [busy, setBusy] = useState('');
+
+  async function handleClose(id) {
+    if (!window.confirm('Close this property? It will be removed from the public website so visitors cannot see it, but will stay saved in your dashboard.')) return;
+    setBusy(id);
+    try {
+      await api(`properties/${id}`, { method: 'PATCH', body: { status: 'closed' } });
+      toast('Property closed. It is now hidden from the public website.');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to close property.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function handleReopen(id) {
+    if (!window.confirm('Re-open this property listing so visitors can see it on the website again?')) return;
+    setBusy(id);
+    try {
+      await api(`properties/${id}`, { method: 'PATCH', body: { status: 'approved' } });
+      toast('Property re-opened and visible on the website.');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to re-open property.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  const columns = [
+    {
+      header: 'Property',
+      render: (row) => (
+        <div className="flex items-center gap-3 min-w-[200px]">
+          <img
+            src={propertyImages(row)[0] || '/placeholder.jpg'}
+            alt={row.title}
+            className="w-12 h-12 rounded-lg object-cover shrink-0 bg-stone-100"
+          />
+          <div className="min-w-0">
+            <span className="font-bold text-stone-900 block truncate">{row.title}</span>
+            <span className="text-[11px] text-stone-400 block truncate">
+              {row.locality}, {row.city} • {row.type}
+            </span>
+            {row.status === 'closed' && (
+              <span className="inline-block mt-0.5 text-[10px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                Hidden from website
+              </span>
+            )}
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Purpose / Price',
+      render: (row) => (
+        <div>
+          <span className="font-extrabold text-stone-900 block">{money(row.price)}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+            For {row.purpose}
+          </span>
+        </div>
+      )
+    },
+    {
+      header: 'Status',
+      render: (row) => <StatusBadge status={row.status} />
+    },
+    {
+      header: 'Promotion',
+      render: (row) => (
+        <div>
+          {row.featured ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 flex items-center gap-1 w-fit">
+              <Sparkles size={11} /> Featured
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onPromote && onPromote(row)}
+              className="text-xs font-semibold text-teal-800 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
+            >
+              <Sparkles size={12} /> Promote
+            </button>
+          )}
+        </div>
+      )
+    },
+    {
+      header: 'Actions',
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/properties/${row._id}`}
+            className="text-stone-700 hover:text-stone-900 font-semibold text-xs"
+            title="Preview"
+          >
+            View
+          </Link>
+          <Link
+            href={`/properties/${row._id}/edit`}
+            className="text-teal-800 hover:text-teal-900 font-semibold text-xs"
+            title="Edit Property"
+          >
+            Edit
+          </Link>
+          {row.status !== 'closed' && row.status !== 'archived' ? (
+            <button
+              type="button"
+              disabled={busy === row._id}
+              onClick={() => handleClose(row._id)}
+              className="text-rose-600 hover:text-rose-800 font-semibold text-xs cursor-pointer"
+              title="Close property and hide from public website"
+            >
+              Close
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={busy === row._id}
+              onClick={() => handleReopen(row._id)}
+              className="text-emerald-700 hover:text-emerald-900 font-semibold text-xs cursor-pointer"
+              title="Re-open property on public website"
+            >
+              Re-open
+            </button>
+          )}
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-stone-900">My Properties</h2>
+          <p className="text-xs text-stone-500">
+            Manage all your direct residential and commercial listings. Closed properties remain visible here but are hidden from visitors on the website.
+          </p>
+        </div>
+        <Link
+          href="/post-property"
+          className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 self-start cursor-pointer shadow-sm"
+        >
+          <Plus size={15} /> Add New Property
+        </Link>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={items}
+        searchKey="title"
+        searchPlaceholder="Search your properties by title, locality or city…"
+        filterKey="status"
+        filterOptions={[
+          { value: 'approved', label: 'Approved & Active' },
+          { value: 'closed', label: 'Closed (Hidden from site)' },
+          { value: 'pending', label: 'Pending Approval' },
+          { value: 'archived', label: 'Archived' }
+        ]}
+        emptyTitle="No properties listed yet"
+        emptySubtitle="Post your first property listing to reach buyers and tenants directly."
+      />
     </div>
   );
 }

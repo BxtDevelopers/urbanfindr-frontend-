@@ -249,15 +249,29 @@ function OwnerPropertiesSection({ onPromote }) {
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
 
-  async function handleArchive(id) {
-    if (!window.confirm('Archive this listing? It will be hidden from public searches.')) return;
+  async function handleClose(id) {
+    if (!window.confirm('Close this property? It will be removed from the public website so visitors cannot see it, but will stay saved in your dashboard.')) return;
     setBusy(id);
     try {
-      await api(`properties/${id}`, { method: 'DELETE' });
-      toast('Listing archived.');
+      await api(`properties/${id}`, { method: 'PATCH', body: { status: 'closed' } });
+      toast('Property closed. It is now hidden from the public website.');
       reload();
     } catch (e) {
-      toast(e.message);
+      toast(e.message || 'Failed to close property.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function handleReopen(id) {
+    if (!window.confirm('Re-open this property listing so visitors can see it on the website again?')) return;
+    setBusy(id);
+    try {
+      await api(`properties/${id}`, { method: 'PATCH', body: { status: 'approved' } });
+      toast('Property re-opened and visible on the website.');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to re-open property.');
     } finally {
       setBusy('');
     }
@@ -335,14 +349,25 @@ function OwnerPropertiesSection({ onPromote }) {
           >
             Edit
           </Link>
-          {row.status !== 'archived' && (
+          {row.status !== 'closed' && row.status !== 'archived' ? (
             <button
               type="button"
               disabled={busy === row._id}
-              onClick={() => handleArchive(row._id)}
+              onClick={() => handleClose(row._id)}
               className="text-rose-600 hover:text-rose-800 font-semibold"
+              title="Close listing and remove from public website"
             >
-              Archive
+              Close
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={busy === row._id}
+              onClick={() => handleReopen(row._id)}
+              className="text-emerald-700 hover:text-emerald-900 font-semibold"
+              title="Re-open listing to make it visible on website"
+            >
+              Re-open
             </button>
           )}
         </div>
@@ -355,7 +380,9 @@ function OwnerPropertiesSection({ onPromote }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-stone-900">My Properties</h2>
-          <p className="text-xs text-stone-500">Manage all your direct residential and commercial listings</p>
+          <p className="text-xs text-stone-500">
+            Manage all your direct residential and commercial listings. Closed properties remain visible here but are hidden from visitors on the website.
+          </p>
         </div>
         <Link
           href="/post-property"
@@ -373,6 +400,7 @@ function OwnerPropertiesSection({ onPromote }) {
         filterKey="status"
         filterOptions={[
           { value: 'approved', label: 'Approved & Active' },
+          { value: 'closed', label: 'Closed (Hidden from site)' },
           { value: 'pending', label: 'Pending Approval' },
           { value: 'archived', label: 'Archived' }
         ]}

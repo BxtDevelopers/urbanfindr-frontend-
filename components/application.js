@@ -33,7 +33,7 @@ function Content() {
   if (category) return <Listings key={root} purpose={category.purpose} />;
   if (root === 'cities') return <CityDiscovery key={id || 'all'} slug={id} />;
   if (root === 'properties') {
-    if (action === 'edit') return <Guard roles={['owner', 'broker', 'builder', 'channel_partner', 'admin']}><PropertyEditor id={id} /></Guard>;
+    if (action === 'edit') return <Guard roles={['owner', 'broker', 'builder', 'channel_partner', 'service_provider', 'admin']}><PropertyEditor id={id} /></Guard>;
     return id ? <Details id={id} /> : <Listings />;
   }
   if (root === 'builder-projects') return id ? <Details id={id} project /> : <Listings projects />;

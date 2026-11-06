@@ -96,8 +96,10 @@ export default function DashboardSidebar({
     ],
     provider: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+      { id: 'properties', label: 'My Properties', icon: House },
+      { id: 'add-property', label: 'Add Property', icon: PlusCircle, isAction: true },
       { id: 'business-profile', label: 'Business Profile', icon: Building2 },
-      { id: 'enquiries', label: 'Property Enquiries', icon: House },
+      { id: 'enquiries', label: 'Property Enquiries', icon: ClipboardList },
       { id: 'requests', label: 'Client Requests & Offers', icon: ClipboardList },
       { id: 'services', label: 'My Services', icon: Wrench },
       { id: 'reviews', label: 'Reviews', icon: Star },
