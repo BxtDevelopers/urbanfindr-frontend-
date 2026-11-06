@@ -25,6 +25,8 @@ const STATUS_MAP = {
   quotation: { label: 'In Review', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: CheckCircle2 },
   quoted: { label: 'In Review', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: CheckCircle2 },
   accepted: { label: 'Accepted', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: CheckCircle2 },
+  confirmed: { label: 'Confirmed', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Check },
+  visit_confirmed: { label: 'Confirmed', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Check },
   scheduled: { label: 'Scheduled', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Calendar },
   in_progress: { label: 'In Progress', color: '#749546', bg: '#f7f8f3', border: '#e6e8e1', icon: Clock },
   completed: { label: 'Completed', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: CheckCircle2 },
@@ -59,7 +61,7 @@ export default function StatusBadge({ status = 'pending', className = '' }) {
     color: '#163e35',
     bg: '#ecf2e4',
     border: '#d6dcd3',
-    icon: Clock
+    icon: norm.includes('confirm') || norm.includes('accept') || norm.includes('done') || norm.includes('success') ? Check : Clock
   };
 
   const Icon = config.icon;
