@@ -127,44 +127,46 @@ export default function PropertyDashboardCard({
               </span>
             </div>
 
-            {/* Customer Visit Request Button on Property Card */}
-            <button
-              type="button"
-              onClick={handleOpen}
-              className="w-full p-2.5 bg-[#ecf2e4] hover:bg-[#d8edb3] rounded-xl border border-[#d6dcd3] flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs group/btn"
-              title="Click to view visit requests and customer details"
-            >
-              <div className="min-w-0 text-left">
-                <div className="text-xs font-bold text-[#163e35] flex items-center gap-1.5 truncate">
-                  <Calendar size={13} className="text-[#163e35] shrink-0" />
-                  <span>Visit Request</span>
-                  {requests.length > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-[#163e35] text-[#d8edb3] text-[10px] font-bold">
-                      {requests.length}
-                    </span>
-                  )}
-                </div>
-                <div className="text-[11px] text-stone-600 font-medium flex items-center gap-1 mt-0.5">
-                  {pendingRequest ? (
-                    pendingRequest.status === 'accepted' || pendingRequest.status === 'confirmed' ? (
-                      <span className="inline-flex items-center gap-1 font-bold text-[#163e35]">
-                        <Check size={11} /> {pendingRequest.customerName} (Accepted)
+            {/* Customer Visit Request Button on Property Card - only visible when property is active (hidden when closed) */}
+            {!isClosed && (
+              <button
+                type="button"
+                onClick={handleOpen}
+                className="w-full p-2.5 bg-[#ecf2e4] hover:bg-[#d8edb3] rounded-xl border border-[#d6dcd3] flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs group/btn"
+                title="Click to view visit requests and customer details"
+              >
+                <div className="min-w-0 text-left">
+                  <div className="text-xs font-bold text-[#163e35] flex items-center gap-1.5 truncate">
+                    <Calendar size={13} className="text-[#163e35] shrink-0" />
+                    <span>Visit Request</span>
+                    {requests.length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-[#163e35] text-[#d8edb3] text-[10px] font-bold">
+                        {requests.length}
                       </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-stone-600 font-medium flex items-center gap-1 mt-0.5">
+                    {pendingRequest ? (
+                      pendingRequest.status === 'accepted' || pendingRequest.status === 'confirmed' ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-[#163e35]">
+                          <Check size={11} /> {pendingRequest.customerName} (Accepted)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 font-medium text-stone-600 truncate">
+                          <Clock size={11} /> From {pendingRequest.customerName}
+                        </span>
+                      )
                     ) : (
-                      <span className="inline-flex items-center gap-1 font-medium text-stone-600 truncate">
-                        <Clock size={11} /> From {pendingRequest.customerName}
-                      </span>
-                    )
-                  ) : (
-                    <span className="text-stone-500">View customer requests</span>
-                  )}
+                      <span className="text-stone-500">View customer requests</span>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <span className="px-2.5 py-1 bg-white hover:bg-stone-50 text-[#163e35] rounded-lg text-xs font-bold border border-[#d6dcd3] shrink-0 shadow-2xs group-hover/btn:border-[#163e35]/40 transition-colors">
-                View Details
-              </span>
-            </button>
+                <span className="px-2.5 py-1 bg-white hover:bg-stone-50 text-[#163e35] rounded-lg text-xs font-bold border border-[#d6dcd3] shrink-0 shadow-2xs group-hover/btn:border-[#163e35]/40 transition-colors">
+                  View Details
+                </span>
+              </button>
+            )}
 
             {isClosed && (
               <div className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded border border-rose-200">
