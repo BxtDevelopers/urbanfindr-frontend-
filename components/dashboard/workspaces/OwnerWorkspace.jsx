@@ -50,7 +50,7 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
   };
 
   if (section === 'properties') {
-    return <OwnerPropertiesSection onPromote={(prop) => setPromotionTarget(prop)} />;
+    return <OwnerPropertiesSection />;
   }
   if (section === 'enquiries') {
     return <OwnerEnquiriesSection />;
@@ -60,9 +60,6 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
   }
   if (section === 'performance') {
     return <OwnerPerformanceSection stats={stats} />;
-  }
-  if (section === 'promotions') {
-    return <OwnerPromotionsSection onPromote={(prop) => setPromotionTarget(prop)} />;
   }
   if (section === 'messages') {
     return <OwnerMessagesSection />;
@@ -74,14 +71,6 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
   // Default: Overview
   return (
     <div className="space-y-8">
-      {/* Promotion Modal */}
-      <PromotionModal
-        isOpen={Boolean(promotionTarget)}
-        onClose={() => setPromotionTarget(null)}
-        target={promotionTarget}
-        targetType="property"
-        onPromoted={() => toast('Property promoted successfully!')}
-      />
 
       {/* Header welcome banner */}
       <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
@@ -178,7 +167,7 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
           </button>
         </div>
 
-        <OwnerRecentPropertiesList onPromote={(prop) => setPromotionTarget(prop)} />
+        <OwnerRecentPropertiesList />
       </div>
     </div>
   );
@@ -227,13 +216,6 @@ function OwnerRecentPropertiesList({ onPromote }) {
               <Link href={`/properties/${prop._id}`} className="text-teal-800 font-semibold hover:underline">
                 View
               </Link>
-              <button
-                type="button"
-                onClick={() => onPromote(prop)}
-                className="text-amber-800 font-bold hover:underline flex items-center gap-1"
-              >
-                <Sparkles size={11} /> Promote
-              </button>
             </div>
           </div>
         </div>
@@ -310,26 +292,6 @@ function OwnerPropertiesSection({ onPromote }) {
     {
       header: 'Status',
       render: (row) => <StatusBadge status={row.status} />
-    },
-    {
-      header: 'Promotion',
-      render: (row) => (
-        <div>
-          {row.featured ? (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 flex items-center gap-1 w-fit">
-              <Sparkles size={11} /> Featured
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onPromote(row)}
-              className="text-xs font-semibold text-teal-800 hover:text-teal-900 flex items-center gap-1"
-            >
-              <Sparkles size={12} /> Promote
-            </button>
-          )}
-        </div>
-      )
     },
     {
       header: 'Actions',

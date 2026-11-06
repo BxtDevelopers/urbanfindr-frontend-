@@ -207,6 +207,7 @@ test('Business Dashboard System: Service Provider and Owner can post, edit, and 
   const sidebar = readFileSync(path.resolve('components/dashboard/shared/DashboardSidebar.jsx'), 'utf8');
   assert.ok(sidebar.includes("id: 'properties'") && sidebar.includes("label: 'My Properties'"), 'Sidebar must include My Properties for providers');
   assert.ok(sidebar.includes("id: 'add-property'") && sidebar.includes("label: 'Add Property'"), 'Sidebar must include Add Property for providers');
+  assert.ok(!sidebar.includes("id: 'promotions'"), 'Sidebar must not include promotions in navigation');
 
   const appContent = readFileSync(path.resolve('components/application.js'), 'utf8');
   assert.ok(appContent.includes("'service_provider'"), 'components/application.js must permit service_provider to access /properties/:id/edit');
@@ -216,8 +217,10 @@ test('Business Dashboard System: Service Provider and Owner can post, edit, and 
   assert.ok(providerWs.includes("My Properties"), 'ProviderWorkspace must display My Properties');
   assert.ok(providerWs.includes("handleClose"), 'ProviderWorkspace must provide handleClose action');
   assert.ok(providerWs.includes("/edit"), 'ProviderPropertiesSection must provide edit property link');
+  assert.ok(!providerWs.includes("header: 'Promotion'"), 'Provider properties table must not show promotion column');
 
   const ownerWs = readFileSync(path.resolve('components/dashboard/workspaces/OwnerWorkspace.jsx'), 'utf8');
   assert.ok(ownerWs.includes("handleClose"), 'OwnerWorkspace must provide handleClose action');
   assert.ok(ownerWs.includes("/edit"), 'OwnerWorkspace must provide edit property link');
+  assert.ok(!ownerWs.includes("header: 'Promotion'"), 'Owner properties table must not show promotion column');
 });

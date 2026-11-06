@@ -53,7 +53,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
   };
 
   if (section === 'listings') {
-    return <BrokerListingsSection onPromote={(prop) => setPromotionTarget(prop)} />;
+    return <BrokerListingsSection />;
   }
   if (section === 'leads') {
     return <BrokerLeadsSection />;
@@ -63,9 +63,6 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
   }
   if (section === 'clients') {
     return <BrokerClientsSection />;
-  }
-  if (section === 'promotions') {
-    return <BrokerPromotionsSection onPromote={(prop) => setPromotionTarget(prop)} />;
   }
   if (section === 'analytics') {
     return <BrokerAnalyticsSection stats={stats} />;
@@ -80,13 +77,6 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
   // Default: Overview
   return (
     <div className="space-y-8">
-      <PromotionModal
-        isOpen={Boolean(promotionTarget)}
-        onClose={() => setPromotionTarget(null)}
-        target={promotionTarget}
-        targetType="property"
-        onPromoted={() => toast('Listing promoted successfully!')}
-      />
 
       {/* Header welcome banner */}
       <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
@@ -289,26 +279,6 @@ function BrokerListingsSection({ onPromote }) {
     {
       header: 'Status',
       render: (row) => <StatusBadge status={row.status} />
-    },
-    {
-      header: 'Featured',
-      render: (row) => (
-        <div>
-          {row.featured ? (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 flex items-center gap-1 w-fit">
-              <Sparkles size={11} /> Featured
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onPromote(row)}
-              className="text-xs font-semibold text-sky-800 hover:text-sky-900 flex items-center gap-1"
-            >
-              <Sparkles size={12} /> Promote
-            </button>
-          )}
-        </div>
-      )
     },
     {
       header: 'Actions',

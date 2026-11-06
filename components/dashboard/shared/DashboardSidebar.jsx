@@ -66,7 +66,6 @@ export default function DashboardSidebar({
       { id: 'enquiries', label: 'Property Enquiries', icon: ClipboardList },
       { id: 'visits', label: 'Property Visits', icon: Calendar },
       { id: 'performance', label: 'Listing Performance', icon: BarChart3 },
-      { id: 'promotions', label: 'Promotions', icon: Sparkles },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
       { id: 'profile', label: 'Profile Settings', icon: Settings }
     ],
@@ -78,7 +77,6 @@ export default function DashboardSidebar({
       { id: 'visits', label: 'Property Visits', icon: Calendar },
       { id: 'clients', label: 'Clients', icon: Users },
       { id: 'analytics', label: 'Performance Analytics', icon: BarChart3 },
-      { id: 'promotions', label: 'Promotions', icon: Sparkles },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
       { id: 'profile', label: 'Profile Settings', icon: Settings }
     ],
@@ -90,7 +88,6 @@ export default function DashboardSidebar({
       { id: 'enquiries', label: 'Project Enquiries', icon: ClipboardList },
       { id: 'visits', label: 'Site Visits', icon: Calendar },
       { id: 'performance', label: 'Project Performance', icon: BarChart3 },
-      { id: 'promotions', label: 'Promotions', icon: Sparkles },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
       { id: 'profile', label: 'Settings', icon: Settings }
     ],
@@ -103,7 +100,6 @@ export default function DashboardSidebar({
       { id: 'requests', label: 'Client Requests & Offers', icon: ClipboardList },
       { id: 'services', label: 'My Services', icon: Wrench },
       { id: 'reviews', label: 'Reviews', icon: Star },
-      { id: 'promotions', label: 'Promotions', icon: Sparkles },
       { id: 'profile', label: 'Settings', icon: Settings }
     ]
   };

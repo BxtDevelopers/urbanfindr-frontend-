@@ -212,13 +212,13 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
   }, [totalIncoming, totalOffers, totalEngaged, chartPeriod]);
 
   if (section === 'properties') {
-    return <ProviderPropertiesSection onPromote={(prop) => setPromotionTarget(prop)} />;
+    return <ProviderPropertiesSection />;
   }
   if (section === 'business-profile') {
     return <ProviderBusinessProfileSection />;
   }
   if (section === 'services') {
-    return <ProviderServicesSection onPromote={(svc) => setPromotionTarget(svc)} />;
+    return <ProviderServicesSection />;
   }
   if (section === 'enquiries') {
     return <ProviderEnquiriesSection onSelectSection={onSelectSection} />;
@@ -236,9 +236,6 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
   }
   if (section === 'reviews') {
     return <ProviderReviewsSection rating={stats.rating} />;
-  }
-  if (section === 'promotions') {
-    return <ProviderPromotionsSection onPromote={(svc) => setPromotionTarget(svc)} />;
   }
   if (section === 'profile') {
     return <ProviderSettingsSection />;
@@ -266,15 +263,6 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
           onClose={() => setAssignTechRequest(null)}
         />
       )}
-
-      {/* Promotion Modal */}
-      <PromotionModal
-        isOpen={Boolean(promotionTarget)}
-        onClose={() => setPromotionTarget(null)}
-        target={promotionTarget}
-        targetType="service"
-        onPromoted={() => toast('Service promoted successfully!')}
-      />
 
       {/* Header welcome banner */}
       <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
@@ -2459,26 +2447,6 @@ function ProviderPropertiesSection({ onPromote }) {
     {
       header: 'Status',
       render: (row) => <StatusBadge status={row.status} />
-    },
-    {
-      header: 'Promotion',
-      render: (row) => (
-        <div>
-          {row.featured ? (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 flex items-center gap-1 w-fit">
-              <Sparkles size={11} /> Featured
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onPromote && onPromote(row)}
-              className="text-xs font-semibold text-teal-800 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
-            >
-              <Sparkles size={12} /> Promote
-            </button>
-          )}
-        </div>
-      )
     },
     {
       header: 'Actions',

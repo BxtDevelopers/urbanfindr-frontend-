@@ -57,7 +57,6 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
   if (section === 'projects') {
     return (
       <BuilderProjectsSection
-        onPromote={(proj) => setPromotionTarget(proj)}
         onOpenAdd={() => setAddProjectOpen(true)}
       />
     );
@@ -71,9 +70,6 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
   if (section === 'performance') {
     return <BuilderPerformanceSection stats={stats} />;
   }
-  if (section === 'promotions') {
-    return <BuilderPromotionsSection onPromote={(proj) => setPromotionTarget(proj)} />;
-  }
   if (section === 'messages') {
     return <BuilderMessagesSection />;
   }
@@ -84,13 +80,6 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
   // Default: Overview
   return (
     <div className="space-y-8">
-      <PromotionModal
-        isOpen={Boolean(promotionTarget)}
-        onClose={() => setPromotionTarget(null)}
-        target={promotionTarget}
-        targetType="project"
-        onPromoted={() => toast('Project promoted successfully!')}
-      />
 
       {/* Add Project Modal */}
       <AddProjectModal
@@ -195,7 +184,6 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
         </div>
 
         <BuilderRecentProjectsList
-          onPromote={(p) => setPromotionTarget(p)}
           onOpenAdd={() => setAddProjectOpen(true)}
         />
       </div>
@@ -204,7 +192,7 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
 }
 
 // Sub-component: Recent Projects
-function BuilderRecentProjectsList({ onPromote, onOpenAdd }) {
+function BuilderRecentProjectsList({ onOpenAdd }) {
   const { data, loading } = useData('projects?limit=4');
   const items = data?.items || [];
 
@@ -252,13 +240,6 @@ function BuilderRecentProjectsList({ onPromote, onOpenAdd }) {
               <Link href={`/projects/${proj._id}`} className="text-amber-800 font-semibold hover:underline">
                 Brochure
               </Link>
-              <button
-                type="button"
-                onClick={() => onPromote(proj)}
-                className="text-stone-700 font-bold hover:underline flex items-center gap-1"
-              >
-                <Sparkles size={11} className="text-amber-600" /> Promote
-              </button>
             </div>
           </div>
         </div>
@@ -432,13 +413,6 @@ function BuilderProjectsSection({ onPromote, onOpenAdd }) {
           <Link href={`/projects/${row._id}`} className="text-stone-700 hover:text-stone-900 font-semibold">
             View
           </Link>
-          <button
-            type="button"
-            onClick={() => onPromote(row)}
-            className="text-amber-800 hover:text-amber-900 font-semibold flex items-center gap-1"
-          >
-            <Sparkles size={12} /> Promote
-          </button>
         </div>
       )
     }
