@@ -615,14 +615,6 @@ function OwnerEnquiriesSection() {
       }
     }
   ];
-            >
-              <MessageCircle size={13} />
-            </button>
-          </div>
-        );
-      }
-    }
-  ];
 
   return (
     <div className="space-y-4">

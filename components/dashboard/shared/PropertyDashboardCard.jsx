@@ -215,3 +215,4 @@ export default function PropertyDashboardCard({ property, busy, onClose, onReope
     </div>
   );
 }
+
