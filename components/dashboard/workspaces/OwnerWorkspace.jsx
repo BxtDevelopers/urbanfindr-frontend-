@@ -238,11 +238,65 @@ function OwnerRecentPropertiesList({ onPromote }) {
 function OwnerPropertiesSection({ onPromote }) {
   const { toast } = useApp();
   const { data, loading, reload } = useData('properties?mine=true&limit=100');
+  const { data: leadsData, reload: reloadLeads } = useData('leads?page=1&limit=100');
+  const { data: visitsData, reload: reloadVisits } = useData('visits?limit=100');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'approved' | 'closed'
   const [viewMode, setViewMode] = useState('cards'); // 'cards' (default) | 'table'
+
+  const requestsByProperty = useMemo(() => {
+    const map = {};
+    const all = [
+      ...(visitsData?.items || []).map((v) => ({
+        _id: v._id,
+        isVisit: true,
+        propertyId: String(v.property?._id || v.property || ''),
+        customerName: v.user?.name || 'Customer',
+        phone: v.phone || v.user?.phone || '',
+        status: v.status || 'requested',
+        note: v.note,
+        scheduledAt: v.scheduledAt
+      })),
+      ...(leadsData?.items || []).map((l) => ({
+        _id: l._id,
+        isVisit: false,
+        propertyId: String(l.property?._id || l.property || ''),
+        customerName: l.name || l.user?.name || 'Customer',
+        phone: l.phone || l.user?.phone || '',
+        status: l.status || 'requested',
+        note: l.note,
+        scheduledAt: l.preferredAt
+      }))
+    ];
+
+    for (const req of all) {
+      if (req.propertyId) {
+        if (!map[req.propertyId]) map[req.propertyId] = [];
+        map[req.propertyId].push(req);
+      }
+    }
+    return map;
+  }, [visitsData?.items, leadsData?.items]);
+
+  async function handleAcceptRequest(request) {
+    setBusy(request._id);
+    try {
+      if (request.isVisit) {
+        await api(`visits/${request._id}`, { method: 'PATCH', body: { status: 'accepted' } });
+      } else {
+        await api(`leads/${request._id}`, { method: 'PATCH', body: { status: 'accepted' } });
+      }
+      toast('Customer request accepted!');
+      reloadLeads();
+      reloadVisits();
+    } catch (e) {
+      toast(e.message || 'Failed to accept request.');
+    } finally {
+      setBusy('');
+    }
+  }
 
   async function handleClose(id) {
     if (!window.confirm('Close this property? It will be removed from the public website so visitors cannot see it, but will stay saved in your dashboard.')) return;
@@ -489,6 +543,8 @@ function OwnerPropertiesSection({ onPromote }) {
               key={prop._id}
               property={prop}
               busy={busy}
+              requests={requestsByProperty[String(prop._id)] || []}
+              onAcceptRequest={handleAcceptRequest}
               onClose={handleClose}
               onReopen={handleReopen}
             />

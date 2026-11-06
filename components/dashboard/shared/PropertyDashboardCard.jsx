@@ -9,10 +9,19 @@ import {
   BedDouble,
   Bath,
   Maximize,
-  Edit
+  Edit,
+  Check,
+  Clock
 } from 'lucide-react';
 
-export default function PropertyDashboardCard({ property, busy, onClose, onReopen }) {
+export default function PropertyDashboardCard({
+  property,
+  busy,
+  requests = [],
+  onAcceptRequest,
+  onClose,
+  onReopen
+}) {
   if (!property) return null;
 
   const images = propertyImages(property);
@@ -23,6 +32,11 @@ export default function PropertyDashboardCard({ property, busy, onClose, onReope
   const bedrooms = property.bedrooms || (property.type?.toLowerCase().includes('bhk') ? property.type : null);
   const bathrooms = property.bathrooms;
   const area = property.area || property.builtUpArea || property.carpetArea;
+
+  // Find customer request for this property if any
+  const pendingRequest = requests.find(
+    (r) => r.status === 'requested' || r.status === 'new' || r.status === 'uncontacted' || r.status === 'submitted'
+  ) || requests[0];
 
   return (
     <div
@@ -47,7 +61,7 @@ export default function PropertyDashboardCard({ property, busy, onClose, onReope
               isClosed ? 'grayscale-[30%]' : ''
             }`}
           />
-          {/* Subtle badges */}
+          {/* Subtle top badges */}
           <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
             <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-stone-900/80 text-white backdrop-blur-xs">
               For {property.purpose}
@@ -97,6 +111,48 @@ export default function PropertyDashboardCard({ property, busy, onClose, onReope
             </span>
           </div>
 
+          {/* Customer Request Notification Pill on Owner Card */}
+          {pendingRequest && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="p-2.5 bg-[#ecf2e4] rounded-lg border border-[#d6dcd3] flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-[#163e35] truncate">
+                  {pendingRequest.isVisit ? 'Visit Request' : 'Inquiry'} from {pendingRequest.customerName}
+                </div>
+                <div className="text-[11px] text-stone-600 font-medium flex items-center gap-1 mt-0.5">
+                  {pendingRequest.status === 'accepted' ? (
+                    <span className="inline-flex items-center gap-1 font-bold text-[#163e35]">
+                      <Check size={11} /> Accepted
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 font-medium text-stone-500">
+                      <Clock size={11} /> Requested
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {pendingRequest.status !== 'accepted' && (
+                <button
+                  type="button"
+                  disabled={busy === pendingRequest._id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onAcceptRequest?.(pendingRequest);
+                  }}
+                  className="px-2.5 py-1 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-md text-xs font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer shadow-xs"
+                  title="Accept customer request"
+                >
+                  <Check size={12} />
+                  <span>{busy === pendingRequest._id ? 'Accepting…' : 'Accept'}</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {isClosed && (
             <div className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded border border-rose-200">
               Closed • Hidden from website
@@ -105,23 +161,47 @@ export default function PropertyDashboardCard({ property, busy, onClose, onReope
         </div>
       </Link>
 
-      {/* Card Actions Footer: Edit & Close / Re-open (View button removed!) */}
+      {/* Card Actions Footer: Edit, Accept (if request exists), Close / Re-open */}
       <div className="px-4 py-2.5 bg-stone-50 border-t border-stone-100 flex items-center justify-between gap-2">
-        <Link
-          href={`/properties/${property._id}/edit`}
-          className="px-3 py-1.5 bg-white hover:bg-stone-100 text-stone-700 rounded-lg text-xs font-semibold border border-stone-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-          title="Edit property details"
-        >
-          <Edit size={13} />
-          <span>Edit</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/properties/${property._id}/edit`}
+            onClick={(e) => e.stopPropagation()}
+            className="px-3 py-1.5 bg-white hover:bg-stone-100 text-stone-700 rounded-lg text-xs font-semibold border border-stone-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Edit property details"
+          >
+            <Edit size={13} />
+            <span>Edit</span>
+          </Link>
+
+          {pendingRequest && pendingRequest.status !== 'accepted' && (
+            <button
+              type="button"
+              disabled={busy === pendingRequest._id}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onAcceptRequest?.(pendingRequest);
+              }}
+              className="px-3 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+              title="Accept customer request"
+            >
+              <Check size={12} />
+              <span>Accept</span>
+            </button>
+          )}
+        </div>
 
         <div>
           {!isClosed ? (
             <button
               type="button"
               disabled={busy === property._id}
-              onClick={() => onClose(property._id)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose(property._id);
+              }}
               className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg text-xs font-semibold border border-stone-200 hover:border-rose-200 transition-colors cursor-pointer"
               title="Close listing and remove from public website"
             >
@@ -131,7 +211,11 @@ export default function PropertyDashboardCard({ property, busy, onClose, onReope
             <button
               type="button"
               disabled={busy === property._id}
-              onClick={() => onReopen(property._id)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onReopen(property._id);
+              }}
               className="px-3 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-xs"
               title="Re-open listing to make visible on website again"
             >

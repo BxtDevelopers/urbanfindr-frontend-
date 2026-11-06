@@ -231,7 +231,9 @@ test('Business Dashboard System: Service Provider and Owner can post, edit, and 
   assert.ok(cardContent.includes("money(property.price)"), 'Property card must display formatted price');
   assert.ok(cardContent.includes("BedDouble") && cardContent.includes("Bath") && cardContent.includes("Maximize"), 'Property card must display bedrooms, bathrooms, and area specs');
   assert.ok(cardContent.includes("onClose") && cardContent.includes("onReopen"), 'Property card must provide Close and Re-open actions');
+  assert.ok(cardContent.includes("onAcceptRequest") && cardContent.includes("Accept"), 'Property card must provide Accept action for customer requests');
   assert.ok(providerWs.includes("PropertyDashboardCard"), 'ProviderWorkspace must render properties in cards');
   assert.ok(ownerWs.includes("PropertyDashboardCard"), 'OwnerWorkspace must render properties in cards');
   assert.ok(providerWs.includes("handleAcceptRequest") || providerWs.includes("handleAccept"), 'ProviderWorkspace must allow accepting customer property requests');
+  assert.ok(ownerWs.includes("handleAcceptRequest") || ownerWs.includes("handleAcceptLead"), 'OwnerWorkspace must allow accepting customer property requests');
 });
