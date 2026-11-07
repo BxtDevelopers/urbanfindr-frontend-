@@ -51,143 +51,159 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
     views: 0
   };
 
-  if (section === 'builder-profile') {
-    return <BuilderProfileSection />;
-  }
-  if (section === 'projects') {
+  const renderSection = () => {
+    if (section === 'builder-profile') {
+      return <BuilderProfileSection />;
+    }
+    if (section === 'projects') {
+      return (
+        <BuilderProjectsSection
+          onOpenAdd={() => setAddProjectOpen(true)}
+          onPromote={(proj) => setPromotionTarget(proj)}
+        />
+      );
+    }
+    if (section === 'enquiries') {
+      return <BuilderEnquiriesSection />;
+    }
+    if (section === 'visits') {
+      return <BuilderSiteVisitsSection />;
+    }
+    if (section === 'performance') {
+      return <BuilderPerformanceSection stats={stats} />;
+    }
+    if (section === 'messages') {
+      return <BuilderMessagesSection />;
+    }
+    if (section === 'profile') {
+      return <BuilderSettingsSection />;
+    }
+
+    // Default: Overview
     return (
-      <BuilderProjectsSection
-        onOpenAdd={() => setAddProjectOpen(true)}
-      />
+      <div className="space-y-8">
+        {/* Header welcome banner */}
+        <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
+          <div className="max-w-2xl relative z-10 space-y-2">
+            <div className="flex items-center gap-2 text-[#d8edb3] font-bold text-xs uppercase tracking-wider">
+              <Building2 size={14} /> Real Estate Developer Suite
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Builder
+            </h2>
+            <p className="text-xs sm:text-sm text-[#ecf2e4]/90 leading-relaxed">
+              Showcase residential townships, luxury developments, and commercial towers. Manage RERA brochures, floor configurations, and site inspection footfalls.
+            </p>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setAddProjectOpen(true)}
+              className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus size={15} /> Add New Development
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectSection('projects')}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20"
+            >
+              Manage Projects ({stats.projects})
+            </button>
+          </div>
+        </div>
+
+        {/* KPI Cards: Manage projects, Manage project enquiries, Schedule site visits, Track project performance */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Manage Projects"
+            value={stats.projects}
+            subtitle={`${stats.activeProjects || stats.projects} developments`}
+            icon={Building2}
+            color="#163e35" bgIcon="#ecf2e4"
+            onClick={() => onSelectSection('projects')}
+          />
+          <StatCard
+            title="Manage Project Enquiries"
+            value={stats.enquiries}
+            subtitle="Direct buyer inquiries"
+            icon={ClipboardList}
+            color="#749546" bgIcon="#ecf2e4"
+            onClick={() => onSelectSection('enquiries')}
+          />
+          <StatCard
+            title="Schedule Site Visits"
+            value={stats.upcomingSiteVisits}
+            subtitle="Sample flat & tower tours"
+            icon={Calendar}
+            color="#163e35" bgIcon="#ecf2e4"
+            onClick={() => onSelectSection('visits')}
+          />
+          <StatCard
+            title="Track Project Performance"
+            value={stats.views}
+            subtitle="Catalog impressions"
+            icon={BarChart3}
+            color="#6d28d9"
+            bgIcon="#f5f3ff"
+            onClick={() => onSelectSection('performance')}
+          />
+        </div>
+
+        {/* Analytics Chart */}
+        <AnalyticsChart
+          title="Project Discovery Impressions &amp; Inquiries"
+          subtitle="Weekly township interest across major cities"
+          dataKeys={[
+            { key: 'views', name: 'Views', color: '#b45309' },
+            { key: 'enquiries', name: 'Enquiries', color: '#0369a1' },
+            { key: 'visits', name: 'Site Visits', color: '#047857' }
+          ]}
+        />
+
+        {/* Recent Projects List */}
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-stone-900 text-base">Active Projects &amp; Towers</h3>
+              <p className="text-xs text-stone-500">Developments featured in public builder showcases</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelectSection('projects')}
+              className="text-xs font-bold text-amber-800 hover:text-amber-900 flex items-center gap-1"
+            >
+              <span>View All</span>
+              <ArrowUpRight size={13} />
+            </button>
+          </div>
+
+          <BuilderRecentProjectsList
+            onOpenAdd={() => setAddProjectOpen(true)}
+          />
+        </div>
+      </div>
     );
-  }
-  if (section === 'enquiries') {
-    return <BuilderEnquiriesSection />;
-  }
-  if (section === 'visits') {
-    return <BuilderSiteVisitsSection />;
-  }
-  if (section === 'performance') {
-    return <BuilderPerformanceSection stats={stats} />;
-  }
-  if (section === 'messages') {
-    return <BuilderMessagesSection />;
-  }
-  if (section === 'profile') {
-    return <BuilderSettingsSection />;
-  }
+  };
 
-  // Default: Overview
   return (
-    <div className="space-y-8">
-
+    <>
+      {renderSection()}
       {/* Add Project Modal */}
       <AddProjectModal
         isOpen={addProjectOpen}
         onClose={() => setAddProjectOpen(false)}
       />
-
-      {/* Header welcome banner */}
-      <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
-        <div className="max-w-2xl relative z-10 space-y-2">
-          <div className="flex items-center gap-2 text-[#d8edb3] font-bold text-xs uppercase tracking-wider">
-            <Building2 size={14} /> Real Estate Developer Suite
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            {user?.company || user?.name || 'Developer Command'}
-          </h2>
-          <p className="text-xs sm:text-sm text-[#ecf2e4]/90 leading-relaxed">
-            Showcase residential townships, luxury developments, and commercial towers. Manage RERA brochures, floor configurations, and site inspection footfalls.
-          </p>
-        </div>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setAddProjectOpen(true)}
-            className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
-          >
-            <Plus size={15} /> Add New Development
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelectSection('projects')}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20"
-          >
-            Manage Projects ({stats.projects})
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Developments"
-          value={stats.projects}
-          subtitle={`${stats.activeProjects} active projects`}
-          icon={Building2}
-          color="#163e35" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('projects')}
+      {promotionTarget && (
+        <PromotionModal
+          isOpen={Boolean(promotionTarget)}
+          target={promotionTarget}
+          targetType="project"
+          onClose={() => setPromotionTarget(null)}
+          onPromoted={() => setPromotionTarget(null)}
         />
-        <StatCard
-          title="Project Enquiries"
-          value={stats.enquiries}
-          subtitle="Direct buyer inquiries"
-          icon={ClipboardList}
-          color="#749546" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('enquiries')}
-        />
-        <StatCard
-          title="Site Tour Bookings"
-          value={stats.upcomingSiteVisits}
-          subtitle="On-site buyer inspections"
-          icon={Calendar}
-          color="#163e35" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('visits')}
-        />
-        <StatCard
-          title="Township Views"
-          value={stats.views}
-          subtitle="Catalog impressions"
-          icon={Eye}
-          color="#6d28d9"
-          bgIcon="#f5f3ff"
-          onClick={() => onSelectSection('performance')}
-        />
-      </div>
-
-      {/* Analytics Chart */}
-      <AnalyticsChart
-        title="Project Discovery Impressions &amp; Inquiries"
-        subtitle="Weekly township interest across major cities"
-        dataKeys={[
-          { key: 'views', name: 'Views', color: '#b45309' },
-          { key: 'enquiries', name: 'Enquiries', color: '#0369a1' },
-          { key: 'visits', name: 'Site Visits', color: '#047857' }
-        ]}
-      />
-
-      {/* Recent Projects List */}
-      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-stone-900 text-base">Active Projects &amp; Towers</h3>
-            <p className="text-xs text-stone-500">Developments featured in public builder showcases</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onSelectSection('projects')}
-            className="text-xs font-bold text-amber-800 hover:text-amber-900 flex items-center gap-1"
-          >
-            <span>View All</span>
-            <ArrowUpRight size={13} />
-          </button>
-        </div>
-
-        <BuilderRecentProjectsList
-          onOpenAdd={() => setAddProjectOpen(true)}
-        />
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
@@ -410,9 +426,19 @@ function BuilderProjectsSection({ onPromote, onOpenAdd }) {
       header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-3">
-          <Link href={`/projects/${row._id}`} className="text-stone-700 hover:text-stone-900 font-semibold">
+          <Link href={`/projects/${row._id}`} className="text-stone-700 hover:text-stone-900 font-semibold text-xs">
             View
           </Link>
+          {onPromote && (
+            <button
+              type="button"
+              onClick={() => onPromote(row)}
+              className="text-amber-700 hover:text-amber-900 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <Sparkles size={12} className="text-amber-500" />
+              Promote
+            </button>
+          )}
         </div>
       )
     }
@@ -422,7 +448,7 @@ function BuilderProjectsSection({ onPromote, onOpenAdd }) {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-stone-900">Builder Developments &amp; Towers</h2>
+          <h2 className="text-xl font-bold text-stone-900">Manage Projects</h2>
           <p className="text-xs text-stone-500">Add configurations, floor plans, possession dates, and promotional tiers</p>
         </div>
         <button
@@ -492,7 +518,7 @@ function BuilderEnquiriesSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-stone-900">Project Buyer Inquiries</h2>
+        <h2 className="text-xl font-bold text-stone-900">Manage Project Enquiries</h2>
         <p className="text-xs text-stone-500">Inquiries submitted on your builder projects and townships</p>
       </div>
 
@@ -584,7 +610,7 @@ function BuilderSiteVisitsSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-stone-900">Experience Centre &amp; Site Visits</h2>
+        <h2 className="text-xl font-bold text-stone-900">Schedule Site Visits</h2>
         <p className="text-xs text-stone-500">Manage buyer walkthroughs and sample flat inspections</p>
       </div>
 
@@ -603,7 +629,7 @@ function BuilderPerformanceSection({ stats }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-stone-900">Project Performance &amp; Analytics</h2>
+        <h2 className="text-xl font-bold text-stone-900">Track Project Performance</h2>
         <p className="text-xs text-stone-500">Brochure downloads, footfalls, and unit interest metrics</p>
       </div>
 

@@ -15,7 +15,7 @@ export default function WorkspaceSwitcher({ compact = false }) {
       : activeWorkspace === 'owner' || user?.role === 'owner'
       ? (user?.name || 'Property Owner')
       : activeWorkspace === 'builder' || user?.role === 'builder'
-      ? (user?.company || user?.name || 'Builder')
+      ? 'Builder'
       : activeWorkspace === 'provider'
       ? 'Service Provider'
       : activeWorkspace === 'customer'

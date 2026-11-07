@@ -329,7 +329,7 @@ export function Header() {
                           : user.role === 'owner'
                           ? 'Property Owner'
                           : user.role === 'builder'
-                          ? (user.company || user.name || 'Builder')
+                          ? 'Builder'
                           : user.role === 'channel_partner'
                           ? 'Channel Partner'
                           : user.role === 'service_provider' || user.role === 'service-provider' || activeAccountMode === 'provider'
@@ -746,7 +746,7 @@ export function Header() {
                       : user.role === 'owner'
                       ? 'Owner'
                       : user.role === 'builder'
-                      ? (user.company || user.name || 'Builder')
+                      ? 'Builder'
                       : user.role === 'service_provider' || user.role === 'service-provider'
                       ? 'Service Provider'
                       : activeAccountMode === 'provider'

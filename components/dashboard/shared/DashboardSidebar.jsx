@@ -84,11 +84,10 @@ export default function DashboardSidebar({
     builder: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
       { id: 'builder-profile', label: 'Builder Profile', icon: Building2 },
-      { id: 'projects', label: 'My Projects', icon: Layers },
-      { id: 'add-project', label: 'Add Project', icon: PlusCircle, isAction: true },
-      { id: 'enquiries', label: 'Project Enquiries', icon: ClipboardList },
-      { id: 'visits', label: 'Site Visits', icon: Calendar },
-      { id: 'performance', label: 'Project Performance', icon: BarChart3 },
+      { id: 'projects', label: 'Manage Projects', icon: Layers },
+      { id: 'enquiries', label: 'Manage Project Enquiries', icon: ClipboardList },
+      { id: 'visits', label: 'Schedule Site Visits', icon: Calendar },
+      { id: 'performance', label: 'Track Project Performance', icon: BarChart3 },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
       { id: 'profile', label: 'Settings', icon: Settings }
     ],
