@@ -430,7 +430,7 @@ function Editor({
         deposit: isPlot || (isCommercial && transaction === 'sale') || purpose === 'buy'
           ? 0
           : Number(deposit) || 0,
-        maintenance: Number(maintenance) || 0,
+        maintenance: purpose === 'buy' ? 0 : Number(maintenance) || 0,
         bedrooms: isPlot || isPG || isCommercial ? 0 : Number(bedrooms) || 0,
         bathrooms: isPlot ? 0 : isCommercial ? Number(bathrooms) || 0 : isPG ? 1 : Number(bathrooms) || 0,
         area: Number(area),
@@ -1036,18 +1036,20 @@ function Editor({
               </Field>
             )}
 
-            {/* Maintenance */}
-            <Field label="Monthly Maintenance (₹)">
-              <input
-                type="number"
-                min="0"
-                max="1000000"
-                value={maintenance}
-                onChange={(e) => setMaintenance(e.target.value)}
-                placeholder="0 if included in rent"
-                className="input"
-              />
-            </Field>
+            {/* Maintenance (Hidden for Buy) */}
+            {purpose !== 'buy' && (
+              <Field label="Monthly Maintenance (₹)">
+                <input
+                  type="number"
+                  min="0"
+                  max="1000000"
+                  value={maintenance}
+                  onChange={(e) => setMaintenance(e.target.value)}
+                  placeholder="0 if included in rent"
+                  className="input"
+                />
+              </Field>
+            )}
           </div>
         </div>
 
