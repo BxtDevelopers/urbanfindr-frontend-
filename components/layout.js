@@ -324,8 +324,16 @@ export function Header() {
                         {user.name || 'User'}
                       </p>
                       <p className="text-[11px] text-stone-500 truncate capitalize">
-                        {activeAccountMode === 'provider'
-                          ? 'Service Provider Account'
+                        {user.role === 'broker'
+                          ? (user.company || user.name || 'Broker')
+                          : user.role === 'owner'
+                          ? 'Property Owner'
+                          : user.role === 'builder'
+                          ? (user.company || user.name || 'Builder')
+                          : user.role === 'channel_partner'
+                          ? 'Channel Partner'
+                          : user.role === 'service_provider' || user.role === 'service-provider' || activeAccountMode === 'provider'
+                          ? 'Service Provider'
                           : user.role === 'admin'
                           ? 'Administrator'
                           : 'Customer Account'}
@@ -359,50 +367,52 @@ export function Header() {
                     </Link>
 
                     {/* Switch User Account / Business Account option */}
-                    {activeAccountMode === 'provider' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          try {
-                            localStorage.setItem('havenest_active_account_mode', 'customer');
-                          } catch (e) {}
-                          setActiveAccountMode('customer');
-                          router.push('/dashboard/customer');
-                          if (toast) toast('Switched to User Account');
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <User size={15} className="text-stone-500" />
-                          <span>Switch to User Account</span>
-                        </div>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
-                          User
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          try {
-                            localStorage.setItem('havenest_active_account_mode', 'provider');
-                          } catch (e) {}
-                          setActiveAccountMode('provider');
-                          router.push('/dashboard/provider');
-                          if (toast) toast('Switched to Business Account');
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Briefcase size={15} className="text-stone-500" />
-                          <span>Switch to Business Account</span>
-                        </div>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          Business
-                        </span>
-                      </button>
+                    {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
+                      activeAccountMode === 'provider' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            try {
+                              localStorage.setItem('havenest_active_account_mode', 'customer');
+                            } catch (e) {}
+                            setActiveAccountMode('customer');
+                            router.push('/dashboard/customer');
+                            if (toast) toast('Switched to User Account');
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <User size={15} className="text-stone-500" />
+                            <span>Switch to User Account</span>
+                          </div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                            User
+                          </span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            try {
+                              localStorage.setItem('havenest_active_account_mode', 'provider');
+                            } catch (e) {}
+                            setActiveAccountMode('provider');
+                            router.push('/dashboard/provider');
+                            if (toast) toast('Switched to Business Account');
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Briefcase size={15} className="text-stone-500" />
+                            <span>Switch to Business Account</span>
+                          </div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            Business
+                          </span>
+                        </button>
+                      )
                     )}
 
                     {user.role === 'admin' && (
@@ -732,11 +742,11 @@ export function Header() {
                 >
                   {`My dashboard (${
                     user.role === 'broker'
-                      ? 'Broker'
+                      ? (user.company || user.name || 'Broker')
                       : user.role === 'owner'
                       ? 'Owner'
                       : user.role === 'builder'
-                      ? 'Builder'
+                      ? (user.company || user.name || 'Builder')
                       : user.role === 'service_provider' || user.role === 'service-provider'
                       ? 'Service Provider'
                       : activeAccountMode === 'provider'
@@ -745,56 +755,58 @@ export function Header() {
                   })`}
                 </Link>
 
-                {activeAccountMode === 'provider' ? (
-                  <button
-                    style={{
-                      textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      font: 'inherit',
-                      padding: 0,
-                      fontSize: 16,
-                      color: '#163e35',
-                      fontWeight: 600,
-                    }}
-                    onClick={() => {
-                      setOpen(false);
-                      try {
-                        localStorage.setItem('havenest_active_account_mode', 'customer');
-                      } catch (e) {}
-                      setActiveAccountMode('customer');
-                      router.push('/dashboard/customer');
-                      if (toast) toast('Switched to User Account');
-                    }}
-                  >
-                    Switch to User Account
-                  </button>
-                ) : (
-                  <button
-                    style={{
-                      textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      font: 'inherit',
-                      padding: 0,
-                      fontSize: 16,
-                      color: '#163e35',
-                      fontWeight: 600,
-                    }}
-                    onClick={() => {
-                      setOpen(false);
-                      try {
-                        localStorage.setItem('havenest_active_account_mode', 'provider');
-                      } catch (e) {}
-                      setActiveAccountMode('provider');
-                      router.push('/dashboard/provider');
-                      if (toast) toast('Switched to Business Account');
-                    }}
-                  >
-                    Switch to Business Account
-                  </button>
+                {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
+                  activeAccountMode === 'provider' ? (
+                    <button
+                      style={{
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        padding: 0,
+                        fontSize: 16,
+                        color: '#163e35',
+                        fontWeight: 600,
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        try {
+                          localStorage.setItem('havenest_active_account_mode', 'customer');
+                        } catch (e) {}
+                        setActiveAccountMode('customer');
+                        router.push('/dashboard/customer');
+                        if (toast) toast('Switched to User Account');
+                      }}
+                    >
+                      Switch to User Account
+                    </button>
+                  ) : (
+                    <button
+                      style={{
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        padding: 0,
+                        fontSize: 16,
+                        color: '#163e35',
+                        fontWeight: 600,
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        try {
+                          localStorage.setItem('havenest_active_account_mode', 'provider');
+                        } catch (e) {}
+                        setActiveAccountMode('provider');
+                        router.push('/dashboard/provider');
+                        if (toast) toast('Switched to Business Account');
+                      }}
+                    >
+                      Switch to Business Account
+                    </button>
+                  )
                 )}
 
                 <button

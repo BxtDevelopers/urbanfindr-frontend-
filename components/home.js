@@ -24,7 +24,7 @@ import {
   HelpCircle,
   MessageSquareQuote
 } from 'lucide-react';
-import { useData } from './providers';
+import { useData, useApp } from './providers';
 import { PropertyCard, ProjectCard, SectionTitle, State, Image } from './ui';
 import { CityCards } from './city-discovery';
 import { categories, categoryFor, searchTabs } from '@/lib/catalog';
@@ -38,6 +38,7 @@ import { cities, money } from '@/lib/format';
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useApp();
   const [purpose, setPurpose] = useState('buy');
   const [featuredPurpose, setFeaturedPurpose] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
@@ -256,7 +257,7 @@ export default function HomePage() {
                 setServicesDropdownOpen((prev) => !prev);
               }}
             >
-              <span>Service Provider</span>
+              <span>{user?.role === 'broker' ? (user.company || user.name || 'Broker') : 'Service Provider'}</span>
               <ChevronDown
                 size={14}
                 className={`transition-transform duration-200 ${

@@ -10,7 +10,13 @@ export default function WorkspaceSwitcher({ compact = false }) {
   const CurrentIcon = currentConfig.icon;
 
   const displayLabel =
-    activeWorkspace === 'provider'
+    activeWorkspace === 'broker' || user?.role === 'broker'
+      ? (user?.company || user?.name || 'Broker')
+      : activeWorkspace === 'owner' || user?.role === 'owner'
+      ? (user?.name || 'Property Owner')
+      : activeWorkspace === 'builder' || user?.role === 'builder'
+      ? (user?.company || user?.name || 'Builder')
+      : activeWorkspace === 'provider'
       ? 'Service Provider'
       : activeWorkspace === 'customer'
       ? 'Customer'
