@@ -22,6 +22,7 @@ import {
   FileText,
   Camera,
   Handshake,
+  Search,
 } from 'lucide-react';
 import { api, useApp, useData } from './providers';
 import { Field, Image, State, Submit } from './ui';
@@ -139,16 +140,21 @@ function Editor({
   const [mealsIncluded, setMealsIncluded] = useState(Boolean(item?.mealsIncluded));
 
   // Amenities & Media
-  const [amenities, setAmenities] = useState(
-    item?.amenities || [
-      'Power Backup',
-      '24/7 Security',
+  const [amenities, setAmenities] = useState(() => {
+    const initial = item?.amenities || [
+      'Power backup',
+      'Security',
       'Lift',
-      'Water Supply',
-      'Parking',
-      'CCTV',
-    ]
-  );
+      'Water supply',
+      'Visitor parking',
+      'Wi-Fi'
+    ];
+    if (initialPurpose !== 'pg' && item?.purpose !== 'pg') {
+      return initial.filter((a) => a.toLowerCase() !== 'meals');
+    }
+    return initial;
+  });
+  const [amenitySearch, setAmenitySearch] = useState('');
   const [images, setImages] = useState(item ? propertyImages(item) : []);
   const [photoLink, setPhotoLink] = useState('');
 
@@ -167,11 +173,35 @@ function Editor({
     );
   }, [city]);
 
+  // Available amenities (Meals option only visible when purpose === 'pg')
+  const availableAmenities = useMemo(() => {
+    return defaultAmenities.filter((a) => {
+      if (a.toLowerCase() === 'meals' && purpose !== 'pg') return false;
+      return true;
+    });
+  }, [purpose]);
+
+  // Filtered amenities matching search bar (supports e.g. "watersupply" or "water supply")
+  const filteredAmenities = useMemo(() => {
+    const raw = amenitySearch.trim().toLowerCase();
+    if (!raw) return availableAmenities;
+    const cleanQ = raw.replace(/\s+/g, '');
+    return availableAmenities.filter((a) => {
+      const cleanA = a.toLowerCase().replace(/\s+/g, '');
+      return cleanA.includes(cleanQ) || a.toLowerCase().includes(raw);
+    });
+  }, [availableAmenities, amenitySearch]);
+
   // Purpose tab switch handler
   function handlePurposeChange(newPurpose) {
     setPurpose(newPurpose);
     const validTypes = categoryFor(newPurpose)?.types || ['Apartment'];
     setType(validTypes[0]);
+
+    // Ensure Meals option is removed when switching away from PG
+    if (newPurpose !== 'pg') {
+      setAmenities((prev) => prev.filter((a) => a.toLowerCase() !== 'meals'));
+    }
 
     // Re-adjust ownership if needed
     if (newPurpose === 'rent' && ownership === 'builder') {
@@ -771,26 +801,6 @@ function Editor({
             </div>
           )}
 
-          {/* Interactive Map & Geolocation Picker */}
-          <div className="mt-5 pt-4 border-t border-stone-200">
-            <PropertyLocationPicker
-              city={city}
-              locality={locality}
-              address={address}
-              coordinates={coordinates}
-              locationPrecision={locationPrecision}
-              radiusMeters={radiusMeters}
-              hideExactAddress={hideExactAddress}
-              onCityChange={setCity}
-              onLocalityChange={setLocality}
-              onAddressChange={setAddress}
-              onCoordinatesChange={setCoordinates}
-              onPrecisionChange={setLocationPrecision}
-              onRadiusChange={setRadiusMeters}
-              onHideExactAddressChange={setHideExactAddress}
-            />
-          </div>
-
           {/* Street Address */}
           <div className="mt-4">
             <Field label="Complete Address / Street" required>
@@ -1252,47 +1262,109 @@ function Editor({
           </div>
         </div>
 
-        {/* ── SECTION 7: AMENITIES ── */}
+        {/* ── SECTION 7: AMENITIES & FACILITIES ── */}
         <div className="panel">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div>
               <h3 className="!text-lg font-semibold text-stone-900">Amenities &amp; Facilities</h3>
               <p className="text-xs text-stone-500 mt-0.5">
                 Select all features available on the premises
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (amenities.length > 5) setAmenities([]);
-                else setAmenities(defaultAmenities.slice(0, 10));
-              }}
-              className="text-xs text-forest underline font-semibold"
-            >
-              {amenities.length > 5 ? 'Clear Selection' : 'Select Common'}
-            </button>
+            {amenities.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAmenities([])}
+                className="text-xs text-forest hover:underline font-semibold cursor-pointer"
+              >
+                Clear Selection ({amenities.length})
+              </button>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-            {defaultAmenities.map((amenity) => {
-              const isSelected = amenities.includes(amenity);
-              return (
-                <button
-                  key={amenity}
-                  type="button"
-                  onClick={() => toggleAmenity(amenity)}
-                  className={`p-2.5 rounded-lg border text-left text-xs font-medium flex items-center justify-between transition-all ${
-                    isSelected
-                      ? 'border-forest bg-[#edf3e2] text-forest font-semibold'
-                      : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
-                  }`}
-                >
-                  <span className="truncate mr-1">{amenity}</span>
-                  {isSelected && <Check size={14} className="text-forest flex-shrink-0" />}
-                </button>
-              );
-            })}
+          {/* Selected Amenities Pills (Capsules with purple border and X icon matching user reference) */}
+          {amenities.length > 0 && (
+            <div className="mb-4 p-3 bg-purple-50/50 rounded-xl border border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-purple-900 uppercase tracking-wider">
+                  Selected Facilities ({amenities.length})
+                </span>
+                <span className="text-[11px] text-purple-600">Click &times; to remove</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {amenities.map((item) => (
+                  <span
+                    key={item}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border border-purple-400 bg-[#faf5ff] text-purple-700 shadow-2xs transition-all animate-in fade-in zoom-in-95 duration-150"
+                  >
+                    <span>{item}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleAmenity(item)}
+                      className="p-0.5 hover:bg-purple-200/80 rounded-full transition-colors cursor-pointer text-purple-600 hover:text-purple-900 inline-flex items-center justify-center ml-0.5"
+                      title={`Remove ${item}`}
+                      aria-label={`Remove ${item}`}
+                    >
+                      <X size={12} strokeWidth={2.5} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search Amenities Input */}
+          <div className="relative mb-3">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+            <input
+              type="text"
+              value={amenitySearch}
+              onChange={(e) => setAmenitySearch(e.target.value)}
+              placeholder="Search amenities (e.g. Lift, Water supply, Gym, Security)…"
+              className="w-full pl-9 pr-8 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-forest/20 focus:border-forest"
+            />
+            {amenitySearch && (
+              <button
+                type="button"
+                onClick={() => setAmenitySearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 rounded cursor-pointer"
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
+
+          {/* Compact Facility Labels with Checkboxes */}
+          {filteredAmenities.length === 0 ? (
+            <div className="p-4 text-center text-xs text-stone-400 bg-stone-50 rounded-xl border border-dashed border-stone-200">
+              No amenities match &quot;{amenitySearch}&quot;.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {filteredAmenities.map((amenity) => {
+                const isSelected = amenities.includes(amenity);
+                return (
+                  <label
+                    key={amenity}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
+                      isSelected
+                        ? 'border-purple-400 bg-purple-50/70 text-purple-900 font-semibold shadow-2xs'
+                        : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleAmenity(amenity)}
+                      className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500 border-stone-300 cursor-pointer accent-purple-600"
+                    />
+                    <span>{amenity}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* ── SECTION 8: HIGH RESOLUTION PHOTOS ── */}
@@ -1482,7 +1554,37 @@ function Editor({
           )}
         </div>
 
-        {/* ── SECTION 9: SUBMISSION ACTION ── */}
+        {/* ── SECTION 9: MAP & PINPOINT GEOLOCATION ── */}
+        <div className="panel">
+          <div className="flex items-center gap-2 mb-4">
+            <MapPin size={20} className="text-forest" />
+            <div>
+              <h3 className="!text-lg font-semibold text-stone-900">Map &amp; Pinpoint Geolocation</h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Pinpoint the exact location on the interactive map for prospective buyers and tenants
+              </p>
+            </div>
+          </div>
+
+          <PropertyLocationPicker
+            city={city}
+            locality={locality}
+            address={address}
+            coordinates={coordinates}
+            locationPrecision={locationPrecision}
+            radiusMeters={radiusMeters}
+            hideExactAddress={hideExactAddress}
+            onCityChange={setCity}
+            onLocalityChange={setLocality}
+            onAddressChange={setAddress}
+            onCoordinatesChange={setCoordinates}
+            onPrecisionChange={setLocationPrecision}
+            onRadiusChange={setRadiusMeters}
+            onHideExactAddressChange={setHideExactAddress}
+          />
+        </div>
+
+        {/* ── SECTION 10: SUBMISSION ACTION ── */}
         <div className="flex items-center justify-between gap-4 pt-4 border-t border-stone-200">
           <p className="text-xs text-stone-500">
             {item
