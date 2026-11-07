@@ -1335,34 +1335,42 @@ function Editor({
             )}
           </div>
 
-          {/* Compact Facility Labels with Checkboxes */}
+          {/* Compact Facility Labels with Checkboxes in a scrollable area */}
           {filteredAmenities.length === 0 ? (
             <div className="p-4 text-center text-xs text-stone-400 bg-stone-50 rounded-xl border border-dashed border-stone-200">
               No amenities match &quot;{amenitySearch}&quot;.
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {filteredAmenities.map((amenity) => {
-                const isSelected = amenities.includes(amenity);
-                return (
-                  <label
-                    key={amenity}
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
-                      isSelected
-                        ? 'border-[#749546] bg-[#ecf2e4] text-stone-900 font-semibold shadow-2xs'
-                        : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleAmenity(amenity)}
-                      className="w-3.5 h-3.5 rounded text-[#163e35] focus:ring-[#163e35] border-stone-300 cursor-pointer accent-[#163e35]"
-                    />
-                    <span className={isSelected ? 'text-stone-900 font-semibold' : 'text-stone-700'}>{amenity}</span>
-                  </label>
-                );
-              })}
+            <div className="p-3 bg-stone-50/50 rounded-xl border border-stone-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-stone-500">
+                  Available Facilities ({filteredAmenities.length})
+                </span>
+                <span className="text-[11px] text-stone-400">Scroll to view all</span>
+              </div>
+              <div className="max-h-56 overflow-y-auto pr-1 flex flex-wrap gap-2 scrollbar-thin">
+                {filteredAmenities.map((amenity) => {
+                  const isSelected = amenities.includes(amenity);
+                  return (
+                    <label
+                      key={amenity}
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
+                        isSelected
+                          ? 'border-[#749546] bg-[#ecf2e4] text-stone-900 font-semibold shadow-2xs'
+                          : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleAmenity(amenity)}
+                        className="w-3.5 h-3.5 rounded text-[#163e35] focus:ring-[#163e35] border-stone-300 cursor-pointer accent-[#163e35]"
+                      />
+                      <span className={isSelected ? 'text-stone-900 font-semibold' : 'text-stone-700'}>{amenity}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
