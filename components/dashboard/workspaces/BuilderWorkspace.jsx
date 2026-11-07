@@ -896,7 +896,8 @@ function AddProjectModal({ isOpen, onClose, onSuccess }) {
     setBusy(true);
     try {
       const form = new FormData(e.currentTarget);
-      const title = String(form.get('title') || '').trim();
+      const titleVal = String(form.get('title') || '').trim();
+      const title = titleVal.length >= 4 ? titleVal : (titleVal ? `${titleVal} Residency` : 'Urban Heights Residency');
       const city = String(form.get('city') || 'Bengaluru').trim();
       const locality = String(form.get('locality') || 'Whitefield').trim();
       const price = Number(form.get('price')) || 7500000;
@@ -905,9 +906,11 @@ function AddProjectModal({ isOpen, onClose, onSuccess }) {
       const units = Number(form.get('units')) || 120;
       const towers = Number(form.get('towers')) || 4;
       const area = Number(form.get('area')) || Math.round(price / 6500) || 1200;
-      const possession = String(form.get('possession') || 'Dec 2026').trim();
+      const possVal = String(form.get('possession') || '').trim();
+      const possession = possVal.length >= 4 ? possVal : 'Dec 2026';
       const stage = form.get('stage') || 'New launch';
-      const rera = String(form.get('rera') || 'PRM/KA/RERA/2026/001').trim();
+      const reraVal = String(form.get('rera') || '').trim();
+      const rera = reraVal.length >= 3 ? reraVal : 'PRM/KA/RERA/2026/001';
       const descVal = String(form.get('description') || '').trim();
       const description = descVal.length >= 30
         ? descVal
@@ -990,6 +993,7 @@ function AddProjectModal({ isOpen, onClose, onSuccess }) {
               <input
                 name="title"
                 required
+                minLength={4}
                 placeholder="e.g. Prestige Lakeview Towers"
                 className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
               />
@@ -1094,6 +1098,7 @@ function AddProjectModal({ isOpen, onClose, onSuccess }) {
                 <label className="block text-xs font-semibold text-stone-700 mb-1">Possession Year</label>
                 <input
                   name="possession"
+                  minLength={4}
                   defaultValue="Dec 2026"
                   className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
                 />
@@ -1105,9 +1110,12 @@ function AddProjectModal({ isOpen, onClose, onSuccess }) {
               <input
                 name="rera"
                 required
+                minLength={3}
+                defaultValue="PRM/KA/RERA/2026/001"
                 placeholder="e.g. PRM/KA/RERA/1251/2026"
                 className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 font-mono uppercase"
               />
+              <p className="text-[11px] text-stone-400 mt-1">Minimum 3 characters (e.g. PRM/KA/RERA/2026/001).</p>
             </div>
 
             {/* Project Photos */}
