@@ -89,7 +89,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
             <Briefcase size={14} /> Broker &amp; Channel Command
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            {user?.company || user?.name || 'Broker Agency'}
+            Broker
           </h2>
           <p className="text-xs sm:text-sm text-[#ecf2e4]/90 leading-relaxed">
             Manage your verified property portfolio, accelerate lead pipeline progression, organize inspection tours, and close buyer deals across key localities.

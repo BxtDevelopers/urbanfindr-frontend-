@@ -325,7 +325,7 @@ export function Header() {
                       </p>
                       <p className="text-[11px] text-stone-500 truncate capitalize">
                         {user.role === 'broker'
-                          ? (user.company || user.name || 'Broker')
+                          ? 'Broker'
                           : user.role === 'owner'
                           ? 'Property Owner'
                           : user.role === 'builder'
@@ -742,7 +742,7 @@ export function Header() {
                 >
                   {`My dashboard (${
                     user.role === 'broker'
-                      ? (user.company || user.name || 'Broker')
+                      ? 'Broker'
                       : user.role === 'owner'
                       ? 'Owner'
                       : user.role === 'builder'

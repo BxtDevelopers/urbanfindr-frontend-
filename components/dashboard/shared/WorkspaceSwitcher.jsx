@@ -11,7 +11,7 @@ export default function WorkspaceSwitcher({ compact = false }) {
 
   const displayLabel =
     activeWorkspace === 'broker' || user?.role === 'broker'
-      ? (user?.company || user?.name || 'Broker')
+      ? 'Broker'
       : activeWorkspace === 'owner' || user?.role === 'owner'
       ? (user?.name || 'Property Owner')
       : activeWorkspace === 'builder' || user?.role === 'builder'

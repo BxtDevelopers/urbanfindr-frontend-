@@ -257,7 +257,7 @@ export default function HomePage() {
                 setServicesDropdownOpen((prev) => !prev);
               }}
             >
-              <span>{user?.role === 'broker' ? (user.company || user.name || 'Broker') : 'Service Provider'}</span>
+              <span>{user?.role === 'broker' ? 'Broker' : 'Service Provider'}</span>
               <ChevronDown
                 size={14}
                 className={`transition-transform duration-200 ${
