@@ -1282,9 +1282,73 @@ function Editor({
             )}
           </div>
 
-          {/* Selected Amenities Pills (Capsules with website green theme border and X icon) */}
+          {/* Search Amenities Input */}
+          <div className="relative mb-3">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+            <input
+              type="text"
+              value={amenitySearch}
+              onChange={(e) => setAmenitySearch(e.target.value)}
+              placeholder="Search amenities (e.g. Lift, Water supply, Gym, Security)…"
+              className="w-full pl-9 pr-8 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-forest/20 focus:border-forest"
+            />
+            {amenitySearch && (
+              <button
+                type="button"
+                onClick={() => setAmenitySearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 rounded cursor-pointer"
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Available Facilities: 2 lines visible at a time with vertical scroll down to view remaining */}
+          {filteredAmenities.length === 0 ? (
+            <div className="p-4 text-center text-xs text-stone-400 bg-stone-50 rounded-xl border border-dashed border-stone-200">
+              No amenities match &quot;{amenitySearch}&quot;.
+            </div>
+          ) : (
+            <div className="p-3 bg-stone-50/50 rounded-xl border border-stone-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-stone-500">
+                  Available Facilities ({filteredAmenities.length})
+                </span>
+                <span className="text-[11px] font-semibold text-forest">Scroll down to see more &darr;</span>
+              </div>
+              <div
+                className="max-h-[82px] overflow-y-auto pr-1 flex flex-wrap gap-2 scrollbar-thin"
+                style={{ scrollbarWidth: 'thin', scrollbarColor: '#749546 #f1f5f9' }}
+              >
+                {filteredAmenities.map((amenity) => {
+                  const isSelected = amenities.includes(amenity);
+                  return (
+                    <label
+                      key={amenity}
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
+                        isSelected
+                          ? 'border-[#749546] bg-[#ecf2e4] text-stone-900 font-semibold shadow-2xs'
+                          : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleAmenity(amenity)}
+                        className="w-3.5 h-3.5 rounded text-[#163e35] focus:ring-[#163e35] border-stone-300 cursor-pointer accent-[#163e35]"
+                      />
+                      <span className={isSelected ? 'text-stone-900 font-semibold' : 'text-stone-700'}>{amenity}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Selected Amenities Pills (Comes AFTER the amenities, capsules with website green theme border and X icon) */}
           {amenities.length > 0 && (
-            <div className="mb-4 p-3 bg-[#ecf2e4]/40 rounded-xl border border-[#d6dcd3]">
+            <div className="mt-4 p-3 bg-[#ecf2e4]/40 rounded-xl border border-[#d6dcd3]">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider">
                   Selected Facilities ({amenities.length})
@@ -1309,67 +1373,6 @@ function Editor({
                     </button>
                   </span>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* Search Amenities Input */}
-          <div className="relative mb-3">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
-            <input
-              type="text"
-              value={amenitySearch}
-              onChange={(e) => setAmenitySearch(e.target.value)}
-              placeholder="Search amenities (e.g. Lift, Water supply, Gym, Security)…"
-              className="w-full pl-9 pr-8 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-forest/20 focus:border-forest"
-            />
-            {amenitySearch && (
-              <button
-                type="button"
-                onClick={() => setAmenitySearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 rounded cursor-pointer"
-                title="Clear search"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          {/* Compact Facility Labels with Checkboxes in a scrollable area */}
-          {filteredAmenities.length === 0 ? (
-            <div className="p-4 text-center text-xs text-stone-400 bg-stone-50 rounded-xl border border-dashed border-stone-200">
-              No amenities match &quot;{amenitySearch}&quot;.
-            </div>
-          ) : (
-            <div className="p-3 bg-stone-50/50 rounded-xl border border-stone-200">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold text-stone-500">
-                  Available Facilities ({filteredAmenities.length})
-                </span>
-                <span className="text-[11px] text-stone-400">Scroll to view all</span>
-              </div>
-              <div className="max-h-56 overflow-y-auto pr-1 flex flex-wrap gap-2 scrollbar-thin">
-                {filteredAmenities.map((amenity) => {
-                  const isSelected = amenities.includes(amenity);
-                  return (
-                    <label
-                      key={amenity}
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
-                        isSelected
-                          ? 'border-[#749546] bg-[#ecf2e4] text-stone-900 font-semibold shadow-2xs'
-                          : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleAmenity(amenity)}
-                        className="w-3.5 h-3.5 rounded text-[#163e35] focus:ring-[#163e35] border-stone-300 cursor-pointer accent-[#163e35]"
-                      />
-                      <span className={isSelected ? 'text-stone-900 font-semibold' : 'text-stone-700'}>{amenity}</span>
-                    </label>
-                  );
-                })}
               </div>
             </div>
           )}
