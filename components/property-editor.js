@@ -119,6 +119,9 @@ function Editor({
   const [price, setPrice] = useState(item?.price ?? '');
   const [deposit, setDeposit] = useState(item?.deposit ?? '');
   const [maintenance, setMaintenance] = useState(item?.maintenance ?? '');
+  const [negotiable, setNegotiable] = useState(
+    item?.negotiable !== undefined ? Boolean(item.negotiable) : true
+  );
 
   // Dimensions & Specs
   const [area, setArea] = useState(item?.area ?? '');
@@ -431,6 +434,7 @@ function Editor({
           ? 0
           : Number(deposit) || 0,
         maintenance: purpose === 'buy' ? 0 : Number(maintenance) || 0,
+        negotiable: purpose === 'buy' ? Boolean(negotiable) : false,
         bedrooms: isPlot || isPG || isCommercial ? 0 : Number(bedrooms) || 0,
         bathrooms: isPlot ? 0 : isCommercial ? Number(bathrooms) || 0 : isPG ? 1 : Number(bathrooms) || 0,
         area: Number(area),
@@ -1048,6 +1052,20 @@ function Editor({
                   placeholder="0 if included in rent"
                   className="input"
                 />
+              </Field>
+            )}
+
+            {/* Negotiable Option (For Buy section where monthly maintenance was removed) */}
+            {purpose === 'buy' && (
+              <Field label="Negotiable">
+                <select
+                  value={negotiable ? 'yes' : 'no'}
+                  onChange={(e) => setNegotiable(e.target.value === 'yes')}
+                  className="input font-medium text-stone-900"
+                >
+                  <option value="yes">Negotiable</option>
+                  <option value="no">Non-negotiable</option>
+                </select>
               </Field>
             )}
           </div>
