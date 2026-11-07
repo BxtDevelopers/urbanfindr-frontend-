@@ -844,8 +844,52 @@ function BuilderSettingsSection() {
 function AddProjectModal({ isOpen, onClose, onSuccess }) {
   const { user, toast } = useApp();
   const [busy, setBusy] = useState(false);
+  const [images, setImages] = useState(['/photos/builder-1.jpg']);
+  const [uploading, setUploading] = useState(false);
+  const [customUrl, setCustomUrl] = useState('');
 
   if (!isOpen) return null;
+
+  async function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await api('uploads', { method: 'POST', body: fd });
+      if (res?.url) {
+        setImages((prev) => [res.url, ...prev.filter((img) => img !== '/photos/builder-1.jpg')]);
+        toast('Project photo uploaded!');
+      } else if (res?.urls?.length) {
+        setImages((prev) => [...res.urls, ...prev.filter((img) => img !== '/photos/builder-1.jpg')]);
+        toast('Project photos uploaded!');
+      }
+    } catch (err) {
+      toast(err.message || 'Failed to upload photo.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  function handleAddCustomUrl() {
+    const val = customUrl.trim();
+    if (!val) return;
+    if (!/^https:\/\//i.test(val) && !/^\/photos\//i.test(val) && !/^\/uploads\//i.test(val)) {
+      toast('Please enter a valid HTTPS URL (e.g. https://...)');
+      return;
+    }
+    setImages((prev) => [val, ...prev.filter((img) => img !== '/photos/builder-1.jpg')]);
+    setCustomUrl('');
+  }
+
+  function handleRemoveImage(index) {
+    setImages((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : ['/photos/builder-1.jpg'];
+    });
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -869,6 +913,13 @@ function AddProjectModal({ isOpen, onClose, onSuccess }) {
         ? descVal
         : `${title} is a premium residential development in ${locality}, ${city} offering luxury apartments, world-class clubhouse amenities, landscaped gardens, and 24/7 security.`;
 
+      const safeImages = images.filter((img) =>
+        /^https:\/\//i.test(img) ||
+        /^\/uploads\/[a-f0-9-]+\.(jpg|png|webp)$/.test(img) ||
+        /^\/photos\/[a-z0-9-]+\.(jpg|jpeg|png|webp)$/.test(img)
+      );
+      const finalImages = safeImages.length > 0 ? safeImages : ['/photos/builder-1.jpg'];
+
       const data = {
         title,
         builder: user?.company || user?.name || 'Builder Developer',
@@ -885,10 +936,10 @@ function AddProjectModal({ isOpen, onClose, onSuccess }) {
         rera,
         description,
         amenities: ['Clubhouse', 'Swimming Pool', 'Gym', 'Park', '24/7 Security'],
-        images: ['/interior/living-room.jpg'],
+        images: finalImages,
         configurations: [
-          { name: '2 BHK', area: Math.round(area * 0.9), price, plan: '/interior/living-room.jpg' },
-          { name: '3 BHK', area: Math.round(area * 1.3), price: maxPrice, plan: '/interior/living-room.jpg' }
+          { name: '2 BHK', area: Math.round(area * 0.9), price, plan: '/images/plan-1.svg' },
+          { name: '3 BHK', area: Math.round(area * 1.3), price: maxPrice, plan: '/images/plan-2.svg' }
         ]
       };
 
@@ -1057,6 +1108,62 @@ function AddProjectModal({ isOpen, onClose, onSuccess }) {
                 placeholder="e.g. PRM/KA/RERA/1251/2026"
                 className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 font-mono uppercase"
               />
+            </div>
+
+            {/* Project Photos */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-stone-700">Project Photos &amp; Elevation *</label>
+                <label className="text-xs font-bold text-[#163e35] hover:underline cursor-pointer flex items-center gap-1">
+                  <UploadCloud size={13} />
+                  <span>{uploading ? 'Uploading…' : 'Upload photo'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+
+              {/* Photo thumbnails */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                {images.map((img, idx) => (
+                  <div key={idx} className="relative w-14 h-14 rounded-lg overflow-hidden border border-stone-200 group bg-stone-100 shrink-0">
+                    <img src={img} alt={`Project photo ${idx + 1}`} className="w-full h-full object-cover" />
+                    {images.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-1 right-1 p-0.5 bg-black/70 text-white rounded-full hover:bg-black transition-opacity"
+                        title="Remove photo"
+                      >
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Custom HTTPS Image URL input */}
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                  placeholder="Or enter HTTPS photo URL (https://...)"
+                  className="flex-1 px-3 py-1.5 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomUrl}
+                  className="px-3 py-1.5 text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors shrink-0"
+                >
+                  Add URL
+                </button>
+              </div>
+              <p className="text-[11px] text-stone-400 mt-1">Accepts uploaded JPEG/PNG/WebP photos or HTTPS image links.</p>
             </div>
 
             <div>
