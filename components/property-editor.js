@@ -1282,9 +1282,9 @@ function Editor({
             )}
           </div>
 
-          {/* Selected Amenities Pills (Capsules with purple border and X icon matching user reference) */}
+          {/* Selected Amenities Pills (Capsules with website green theme border and X icon) */}
           {amenities.length > 0 && (
-            <div className="mb-4 p-3 bg-purple-50/50 rounded-xl border border-purple-200">
+            <div className="mb-4 p-3 bg-[#ecf2e4]/40 rounded-xl border border-[#d6dcd3]">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider">
                   Selected Facilities ({amenities.length})
@@ -1295,13 +1295,13 @@ function Editor({
                 {amenities.map((item) => (
                   <span
                     key={item}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border border-purple-400 bg-[#faf5ff] text-stone-900 shadow-2xs transition-all animate-in fade-in zoom-in-95 duration-150"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border border-[#749546] bg-[#ecf2e4] text-stone-900 shadow-2xs transition-all animate-in fade-in zoom-in-95 duration-150"
                   >
                     <span className="text-stone-900">{item}</span>
                     <button
                       type="button"
                       onClick={() => toggleAmenity(item)}
-                      className="p-0.5 hover:bg-stone-200 rounded-full transition-colors cursor-pointer text-stone-600 hover:text-stone-900 inline-flex items-center justify-center ml-0.5"
+                      className="p-0.5 hover:bg-[#d8edb3] rounded-full transition-colors cursor-pointer text-[#163e35] hover:text-black inline-flex items-center justify-center ml-0.5"
                       title={`Remove ${item}`}
                       aria-label={`Remove ${item}`}
                     >
@@ -1349,7 +1349,7 @@ function Editor({
                     key={amenity}
                     className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
                       isSelected
-                        ? 'border-purple-400 bg-purple-50/70 text-stone-900 font-semibold shadow-2xs'
+                        ? 'border-[#749546] bg-[#ecf2e4] text-stone-900 font-semibold shadow-2xs'
                         : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'
                     }`}
                   >
@@ -1357,7 +1357,7 @@ function Editor({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleAmenity(amenity)}
-                      className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500 border-stone-300 cursor-pointer accent-purple-600"
+                      className="w-3.5 h-3.5 rounded text-[#163e35] focus:ring-[#163e35] border-stone-300 cursor-pointer accent-[#163e35]"
                     />
                     <span className={isSelected ? 'text-stone-900 font-semibold' : 'text-stone-700'}>{amenity}</span>
                   </label>
