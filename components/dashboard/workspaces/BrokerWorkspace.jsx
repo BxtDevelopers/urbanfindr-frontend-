@@ -107,7 +107,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
             onClick={() => onSelectSection('leads')}
             className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20"
           >
-            Leads Pipeline ({stats.totalLeads})
+            New Leads ({stats.totalLeads})
           </button>
         </div>
       </div>
@@ -163,7 +163,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
       <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-stone-900 text-base">Recent Leads Pipeline</h3>
+            <h3 className="font-bold text-stone-900 text-base">Recent New Leads</h3>
             <p className="text-xs text-stone-500">Prospective buyers inquiring on your properties</p>
           </div>
           <button
@@ -171,7 +171,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
             onClick={() => onSelectSection('leads')}
             className="text-xs font-bold text-sky-800 hover:text-sky-900 flex items-center gap-1"
           >
-            <span>Open Pipeline</span>
+            <span>Open Leads</span>
             <ArrowUpRight size={13} />
           </button>
         </div>
@@ -454,7 +454,7 @@ function BrokerLeadsSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-stone-900">Leads Pipeline</h2>
+        <h2 className="text-xl font-bold text-stone-900">New Leads</h2>
         <p className="text-xs text-stone-500">Track prospective buyers across New, Contacted, Interested, Visit, Negotiation &amp; Converted</p>
       </div>
 

@@ -84,16 +84,17 @@ export default function PromotionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200">
-        <div className="p-6 border-b border-stone-100 flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-stone-900/70 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl max-w-xl w-full my-auto max-h-[88vh] flex flex-col shadow-2xl border border-stone-200 overflow-hidden">
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-stone-100 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
               <Sparkles size={20} />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-stone-900">Promote Listing</h2>
-              <p className="text-xs text-stone-500 truncate max-w-sm">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 truncate">Promote Listing</h2>
+              <p className="text-xs text-stone-500 truncate max-w-md">
                 {target.title || target.name}
               </p>
             </div>
@@ -101,18 +102,20 @@ export default function PromotionModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg"
+            className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors shrink-0"
+            aria-label="Close"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        {/* Scrollable Plans Body */}
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1">
           <p className="text-xs text-stone-600">
-            Select a promotional plan to increase inquiries, boost views, and reach prospective buyers or tenants faster:
+            Select a promotional boost to increase buyer enquiries, rank higher in search, and get verified spotlight reach:
           </p>
 
-          <div className="grid gap-3">
+          <div className="grid gap-2.5">
             {plans.map((p) => {
               const isSelected = selectedPlan === p.id;
               const Icon = p.icon;
@@ -120,43 +123,43 @@ export default function PromotionModal({
                 <div
                   key={p.id}
                   onClick={() => setSelectedPlan(p.id)}
-                  className={`p-4 rounded-xl border-2 transition-all cursor-pointer relative ${
+                  className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer relative ${
                     isSelected
                       ? 'border-[#163e35] bg-[#ecf2e4]/40 shadow-xs'
-                      : 'border-stone-200 hover:border-stone-300'
+                      : 'border-stone-200 hover:border-stone-300 bg-white'
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                           isSelected ? 'bg-[#163e35] text-[#d8edb3]' : 'bg-stone-100 text-stone-600'
                         }`}
                       >
                         <Icon size={16} />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-sm text-stone-900">{p.title}</span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
                             {p.badge}
                           </span>
                         </div>
-                        <span className="text-xs text-stone-500">{p.duration} duration</span>
+                        <span className="text-[11px] text-stone-500">{p.duration} duration</span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-base font-extrabold text-stone-900">
+                    <div className="text-right shrink-0">
+                      <div className="text-base font-extrabold text-[#163e35]">
                         {money(p.price)}
                       </div>
                     </div>
                   </div>
 
-                  <ul className="mt-3 pt-3 border-t border-stone-100 grid sm:grid-cols-2 gap-1.5 text-xs text-stone-600">
+                  <ul className="mt-2.5 pt-2.5 border-t border-stone-100 grid sm:grid-cols-2 gap-1 text-[11px] text-stone-600">
                     {p.features.map((feat, idx) => (
                       <li key={idx} className="flex items-center gap-1.5">
-                        <Check size={13} className="text-emerald-700 shrink-0" />
-                        <span>{feat}</span>
+                        <Check size={12} className="text-emerald-700 shrink-0" />
+                        <span className="truncate">{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -164,35 +167,36 @@ export default function PromotionModal({
               );
             })}
           </div>
+        </div>
 
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-stone-100">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={busy}
-              className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handlePromote}
-              disabled={busy}
-              className="px-5 py-2.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-sm flex items-center gap-2"
-            >
-              {busy ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Activating…
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} />
-                  Activate Promotion
-                </>
-              )}
-            </button>
-          </div>
+        {/* Fixed Footer Actions */}
+        <div className="p-3.5 sm:p-4 border-t border-stone-100 flex items-center justify-end gap-3 bg-stone-50/80 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handlePromote}
+            disabled={busy}
+            className="px-5 py-2.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs flex items-center gap-2 transition-all cursor-pointer"
+          >
+            {busy ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Activating…
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} />
+                Activate Promotion
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

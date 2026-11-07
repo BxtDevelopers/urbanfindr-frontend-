@@ -40,7 +40,7 @@ export default function DashboardHeader({
     requests: activeWorkspace === 'provider' ? 'Incoming Client Requests & Offers' : 'My Service Requests & Offers',
     bookings: activeWorkspace === 'provider' ? 'Incoming Client Requests & Offers' : 'My Service Requests & Offers',
     enquiries: 'Customer Enquiries',
-    leads: 'Buyer & Tenant Leads',
+    leads: activeWorkspace === 'broker' ? 'New Leads' : 'Buyer & Tenant Leads',
     visits: 'Site & Property Visits',
     clients: 'Client Directory',
     favorites: 'Saved Properties',

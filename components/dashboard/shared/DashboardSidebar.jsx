@@ -74,8 +74,7 @@ export default function DashboardSidebar({
     broker: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
       { id: 'listings', label: 'My Listings', icon: House },
-      { id: 'add-property', label: 'Add Property', icon: PlusCircle, isAction: true },
-      { id: 'leads', label: 'Leads Pipeline', icon: ClipboardList },
+      { id: 'leads', label: 'New Leads', icon: ClipboardList },
       { id: 'visits', label: 'Property Visits', icon: Calendar },
       { id: 'clients', label: 'Clients', icon: Users },
       { id: 'analytics', label: 'Performance Analytics', icon: BarChart3 },
