@@ -13,15 +13,12 @@ import {
   BriefcaseBusiness,
   MapPin,
   Sparkles,
-  ShieldCheck,
-  Building2,
   Coins,
   Check,
   Plus,
   Compass,
   FileText,
   Camera,
-  Handshake,
   Search,
 } from 'lucide-react';
 import { api, useApp, useData } from './providers';
@@ -81,7 +78,17 @@ function Editor({
   );
 
   // Ownership role (adapted dynamically per category: owner, broker, channel_partner, builder)
-  const [ownership, setOwnership] = useState(item?.ownership || initialOwnership || 'owner');
+  const [ownership, setOwnership] = useState(
+    item?.ownership ||
+      initialOwnership ||
+      (user?.role === 'channel_partner'
+        ? 'channel_partner'
+        : user?.role === 'broker'
+        ? 'broker'
+        : user?.role === 'builder'
+        ? 'builder'
+        : 'owner')
+  );
   const [company, setCompany] = useState(user?.company || '');
   const [reraId, setReraId] = useState(user?.reraId || '');
 
@@ -391,16 +398,6 @@ function Editor({
         throw new Error('Please add at least 1 photo for your listing.');
       }
 
-      // Channel Partner validation: Firm name and RERA ID are strictly REQUIRED
-      if (ownership === 'channel_partner') {
-        if (!company || !company.trim()) {
-          throw new Error('Channel Partner Agency / Firm Name is required.');
-        }
-        if (!reraId || !reraId.trim()) {
-          throw new Error('Channel Partner RERA Registration ID is required.');
-        }
-      }
-
       // All validation passed -> Trigger Security Captcha verification
       setShowCaptcha(true);
     } catch (err) {
@@ -584,159 +581,7 @@ function Editor({
           </div>
         </div>
 
-        {/* ── SECTION 2: LISTING ROLE & OWNERSHIP (OWNER, BROKER, CHANNEL PARTNER, BUILDER) ── */}
-        <div className="panel">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="!text-lg font-semibold text-stone-900">
-                You Are Listing As <span className="text-red-500 font-bold">*</span>
-              </h3>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Select your role: Owner, Real Estate Broker, Channel Partner, or Builder
-              </p>
-            </div>
-            <ShieldCheck size={20} className="text-forest" />
-          </div>
-
-          <div className={`grid gap-3 ${purpose === 'buy' ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
-            {/* Direct Owner Option */}
-            <button
-              type="button"
-              onClick={() => setOwnership('owner')}
-              className={`p-3.5 rounded-xl border text-left transition-all ${
-                ownership === 'owner'
-                  ? 'border-forest bg-[#edf3e2] text-stone-900 font-semibold shadow-sm'
-                  : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <House size={17} className={ownership === 'owner' ? 'text-forest' : 'text-stone-400'} />
-                <span className="text-sm">
-                  {purpose === 'pg'
-                    ? 'PG Owner / Host'
-                    : purpose === 'commercial'
-                    ? 'Commercial Owner'
-                    : 'Direct Property Owner'}
-                </span>
-              </div>
-              <p className="text-[11px] font-normal text-stone-500">
-                Zero brokerage, direct calls from seekers
-              </p>
-            </button>
-
-            {/* Real Estate Broker Option */}
-            <button
-              type="button"
-              onClick={() => setOwnership('broker')}
-              className={`p-3.5 rounded-xl border text-left transition-all ${
-                ownership === 'broker'
-                  ? 'border-forest bg-[#edf3e2] text-stone-900 font-semibold shadow-sm'
-                  : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <BriefcaseBusiness
-                  size={17}
-                  className={ownership === 'broker' ? 'text-forest' : 'text-stone-400'}
-                />
-                <span className="text-sm">
-                  {purpose === 'commercial'
-                    ? 'Commercial Broker'
-                    : purpose === 'pg'
-                    ? 'Property Manager / Agent'
-                    : 'Real Estate Broker'}
-                </span>
-              </div>
-              <p className="text-[11px] font-normal text-stone-500">
-                Certified agent representing the property
-              </p>
-            </button>
-
-            {/* Channel Partner (CP) Option */}
-            {purpose !== 'pg' && (
-              <button
-                type="button"
-                onClick={() => setOwnership('channel_partner')}
-                className={`p-3.5 rounded-xl border text-left transition-all ${
-                  ownership === 'channel_partner'
-                    ? 'border-forest bg-[#edf3e2] text-stone-900 font-semibold shadow-sm'
-                    : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Handshake
-                    size={17}
-                    className={
-                      ownership === 'channel_partner' ? 'text-forest' : 'text-stone-400'
-                    }
-                  />
-                  <span className="text-sm">Channel Partner (CP)</span>
-                </div>
-                <p className="text-[11px] font-normal text-stone-500">
-                  Authorized developer sales partner / mandate
-                </p>
-              </button>
-            )}
-
-            {/* Builder / Developer Option (Only for Buy / Sale) */}
-            {purpose === 'buy' && (
-              <button
-                type="button"
-                onClick={() => setOwnership('builder')}
-                className={`p-3.5 rounded-xl border text-left transition-all ${
-                  ownership === 'builder'
-                    ? 'border-forest bg-[#edf3e2] text-stone-900 font-semibold shadow-sm'
-                    : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Building2
-                    size={17}
-                    className={ownership === 'builder' ? 'text-forest' : 'text-stone-400'}
-                  />
-                  <span className="text-sm">Builder / Developer</span>
-                </div>
-                <p className="text-[11px] font-normal text-stone-500">
-                  New project or residential layout launch
-                </p>
-              </button>
-            )}
-          </div>
-
-          {/* Channel Partner Agency Details (REQUIRED when CP is selected) */}
-          {ownership === 'channel_partner' && (
-            <div className="mt-4 p-3.5 bg-[#f4f7ee] rounded-xl border border-[#d2dfc4] grid sm:grid-cols-2 gap-3 text-xs">
-              <div>
-                <label className="block font-bold text-forest uppercase tracking-wider mb-1">
-                  Channel Partner Agency / Firm Name <span className="text-red-500 font-bold">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Apex Realty Partners"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  className="input !text-xs !py-1.5"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-forest uppercase tracking-wider mb-1">
-                  CP RERA Registration ID <span className="text-red-500 font-bold">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. PRM/KA/RERA/1251/..."
-                  value={reraId}
-                  onChange={(e) => setReraId(e.target.value)}
-                  className="input !text-xs !py-1.5"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── SECTION 3: LOCATION & ADDRESS ── */}
+        {/* ── SECTION 2: LOCATION & ADDRESS ── */}
         <div className="panel">
           <div className="flex items-center gap-2 mb-4">
             <MapPin size={20} className="text-forest" />
@@ -818,7 +663,7 @@ function Editor({
           </div>
         </div>
 
-        {/* ── SECTION 4: PROPERTY SPECIFICATIONS ── */}
+        {/* ── SECTION 3: PROPERTY SPECIFICATIONS ── */}
         <div className="panel">
           <div className="flex items-center gap-2 mb-4">
             <Compass size={20} className="text-forest" />
@@ -1132,7 +977,7 @@ function Editor({
           </div>
         </div>
 
-        {/* ── SECTION 5: PRICING & FINANCIALS ── */}
+        {/* ── SECTION 4: PRICING & FINANCIALS ── */}
         <div className="panel">
           <div className="flex items-center gap-2 mb-4">
             <Coins size={20} className="text-forest" />
@@ -1206,7 +1051,7 @@ function Editor({
           </div>
         </div>
 
-        {/* ── SECTION 6: TITLE & STORY ── */}
+        {/* ── SECTION 5: TITLE & STORY ── */}
         <div className="panel">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -1262,7 +1107,7 @@ function Editor({
           </div>
         </div>
 
-        {/* ── SECTION 7: AMENITIES & FACILITIES ── */}
+        {/* ── SECTION 6: AMENITIES & FACILITIES ── */}
         <div className="panel">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div>
@@ -1378,7 +1223,7 @@ function Editor({
           )}
         </div>
 
-        {/* ── SECTION 8: HIGH RESOLUTION PHOTOS ── */}
+        {/* ── SECTION 7: HIGH RESOLUTION PHOTOS ── */}
         <div className="panel">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -1565,7 +1410,7 @@ function Editor({
           )}
         </div>
 
-        {/* ── SECTION 9: MAP & PINPOINT GEOLOCATION ── */}
+        {/* ── SECTION 8: MAP & PINPOINT GEOLOCATION ── */}
         <div className="panel">
           <div className="flex items-center gap-2 mb-4">
             <MapPin size={20} className="text-forest" />
@@ -1595,7 +1440,7 @@ function Editor({
           />
         </div>
 
-        {/* ── SECTION 10: SUBMISSION ACTION ── */}
+        {/* ── SECTION 9: SUBMISSION ACTION ── */}
         <div className="flex items-center justify-between gap-4 pt-4 border-t border-stone-200">
           <p className="text-xs text-stone-500">
             {item

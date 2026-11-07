@@ -10,13 +10,10 @@ import {
   Mail,
   Phone,
   Lock,
-  House,
-  BriefcaseBusiness,
   ShieldCheck,
   CheckCircle2,
   Sparkles,
   LogOut,
-  Handshake,
 } from 'lucide-react';
 import { categoryFor } from '@/lib/catalog';
 import { useApp, api } from './providers';
@@ -100,15 +97,6 @@ function AuthGate({ params }) {
     setError('');
 
     try {
-      if (isRegister && ownership === 'channel_partner') {
-        if (!company.trim()) {
-          throw new Error('Please enter your Channel Partner Agency / Firm Name.');
-        }
-        if (!reraId.trim()) {
-          throw new Error('Please enter your CP RERA Registration ID.');
-        }
-      }
-
       const payload = isRegister
         ? {
             name: name.trim(),
@@ -246,112 +234,6 @@ function AuthGate({ params }) {
                     />
                   </div>
                 </div>
-
-                {/* You are listing as */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-forest mb-2">
-                    You Are Listing As <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setOwnership('owner')}
-                      className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
-                        ownership === 'owner'
-                          ? 'border-forest bg-[#edf3e2] text-stone-900 font-bold shadow-sm'
-                          : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <House
-                          size={16}
-                          className={ownership === 'owner' ? 'text-forest' : 'text-stone-400'}
-                        />
-                        <span className="text-xs font-bold">Owner</span>
-                      </div>
-                      <span className="text-[10px] text-stone-500 leading-tight">Direct owner</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setOwnership('broker')}
-                      className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
-                        ownership === 'broker'
-                          ? 'border-forest bg-[#edf3e2] text-stone-900 font-bold shadow-sm'
-                          : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <BriefcaseBusiness
-                          size={16}
-                          className={ownership === 'broker' ? 'text-forest' : 'text-stone-400'}
-                        />
-                        <span className="text-xs font-bold">Broker</span>
-                      </div>
-                      <span className="text-[10px] text-stone-500 leading-tight">Agent / Broker</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setOwnership('channel_partner')}
-                      className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
-                        ownership === 'channel_partner'
-                          ? 'border-forest bg-[#edf3e2] text-stone-900 font-bold shadow-sm'
-                          : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <Handshake
-                          size={16}
-                          className={
-                            ownership === 'channel_partner' ? 'text-forest' : 'text-stone-400'
-                          }
-                        />
-                        <span className="text-xs font-bold">Channel Partner</span>
-                      </div>
-                      <span className="text-[10px] text-stone-500 leading-tight">Project mandate / CP</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Channel Partner Agency Details (REQUIRED when CP is selected) */}
-                {ownership === 'channel_partner' && (
-                  <div className="p-3 bg-[#f4f7ee] rounded-xl border border-[#d2dfc4] space-y-3">
-                    <div className="nb-field">
-                      <label>
-                        Channel Partner Agency / Firm Name <span className="text-red-500 font-bold">*</span>
-                      </label>
-                      <div className="nb-input-box">
-                        <Handshake size={17} className="nb-input-icon" />
-                        <input
-                          name="company"
-                          type="text"
-                          required
-                          placeholder="e.g. Apex Realty Partners"
-                          value={company}
-                          onChange={(e) => setCompany(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="nb-field">
-                      <label>
-                        CP RERA Registration ID <span className="text-red-500 font-bold">*</span>
-                      </label>
-                      <div className="nb-input-box">
-                        <ShieldCheck size={17} className="nb-input-icon" />
-                        <input
-                          name="reraId"
-                          type="text"
-                          required
-                          placeholder="e.g. PRM/KA/RERA/1251/..."
-                          value={reraId}
-                          onChange={(e) => setReraId(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
               </>
             )}
 
