@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp, useData, api } from '../../providers';
 import { date, money } from '@/lib/format';
@@ -203,14 +203,27 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
 
 // Sub-component: Recent Leads List
 function BrokerRecentLeadsList({ onSelectSection }) {
-  const { data, loading } = useData('leads?page=1&limit=5');
+  const { data, loading } = useData('leads?page=1&limit=25');
   const items = data?.items || [];
 
+  // Deduplicate leads by customer + listing so each user inquiry only shows once
+  const uniqueItems = useMemo(() => {
+    const seen = new Set();
+    return items.filter((lead) => {
+      const uKey = String(lead.user?._id || lead.user || lead.phone || lead.email || lead.name || '').toLowerCase().trim();
+      const pKey = String(lead.property?._id || lead.property || lead.project?._id || lead.project || 'prop').toLowerCase().trim();
+      const key = `${uKey}___${pKey}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 5);
+  }, [items]);
+
   if (loading) {
-    return <div className="p-8 text-center text-xs text-stone-400">Loading pipeline leads…</div>;
+    return <div className="p-8 text-center text-xs text-stone-400">Loading leads…</div>;
   }
 
-  if (items.length === 0) {
+  if (uniqueItems.length === 0) {
     return (
       <div className="p-8 text-center space-y-2 border border-dashed border-stone-200 rounded-lg">
         <ClipboardList size={24} className="mx-auto text-stone-300" />
@@ -224,7 +237,7 @@ function BrokerRecentLeadsList({ onSelectSection }) {
 
   return (
     <div className="divide-y divide-stone-100">
-      {items.map((lead) => (
+      {uniqueItems.map((lead) => (
         <div key={lead._id} className="py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -377,6 +390,19 @@ function BrokerLeadsSection() {
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
 
+  // Deduplicate leads so each customer request shows only once. If other users send, their details show.
+  const uniqueItems = useMemo(() => {
+    const seen = new Set();
+    return items.filter((row) => {
+      const uKey = String(row.user?._id || row.user || row.phone || row.email || row.name || row._id).toLowerCase().trim();
+      const pKey = String(row.property?._id || row.property || row.project?._id || row.project || 'prop').toLowerCase().trim();
+      const key = `${uKey}___${pKey}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [items]);
+
   const leadStatuses = [
     'new',
     'contacted',
@@ -425,7 +451,7 @@ function BrokerLeadsSection() {
       render: (row) => <span className="text-stone-500 text-xs">{date(row.createdAt)}</span>
     },
     {
-      header: 'Pipeline Stage',
+      header: 'Lead Stage',
       render: (row) => (
         <select
           value={row.status}
@@ -460,8 +486,8 @@ function BrokerLeadsSection() {
 
       <DataTable
         columns={columns}
-        data={items}
-        emptyTitle="No leads in your pipeline yet"
+        data={uniqueItems}
+        emptyTitle="No leads generated yet"
         emptySubtitle="Inquiries from interested buyers will appear here in real-time."
       />
     </div>
@@ -474,6 +500,19 @@ function BrokerVisitsSection() {
   const { data, loading, reload } = useData('visits?page=1&limit=50');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
+
+  // Deduplicate visits so each customer visit request on a property shows only once. If other users send, their details show.
+  const uniqueVisits = useMemo(() => {
+    const seen = new Set();
+    return items.filter((row) => {
+      const uKey = String(row.user?._id || row.user || row.phone || row.user?.phone || row.user?.email || row._id).toLowerCase().trim();
+      const pKey = String(row.property?._id || row.property || row.project?._id || row.project || 'prop').toLowerCase().trim();
+      const key = `${uKey}___${pKey}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [items]);
 
   async function updateVisit(id, status) {
     setBusy(id);
@@ -562,7 +601,7 @@ function BrokerVisitsSection() {
 
       <DataTable
         columns={columns}
-        data={items}
+        data={uniqueVisits}
         emptyTitle="No visits scheduled"
         emptySubtitle="Client visit requests will be listed here."
       />

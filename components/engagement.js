@@ -39,7 +39,7 @@ export function ConnectPanel({ item, project = false }) {
     const noteVal = form.get('note')?.trim() || '';
 
     try {
-      // 1. Submit site visit
+      // 1. Submit site visit (which securely registers the visit and automatically syncs the lead for the property/broker)
       await api('visits', {
         method: 'POST',
         body: {
@@ -48,34 +48,6 @@ export function ConnectPanel({ item, project = false }) {
           note: noteVal
         }
       });
-
-      // 2. Also register official property enquiry (Lead) so this property goes straight to Property Enquiries in the dashboard
-      try {
-        await api('leads', {
-          method: 'POST',
-          body: project
-            ? {
-                project: item._id,
-                name: user.name,
-                phone: user.phone || '',
-                city: item.city || 'Bengaluru',
-                budget: item.price || 1000000,
-                note: noteVal || 'Project tour inquiry',
-                kind: 'project',
-                preferredAt: new Date(scheduledAtVal).toISOString()
-              }
-            : {
-                property: item._id,
-                source: 'enquiry',
-                note: noteVal || `Site visit enquiry scheduled for ${new Date(scheduledAtVal).toLocaleDateString()}`,
-                budget: item.price || 0,
-                city: item.city || 'Bengaluru',
-                preferredAt: new Date(scheduledAtVal).toISOString()
-              }
-        });
-      } catch (lErr) {
-        console.warn('Lead sync:', lErr);
-      }
 
       e.target?.reset?.();
       toast({
