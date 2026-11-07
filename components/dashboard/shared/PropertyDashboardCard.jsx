@@ -154,49 +154,49 @@ export default function PropertyDashboardCard({
                 <span>{area ? `${area} sq.ft` : 'Standard'}</span>
               </span>
             </div>
-
-            {/* Customer Visit Request Button on Property Card - only visible when property is active (hidden when closed) */}
-            {!isClosed && (
-              <button
-                type="button"
-                onClick={handleOpen}
-                className="w-full p-2.5 bg-[#ecf2e4] hover:bg-[#d8edb3] rounded-xl border border-[#d6dcd3] flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs group/btn"
-                title="Click to view visit requests"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="p-1.5 rounded-lg bg-white/80 text-[#163e35] shrink-0 border border-[#d6dcd3]">
-                    <Calendar size={14} />
-                  </div>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-xs font-bold text-[#163e35] whitespace-nowrap">
-                      Visit Request
-                    </span>
-                    {/* Pulsing live dotted notification indicator when new request has arrived */}
-                    {hasNewRequests && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300 shrink-0">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-                        </span>
-                        <span>{unseenRequests.length} New</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <span className="px-2.5 py-1 bg-white hover:bg-stone-50 text-[#163e35] rounded-lg text-xs font-bold border border-[#d6dcd3] shrink-0 shadow-2xs group-hover/btn:border-[#163e35]/40 transition-colors">
-                  View Details
-                </span>
-              </button>
-            )}
-
-            {isClosed && (
-              <div className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded border border-rose-200">
-                Closed • Hidden from website
-              </div>
-            )}
           </div>
         </Link>
+
+        {/* Customer Visit Request Button on Property Card - cleanly placed outside Link */}
+        <div className="px-4 pb-3">
+          {!isClosed ? (
+            <button
+              type="button"
+              onClick={handleOpen}
+              className="w-full p-2.5 bg-[#ecf2e4] hover:bg-[#d8edb3] rounded-xl border border-[#d6dcd3] flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs group/btn"
+              title="Click to view visit requests"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="p-1.5 rounded-lg bg-white/80 text-[#163e35] shrink-0 border border-[#d6dcd3]">
+                  <Calendar size={14} />
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-bold text-[#163e35] whitespace-nowrap">
+                    Visit Request
+                  </span>
+                  {/* Pulsing live dotted notification indicator when new request has arrived */}
+                  {hasNewRequests && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300 shrink-0">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                      </span>
+                      <span>{unseenRequests.length} New</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <span className="px-2.5 py-1 bg-white hover:bg-stone-50 text-[#163e35] rounded-lg text-xs font-bold border border-[#d6dcd3] shrink-0 shadow-2xs group-hover/btn:border-[#163e35]/40 transition-colors">
+                View Details
+              </span>
+            </button>
+          ) : (
+            <div className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded border border-rose-200 text-center">
+              Closed • Hidden from website
+            </div>
+          )}
+        </div>
 
         {/* Card Actions Footer: Edit, Close / Re-open */}
         <div className="px-4 py-2.5 bg-stone-50 border-t border-stone-100 flex items-center justify-between gap-2">

@@ -2791,7 +2791,11 @@ function ProviderPropertiesSection({ onPromote }) {
         isOpen={!!selectedPropertyForRequests}
         onClose={() => setSelectedPropertyForRequests(null)}
         property={selectedPropertyForRequests?.property}
-        requests={selectedPropertyForRequests?.requests || []}
+        requests={
+          requestsByProperty[String(selectedPropertyForRequests?.property?._id || '')] ||
+          selectedPropertyForRequests?.requests ||
+          []
+        }
         onAcceptRequest={handleAcceptRequest}
         busyId={busy}
       />

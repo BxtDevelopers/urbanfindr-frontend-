@@ -20,14 +20,16 @@ import { money } from '@/lib/format';
 import StatusBadge from './StatusBadge';
 
 export default function PropertyRequestsModal({
-  isOpen,
+  isOpen = true,
   onClose,
   property,
   requests = [],
   onAcceptRequest,
-  busyId
+  busyId,
+  busy
 }) {
   const [mounted, setMounted] = useState(false);
+  const activeBusy = busyId || busy;
 
   useEffect(() => {
     setMounted(true);
@@ -273,12 +275,12 @@ export default function PropertyRequestsModal({
                         ) : (
                           <button
                             type="button"
-                            disabled={busyId === req._id}
+                            disabled={activeBusy === req._id}
                             onClick={() => onAcceptRequest?.(req)}
                             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                           >
                             <Check size={14} />
-                            <span>{busyId === req._id ? 'Accepting…' : 'Accept Request'}</span>
+                            <span>{activeBusy === req._id ? 'Accepting…' : 'Accept Request'}</span>
                           </button>
                         )}
                       </div>

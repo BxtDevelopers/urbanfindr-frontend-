@@ -1511,11 +1511,11 @@ function CustomerPropertiesSection({ onSelectSection }) {
         type: 'Visit Request',
         customerName: v.user?.name || v.customerName || 'Customer',
         email: v.user?.email || v.email || '',
-        phone: v.user?.phone || v.phone || '',
+        phone: v.phone || v.user?.phone || '',
         status: v.status || 'requested',
-        note: v.notes || v.note || '',
-        scheduledAt: v.date ? `${v.date} ${v.timeSlot || ''}`.trim() : null,
-        createdAt: v.createdAt
+        note: v.note || v.notes || '',
+        scheduledAt: v.scheduledAt,
+        createdAt: v.createdAt || v.scheduledAt
       })),
       ...leads.map((l) => ({
         _id: l._id,
@@ -1719,8 +1719,14 @@ function CustomerPropertiesSection({ onSelectSection }) {
       {/* Property Visit Requests Modal */}
       {selectedPropertyForRequests && (
         <PropertyRequestsModal
+          isOpen={true}
           property={selectedPropertyForRequests.property}
-          requests={selectedPropertyForRequests.requests}
+          requests={
+            requestsByProperty[String(selectedPropertyForRequests.property?._id || '')] ||
+            selectedPropertyForRequests.requests ||
+            []
+          }
+          busyId={busy}
           busy={busy}
           onClose={() => setSelectedPropertyForRequests(null)}
           onAcceptRequest={handleAcceptRequest}
