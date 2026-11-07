@@ -39,9 +39,15 @@ import {
 
 export default function BuilderWorkspace({ section = 'overview', onSelectSection }) {
   const { user, toast } = useApp();
-  const { data: dashData } = useData('dashboard');
+  const { data: dashData, reload: reloadDashboard } = useData('dashboard');
   const [promotionTarget, setPromotionTarget] = useState(null);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleProjectSuccess = () => {
+    reloadDashboard?.();
+    setRefreshKey((k) => k + 1);
+  };
 
   const stats = dashData?.builder || {
     projects: 0,
@@ -58,6 +64,7 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
     if (section === 'projects') {
       return (
         <BuilderProjectsSection
+          key={refreshKey}
           onOpenAdd={() => setAddProjectOpen(true)}
           onPromote={(proj) => setPromotionTarget(proj)}
         />
@@ -152,7 +159,7 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
 
         {/* Analytics Chart */}
         <AnalyticsChart
-          title="Project Discovery Impressions &amp; Inquiries"
+          title="Project Discovery Impressions & Inquiries"
           subtitle="Weekly township interest across major cities"
           dataKeys={[
             { key: 'views', name: 'Views', color: '#b45309' },
@@ -165,7 +172,7 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
         <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-stone-900 text-base">Active Projects &amp; Towers</h3>
+              <h3 className="font-bold text-stone-900 text-base">Active Projects & Towers</h3>
               <p className="text-xs text-stone-500">Developments featured in public builder showcases</p>
             </div>
             <button
@@ -179,6 +186,7 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
           </div>
 
           <BuilderRecentProjectsList
+            key={refreshKey}
             onOpenAdd={() => setAddProjectOpen(true)}
           />
         </div>
@@ -193,6 +201,7 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
       <AddProjectModal
         isOpen={addProjectOpen}
         onClose={() => setAddProjectOpen(false)}
+        onSuccess={handleProjectSuccess}
       />
       {promotionTarget && (
         <PromotionModal
@@ -832,8 +841,8 @@ function BuilderSettingsSection() {
 }
 
 // Modal: Add Project
-function AddProjectModal({ isOpen, onClose }) {
-  const { toast } = useApp();
+function AddProjectModal({ isOpen, onClose, onSuccess }) {
+  const { user, toast } = useApp();
   const [busy, setBusy] = useState(false);
 
   if (!isOpen) return null;
@@ -843,19 +852,44 @@ function AddProjectModal({ isOpen, onClose }) {
     setBusy(true);
     try {
       const form = new FormData(e.currentTarget);
+      const title = String(form.get('title') || '').trim();
+      const city = String(form.get('city') || 'Bengaluru').trim();
+      const locality = String(form.get('locality') || 'Whitefield').trim();
+      const price = Number(form.get('price')) || 7500000;
+      const maxPrice = Number(form.get('maxPrice')) || Math.round(price * 1.5);
+      const acres = Number(form.get('acres')) || 5;
+      const units = Number(form.get('units')) || 120;
+      const towers = Number(form.get('towers')) || 4;
+      const area = Number(form.get('area')) || Math.round(price / 6500) || 1200;
+      const possession = String(form.get('possession') || 'Dec 2026').trim();
+      const stage = form.get('stage') || 'New launch';
+      const rera = String(form.get('rera') || 'PRM/KA/RERA/2026/001').trim();
+      const descVal = String(form.get('description') || '').trim();
+      const description = descVal.length >= 30
+        ? descVal
+        : `${title} is a premium residential development in ${locality}, ${city} offering luxury apartments, world-class clubhouse amenities, landscaped gardens, and 24/7 security.`;
+
       const data = {
-        title: form.get('title'),
-        city: form.get('city'),
-        locality: form.get('locality'),
-        price: Number(form.get('price')),
-        maxPrice: Number(form.get('maxPrice')),
-        acres: Number(form.get('acres')),
-        possession: form.get('possession'),
-        stage: form.get('stage'),
-        rera: form.get('rera'),
-        description: form.get('description'),
+        title,
+        builder: user?.company || user?.name || 'Builder Developer',
+        city,
+        locality,
+        price,
+        maxPrice: Math.max(price, maxPrice),
+        acres,
+        units,
+        towers,
+        area,
+        possession,
+        stage,
+        rera,
+        description,
         amenities: ['Clubhouse', 'Swimming Pool', 'Gym', 'Park', '24/7 Security'],
-        images: ['/interior/living-room.jpg']
+        images: ['/interior/living-room.jpg'],
+        configurations: [
+          { name: '2 BHK', area: Math.round(area * 0.9), price, plan: '/interior/living-room.jpg' },
+          { name: '3 BHK', area: Math.round(area * 1.3), price: maxPrice, plan: '/interior/living-room.jpg' }
+        ]
       };
 
       await api('projects', {
@@ -863,154 +897,203 @@ function AddProjectModal({ isOpen, onClose }) {
         body: data
       });
 
-      toast('New builder project submitted for review!');
+      toast('New builder project published successfully!');
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      toast(err.message || 'Failed to submit project.');
+      toast(err.message || 'Failed to publish project.');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200">
-        <div className="p-6 border-b border-stone-100 flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-stone-900/70 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl max-w-2xl w-full my-auto max-h-[88vh] flex flex-col shadow-2xl border border-stone-200 overflow-hidden">
+        {/* Fixed Header */}
+        <div className="p-4 sm:p-5 border-b border-stone-100 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
               <Building2 size={20} />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-stone-900">Add New Project / Tower</h2>
-              <p className="text-xs text-stone-500">Publish a new township or residential development</p>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 truncate">Add New Project / Tower</h2>
+              <p className="text-xs text-stone-500 truncate">Publish a new township or residential development</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 text-stone-400 hover:text-stone-700">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors shrink-0"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">Development / Project Name *</label>
-            <input
-              name="title"
-              required
-              placeholder="e.g. Prestige Lakeview Towers"
-              className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
-            />
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">City *</label>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">Development / Project Name *</label>
               <input
-                name="city"
+                name="title"
                 required
-                defaultValue="Bengaluru"
+                placeholder="e.g. Prestige Lakeview Towers"
                 className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
               />
             </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">City *</label>
+                <input
+                  name="city"
+                  required
+                  defaultValue="Bengaluru"
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Locality *</label>
+                <input
+                  name="locality"
+                  required
+                  placeholder="e.g. Whitefield"
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Min Price (₹) *</label>
+                <input
+                  name="price"
+                  type="number"
+                  required
+                  placeholder="e.g. 7500000"
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Max Price (₹) *</label>
+                <input
+                  name="maxPrice"
+                  type="number"
+                  required
+                  placeholder="e.g. 18500000"
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Total Acres</label>
+                <input
+                  name="acres"
+                  type="number"
+                  defaultValue={10}
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Total Units</label>
+                <input
+                  name="units"
+                  type="number"
+                  defaultValue={120}
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Towers</label>
+                <input
+                  name="towers"
+                  type="number"
+                  defaultValue={4}
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Unit Area (sq ft)</label>
+                <input
+                  name="area"
+                  type="number"
+                  defaultValue={1450}
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Stage *</label>
+                <select
+                  name="stage"
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                >
+                  <option value="New launch">New Launch</option>
+                  <option value="Under construction">Under Construction</option>
+                  <option value="Ready to move">Ready to Move</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Possession Year</label>
+                <input
+                  name="possession"
+                  defaultValue="Dec 2026"
+                  className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Locality *</label>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">RERA Project Registration ID *</label>
               <input
-                name="locality"
+                name="rera"
                 required
-                placeholder="e.g. Whitefield"
+                placeholder="e.g. PRM/KA/RERA/1251/2026"
+                className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 font-mono uppercase"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">Project Description *</label>
+              <textarea
+                name="description"
+                rows={3}
+                defaultValue="Exclusive residential community offering modern apartments and townhomes with scenic landscaping, clubhouse amenities, and 24/7 security."
                 className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
               />
+              <p className="text-[11px] text-stone-400 mt-1">Minimum 30 characters describing development amenities and highlights.</p>
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Min Price (₹) *</label>
-              <input
-                name="price"
-                type="number"
-                required
-                placeholder="e.g. 7500000"
-                className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Max Price (₹) *</label>
-              <input
-                name="maxPrice"
-                type="number"
-                required
-                placeholder="e.g. 18500000"
-                className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
-              />
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Total Acres</label>
-              <input
-                name="acres"
-                type="number"
-                defaultValue={12}
-                className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Stage *</label>
-              <select
-                name="stage"
-                className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
-              >
-                <option value="New launch">New Launch</option>
-                <option value="Under construction">Under Construction</option>
-                <option value="Ready to move">Ready to Move</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Possession Year</label>
-              <input
-                name="possession"
-                defaultValue="Dec 2026"
-                className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">RERA Project Registration ID *</label>
-            <input
-              name="rera"
-              required
-              placeholder="e.g. PRM/KA/RERA/1251/..."
-              className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 font-mono uppercase"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">Project Description</label>
-            <textarea
-              name="description"
-              rows={3}
-              placeholder="Highlight architectural themes, club facilities, and connectivity…"
-              className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900"
-            />
-          </div>
-
-          <div className="pt-3 flex items-center justify-end gap-3 border-t border-stone-100">
+          {/* Fixed Footer Actions */}
+          <div className="p-3.5 sm:p-4 border-t border-stone-100 flex items-center justify-end gap-3 bg-stone-50/80 shrink-0">
             <button
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900"
+              className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-lg shadow-sm"
+              className="px-5 py-2.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs flex items-center gap-2 transition-all cursor-pointer"
             >
-              {busy ? 'Submitting…' : 'Publish Project'}
+              {busy ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Publishing…
+                </>
+              ) : (
+                'Publish Project'
+              )}
             </button>
           </div>
         </form>
