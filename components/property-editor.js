@@ -1286,22 +1286,22 @@ function Editor({
           {amenities.length > 0 && (
             <div className="mb-4 p-3 bg-purple-50/50 rounded-xl border border-purple-200">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-purple-900 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider">
                   Selected Facilities ({amenities.length})
                 </span>
-                <span className="text-[11px] text-purple-600">Click &times; to remove</span>
+                <span className="text-[11px] text-stone-500">Click &times; to remove</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {amenities.map((item) => (
                   <span
                     key={item}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border border-purple-400 bg-[#faf5ff] text-purple-700 shadow-2xs transition-all animate-in fade-in zoom-in-95 duration-150"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border border-purple-400 bg-[#faf5ff] text-stone-900 shadow-2xs transition-all animate-in fade-in zoom-in-95 duration-150"
                   >
-                    <span>{item}</span>
+                    <span className="text-stone-900">{item}</span>
                     <button
                       type="button"
                       onClick={() => toggleAmenity(item)}
-                      className="p-0.5 hover:bg-purple-200/80 rounded-full transition-colors cursor-pointer text-purple-600 hover:text-purple-900 inline-flex items-center justify-center ml-0.5"
+                      className="p-0.5 hover:bg-stone-200 rounded-full transition-colors cursor-pointer text-stone-600 hover:text-stone-900 inline-flex items-center justify-center ml-0.5"
                       title={`Remove ${item}`}
                       aria-label={`Remove ${item}`}
                     >
@@ -1349,7 +1349,7 @@ function Editor({
                     key={amenity}
                     className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
                       isSelected
-                        ? 'border-purple-400 bg-purple-50/70 text-purple-900 font-semibold shadow-2xs'
+                        ? 'border-purple-400 bg-purple-50/70 text-stone-900 font-semibold shadow-2xs'
                         : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'
                     }`}
                   >
@@ -1359,7 +1359,7 @@ function Editor({
                       onChange={() => toggleAmenity(amenity)}
                       className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500 border-stone-300 cursor-pointer accent-purple-600"
                     />
-                    <span>{amenity}</span>
+                    <span className={isSelected ? 'text-stone-900 font-semibold' : 'text-stone-700'}>{amenity}</span>
                   </label>
                 );
               })}
