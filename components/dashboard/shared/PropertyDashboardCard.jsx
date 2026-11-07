@@ -14,7 +14,8 @@ import {
   Edit,
   Check,
   Clock,
-  Calendar
+  Calendar,
+  Sparkles
 } from 'lucide-react';
 
 export default function PropertyDashboardCard({
@@ -24,7 +25,8 @@ export default function PropertyDashboardCard({
   onOpenRequests,
   onAcceptRequest,
   onClose,
-  onReopen
+  onReopen,
+  onPromote
 }) {
   if (!property) return null;
 
@@ -210,6 +212,22 @@ export default function PropertyDashboardCard({
               <Edit size={13} />
               <span>Edit</span>
             </Link>
+
+            {onPromote && !isClosed && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onPromote(property);
+                }}
+                className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg text-xs font-semibold border border-amber-200 flex items-center gap-1 transition-colors cursor-pointer"
+                title="Promote this listing"
+              >
+                <Sparkles size={13} className="text-amber-600" />
+                <span>Promote</span>
+              </button>
+            )}
           </div>
 
           <div>

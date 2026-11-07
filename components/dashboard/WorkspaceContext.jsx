@@ -111,18 +111,19 @@ export function WorkspaceProvider({ children, initialWorkspace, initialSection }
     if (initialWorkspace && WORKSPACE_CONFIG[initialWorkspace]) {
       return initialWorkspace;
     }
-    // 3. Fallback based on user preference stored in localStorage
+    // 3. Dedicated user role takes absolute precedence for specialized accounts!
+    if (user?.role === 'broker') return 'broker';
+    if (user?.role === 'owner') return 'owner';
+    if (user?.role === 'builder') return 'builder';
+    if (user?.role === 'service_provider' || user?.role === 'service-provider') return 'provider';
+
+    // 4. Fallback based on user preference stored in localStorage
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('havenest_active_account_mode');
         if (stored === 'customer' || stored === 'provider') return stored;
       } catch (e) {}
     }
-    // 4. Fallback based on user primary role
-    if (user?.role === 'owner') return 'owner';
-    if (user?.role === 'broker') return 'broker';
-    if (user?.role === 'builder') return 'builder';
-    if (user?.role === 'service_provider' || user?.role === 'service-provider') return 'provider';
     return 'customer';
   }, [pathname, initialWorkspace, user?.role]);
 

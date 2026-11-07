@@ -60,28 +60,32 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
     views: 0
   };
 
-  if (section === 'properties') {
-    return <OwnerPropertiesSection />;
-  }
-  if (section === 'enquiries') {
-    return <OwnerEnquiriesSection />;
-  }
-  if (section === 'visits') {
-    return <OwnerVisitsSection />;
-  }
-  if (section === 'performance') {
-    return <OwnerPerformanceSection stats={stats} />;
-  }
-  if (section === 'messages') {
-    return <OwnerMessagesSection />;
-  }
-  if (section === 'profile') {
-    return <OwnerProfileSection />;
-  }
+  const renderSection = () => {
+    if (section === 'properties' || section === 'listings') {
+      return <OwnerPropertiesSection onPromote={setPromotionTarget} />;
+    }
+    if (section === 'enquiries' || section === 'leads') {
+      return <OwnerEnquiriesSection />;
+    }
+    if (section === 'visits') {
+      return <OwnerVisitsSection />;
+    }
+    if (section === 'promotions') {
+      return <OwnerPromotionsSection onPromote={setPromotionTarget} />;
+    }
+    if (section === 'performance' || section === 'analytics') {
+      return <OwnerPerformanceSection stats={stats} />;
+    }
+    if (section === 'messages') {
+      return <OwnerMessagesSection />;
+    }
+    if (section === 'profile') {
+      return <OwnerProfileSection />;
+    }
 
-  // Default: Overview
-  return (
-    <div className="space-y-8">
+    // Default: Overview
+    return (
+      <div className="space-y-8">
 
       {/* Header welcome banner */}
       <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
@@ -114,10 +118,10 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards: Manage multiple listings, Manage leads, Track visits, Manage promotions */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Properties"
+          title="Manage Listings"
           value={stats.properties}
           subtitle={`${stats.activeListings} active listings`}
           icon={House}
@@ -125,28 +129,28 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
           onClick={() => onSelectSection('properties')}
         />
         <StatCard
-          title="Awaiting Review"
-          value={stats.pendingApproval}
-          subtitle="Verification in progress"
-          icon={Clock}
-          color="#749546" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('properties')}
-        />
-        <StatCard
-          title="Tenant Enquiries"
+          title="Manage Leads"
           value={stats.enquiries}
           subtitle="Direct prospective inquiries"
           icon={ClipboardList}
-          color="#163e35" bgIcon="#ecf2e4"
+          color="#749546" bgIcon="#ecf2e4"
           onClick={() => onSelectSection('enquiries')}
         />
         <StatCard
-          title="Upcoming Visits"
+          title="Track Visits"
           value={stats.upcomingVisits}
           subtitle="Confirmed inspection tours"
           icon={Calendar}
-          color="#749546" bgIcon="#ecf2e4"
+          color="#163e35" bgIcon="#ecf2e4"
           onClick={() => onSelectSection('visits')}
+        />
+        <StatCard
+          title="Manage Promotions"
+          value={stats.promotions || 0}
+          subtitle="Featured spotlight reach"
+          icon={Sparkles}
+          color="#749546" bgIcon="#ecf2e4"
+          onClick={() => onSelectSection('promotions')}
         />
       </div>
 
@@ -182,6 +186,25 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
         <OwnerRecentPropertiesList />
       </div>
     </div>
+    );
+  };
+
+  return (
+    <>
+      {renderSection()}
+      {promotionTarget && (
+        <PromotionModal
+          isOpen={Boolean(promotionTarget)}
+          target={promotionTarget}
+          targetType="property"
+          onClose={() => setPromotionTarget(null)}
+          onPromoted={() => {
+            setPromotionTarget(null);
+            if (toast) toast('Promotion activated successfully!');
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -538,6 +561,7 @@ function OwnerPropertiesSection({ onPromote }) {
               onAcceptRequest={handleAcceptRequest}
               onClose={handleClose}
               onReopen={handleReopen}
+              onPromote={onPromote}
             />
           ))}
         </div>
@@ -883,7 +907,10 @@ function OwnerPerformanceSection({ stats }) {
 // Section: Owner Promotions
 function OwnerPromotionsSection({ onPromote }) {
   const { data } = useData('promotions');
+  const { data: propData } = useData('properties?mine=true&limit=100');
   const items = data?.items || [];
+  const myProperties = propData?.items || [];
+  const [selectedPropertyId, setSelectedPropertyId] = useState('');
 
   return (
     <div className="space-y-6">
@@ -892,6 +919,34 @@ function OwnerPromotionsSection({ onPromote }) {
           <h2 className="text-xl font-bold text-stone-900">Listing Promotions</h2>
           <p className="text-xs text-stone-500">Boost your properties to featured status on the UrbanFindr homepage</p>
         </div>
+        {myProperties.length > 0 && onPromote && (
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedPropertyId}
+              onChange={(e) => setSelectedPropertyId(e.target.value)}
+              className="text-xs px-3 py-2 bg-white border border-stone-200 rounded-xl max-w-xs truncate"
+            >
+              <option value="">Select a property to promote…</option>
+              {myProperties.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.title} ({money(p.price)})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!selectedPropertyId}
+              onClick={() => {
+                const targetProp = myProperties.find((p) => p._id === selectedPropertyId);
+                if (targetProp) onPromote(targetProp);
+              }}
+              className="whitespace-nowrap shrink-0 px-4 py-2 bg-[#163e35] hover:bg-[#24564a] disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
+            >
+              <Sparkles size={15} />
+              <span>Promote Selected</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {items.length === 0 ? (

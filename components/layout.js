@@ -95,22 +95,36 @@ export function Header() {
   const isServiceProvider = user?.role === 'service_provider' || user?.role === 'service-provider';
   const isCustomer = user && !isServiceProvider && user.role !== 'admin';
 
-  // Track active account mode: 'provider' (Business Account) or 'customer' (User Account)
+  // Track active account mode: 'provider' (Business Account), 'customer' (User Account), or dedicated business roles
   const [activeAccountMode, setActiveAccountMode] = useState(() => {
+    if (user?.role === 'broker') return 'broker';
+    if (user?.role === 'owner') return 'owner';
+    if (user?.role === 'builder') return 'builder';
+    if (pathname.startsWith('/dashboard/provider')) return 'provider';
+    if (pathname.startsWith('/dashboard/broker')) return 'broker';
+    if (pathname.startsWith('/dashboard/owner')) return 'owner';
+    if (pathname.startsWith('/dashboard/customer')) return 'customer';
+    if (user?.role === 'service_provider' || user?.role === 'service-provider') return 'provider';
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('havenest_active_account_mode');
         if (stored === 'provider' || stored === 'customer') return stored;
       } catch (e) {}
     }
-    if (pathname.startsWith('/dashboard/provider')) return 'provider';
-    if (pathname.startsWith('/dashboard/customer')) return 'customer';
-    if (user?.role === 'service_provider' || user?.role === 'service-provider') return 'provider';
     return 'customer';
   });
 
   useEffect(() => {
-    if (pathname.startsWith('/dashboard/provider')) {
+    if (user?.role === 'broker') {
+      setActiveAccountMode('broker');
+      try { localStorage.setItem('havenest_active_account_mode', 'broker'); } catch (e) {}
+    } else if (user?.role === 'owner') {
+      setActiveAccountMode('owner');
+      try { localStorage.setItem('havenest_active_account_mode', 'owner'); } catch (e) {}
+    } else if (user?.role === 'builder') {
+      setActiveAccountMode('builder');
+      try { localStorage.setItem('havenest_active_account_mode', 'builder'); } catch (e) {}
+    } else if (pathname.startsWith('/dashboard/provider')) {
       setActiveAccountMode('provider');
       try { localStorage.setItem('havenest_active_account_mode', 'provider'); } catch (e) {}
     } else if (pathname.startsWith('/dashboard/customer')) {
@@ -127,8 +141,9 @@ export function Header() {
   }, [pathname, user]);
 
   const isServiceProviderDashboard =
-    pathname.startsWith('/dashboard/provider') ||
-    (pathname === '/dashboard' && (activeAccountMode === 'provider' || isServiceProvider));
+    isServiceProvider &&
+    (pathname.startsWith('/dashboard/provider') ||
+      (pathname === '/dashboard' && activeAccountMode === 'provider'));
 
   const providerCategoryParam = isServiceProvider && user?.serviceCategory ? '&category=' + user.serviceCategory : '';
   const { data: requestData } = useData(user ? 'service-requests?limit=50' + providerCategoryParam : null);
@@ -324,6 +339,14 @@ export function Header() {
                       href={
                         user.role === 'admin'
                           ? '/admin'
+                          : user.role === 'broker'
+                          ? '/dashboard/broker'
+                          : user.role === 'owner'
+                          ? '/dashboard/owner'
+                          : user.role === 'builder'
+                          ? '/dashboard/builder'
+                          : user.role === 'service_provider' || user.role === 'service-provider'
+                          ? '/dashboard/provider'
                           : activeAccountMode === 'provider'
                           ? '/dashboard/provider'
                           : '/dashboard/customer'
@@ -690,10 +713,36 @@ export function Header() {
             ) : (
               <>
                 <Link
-                  href={activeAccountMode === 'provider' ? '/dashboard/provider' : '/dashboard/customer'}
+                  href={
+                    user.role === 'admin'
+                      ? '/admin'
+                      : user.role === 'broker'
+                      ? '/dashboard/broker'
+                      : user.role === 'owner'
+                      ? '/dashboard/owner'
+                      : user.role === 'builder'
+                      ? '/dashboard/builder'
+                      : user.role === 'service_provider' || user.role === 'service-provider'
+                      ? '/dashboard/provider'
+                      : activeAccountMode === 'provider'
+                      ? '/dashboard/provider'
+                      : '/dashboard/customer'
+                  }
                   onClick={() => setOpen(false)}
                 >
-                  {`My dashboard (${activeAccountMode === 'provider' ? 'Service Provider' : 'Customer'})`}
+                  {`My dashboard (${
+                    user.role === 'broker'
+                      ? 'Broker'
+                      : user.role === 'owner'
+                      ? 'Owner'
+                      : user.role === 'builder'
+                      ? 'Builder'
+                      : user.role === 'service_provider' || user.role === 'service-provider'
+                      ? 'Service Provider'
+                      : activeAccountMode === 'provider'
+                      ? 'Service Provider'
+                      : 'Customer'
+                  })`}
                 </Link>
 
                 {activeAccountMode === 'provider' ? (

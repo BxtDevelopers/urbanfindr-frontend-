@@ -132,8 +132,36 @@ export default function AuthPage({ register = false, adminLogin = false }) {
           : 'Welcome back.'
       );
 
-      const defaultDest = data.user.role === 'admin' ? '/admin' : '/dashboard';
+      const defaultDest =
+        data.user.role === 'admin'
+          ? '/admin'
+          : data.user.role === 'broker'
+          ? '/dashboard/broker'
+          : data.user.role === 'owner'
+          ? '/dashboard/owner'
+          : data.user.role === 'builder'
+          ? '/dashboard/builder'
+          : data.user.role === 'service_provider' || data.user.role === 'service-provider'
+          ? '/dashboard/provider'
+          : '/dashboard';
       const destination = next && next.startsWith('/') && !next.startsWith('//') ? next : defaultDest;
+
+      if (typeof window !== 'undefined') {
+        try {
+          if (data.user.role === 'broker') {
+            localStorage.setItem('havenest_active_account_mode', 'broker');
+          } else if (data.user.role === 'owner') {
+            localStorage.setItem('havenest_active_account_mode', 'owner');
+          } else if (data.user.role === 'builder') {
+            localStorage.setItem('havenest_active_account_mode', 'builder');
+          } else if (data.user.role === 'service_provider' || data.user.role === 'service-provider') {
+            localStorage.setItem('havenest_active_account_mode', 'provider');
+          } else {
+            localStorage.setItem('havenest_active_account_mode', 'customer');
+          }
+        } catch (e) {}
+      }
+
       router.push(destination);
     } catch (e) {
       setError(e.message);

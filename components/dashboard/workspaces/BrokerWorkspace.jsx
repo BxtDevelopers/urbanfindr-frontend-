@@ -52,31 +52,35 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
     views: 0
   };
 
-  if (section === 'listings') {
-    return <BrokerListingsSection />;
-  }
-  if (section === 'leads') {
-    return <BrokerLeadsSection />;
-  }
-  if (section === 'visits') {
-    return <BrokerVisitsSection />;
-  }
-  if (section === 'clients') {
-    return <BrokerClientsSection />;
-  }
-  if (section === 'analytics') {
-    return <BrokerAnalyticsSection stats={stats} />;
-  }
-  if (section === 'messages') {
-    return <BrokerMessagesSection />;
-  }
-  if (section === 'profile') {
-    return <BrokerProfileSection />;
-  }
+  const renderSection = () => {
+    if (section === 'listings' || section === 'properties') {
+      return <BrokerListingsSection onPromote={setPromotionTarget} />;
+    }
+    if (section === 'leads' || section === 'enquiries') {
+      return <BrokerLeadsSection />;
+    }
+    if (section === 'visits') {
+      return <BrokerVisitsSection />;
+    }
+    if (section === 'promotions') {
+      return <BrokerPromotionsSection onPromote={setPromotionTarget} />;
+    }
+    if (section === 'clients') {
+      return <BrokerClientsSection />;
+    }
+    if (section === 'analytics' || section === 'performance') {
+      return <BrokerAnalyticsSection stats={stats} />;
+    }
+    if (section === 'messages') {
+      return <BrokerMessagesSection />;
+    }
+    if (section === 'profile') {
+      return <BrokerProfileSection />;
+    }
 
-  // Default: Overview
-  return (
-    <div className="space-y-8">
+    // Default: Overview
+    return (
+      <div className="space-y-8">
 
       {/* Header welcome banner */}
       <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
@@ -108,10 +112,10 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards: Manage multiple listings, Manage leads, Track visits, Manage promotions */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Portfolio"
+          title="Manage Listings"
           value={stats.properties}
           subtitle={`${stats.activeListings} active listings`}
           icon={House}
@@ -119,7 +123,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
           onClick={() => onSelectSection('listings')}
         />
         <StatCard
-          title="Total Leads"
+          title="Manage Leads"
           value={stats.totalLeads}
           subtitle={`${stats.newLeads} new leads this week`}
           icon={ClipboardList}
@@ -127,7 +131,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
           onClick={() => onSelectSection('leads')}
         />
         <StatCard
-          title="Client Visits"
+          title="Track Visits"
           value={stats.upcomingVisits}
           subtitle="Confirmed inspection tours"
           icon={Calendar}
@@ -135,12 +139,12 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
           onClick={() => onSelectSection('visits')}
         />
         <StatCard
-          title="Client Network"
-          value={stats.clients}
-          subtitle="Active buyer engagements"
-          icon={Users}
+          title="Manage Promotions"
+          value={stats.promotions || 0}
+          subtitle="Featured portfolio reach"
+          icon={Sparkles}
           color="#749546" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('clients')}
+          onClick={() => onSelectSection('promotions')}
         />
       </div>
 
@@ -175,6 +179,25 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
         <BrokerRecentLeadsList onSelectSection={onSelectSection} />
       </div>
     </div>
+    );
+  };
+
+  return (
+    <>
+      {renderSection()}
+      {promotionTarget && (
+        <PromotionModal
+          isOpen={Boolean(promotionTarget)}
+          target={promotionTarget}
+          targetType="property"
+          onClose={() => setPromotionTarget(null)}
+          onPromoted={() => {
+            setPromotionTarget(null);
+            if (toast) toast('Promotion activated successfully!');
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -284,18 +307,28 @@ function BrokerListingsSection({ onPromote }) {
       header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-3">
-          <Link href={`/properties/${row._id}`} className="text-stone-700 hover:text-stone-900 font-semibold">
+          <Link href={`/properties/${row._id}`} className="text-stone-700 hover:text-stone-900 font-semibold text-xs">
             View
           </Link>
-          <Link href={`/properties/${row._id}/edit`} className="text-sky-800 hover:text-sky-900 font-semibold">
+          <Link href={`/properties/${row._id}/edit`} className="text-sky-800 hover:text-sky-900 font-semibold text-xs">
             Edit
           </Link>
+          {onPromote && row.status !== 'archived' && row.status !== 'closed' && (
+            <button
+              type="button"
+              onClick={() => onPromote(row)}
+              className="text-amber-700 hover:text-amber-900 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <Sparkles size={12} className="text-amber-500" />
+              Promote
+            </button>
+          )}
           {row.status !== 'archived' && (
             <button
               type="button"
               disabled={busy === row._id}
               onClick={() => handleArchive(row._id)}
-              className="text-rose-600 hover:text-rose-800 font-semibold"
+              className="text-rose-600 hover:text-rose-800 font-semibold text-xs"
             >
               Archive
             </button>
@@ -662,13 +695,46 @@ function BrokerAnalyticsSection({ stats }) {
 // Section: Promotions
 function BrokerPromotionsSection({ onPromote }) {
   const { data } = useData('promotions');
+  const { data: propData } = useData('properties?mine=true&limit=100');
   const items = data?.items || [];
+  const myProperties = propData?.items || [];
+  const [selectedPropertyId, setSelectedPropertyId] = useState('');
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-stone-900">Listing Promotions</h2>
-        <p className="text-xs text-stone-500">Featured visibility plans for fast-moving client properties</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-stone-900">Listing Promotions</h2>
+          <p className="text-xs text-stone-500">Featured visibility plans for fast-moving client properties</p>
+        </div>
+        {myProperties.length > 0 && onPromote && (
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedPropertyId}
+              onChange={(e) => setSelectedPropertyId(e.target.value)}
+              className="text-xs px-3 py-2 bg-white border border-stone-200 rounded-xl max-w-xs truncate"
+            >
+              <option value="">Select a listing to promote…</option>
+              {myProperties.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.title} ({money(p.price)})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!selectedPropertyId}
+              onClick={() => {
+                const targetProp = myProperties.find((p) => p._id === selectedPropertyId);
+                if (targetProp) onPromote(targetProp);
+              }}
+              className="whitespace-nowrap shrink-0 px-4 py-2 bg-[#163e35] hover:bg-[#24564a] disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
+            >
+              <Sparkles size={15} />
+              <span>Promote Selected</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {items.length === 0 ? (
