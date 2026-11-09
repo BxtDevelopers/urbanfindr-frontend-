@@ -9,6 +9,7 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
+import PropertyRecommendationModal from '../shared/PropertyRecommendationModal';
 import {
   Building2,
   Layers,
@@ -32,6 +33,8 @@ import {
   TrendingUp,
   ShieldCheck,
   Award,
+  Users,
+  Mail,
   Globe,
   UploadCloud,
   X
@@ -75,6 +78,9 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
     }
     if (section === 'visits') {
       return <BuilderSiteVisitsSection />;
+    }
+    if (section === 'clients') {
+      return <BuilderClientsSection />;
     }
     if (section === 'performance') {
       return <BuilderPerformanceSection stats={stats} />;
@@ -161,6 +167,7 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
         <AnalyticsChart
           title="Project Discovery Impressions & Inquiries"
           subtitle="Weekly township interest across major cities"
+          data={stats.analytics}
           dataKeys={[
             { key: 'views', name: 'Views', color: '#b45309' },
             { key: 'enquiries', name: 'Enquiries', color: '#0369a1' },
@@ -218,7 +225,7 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
 
 // Sub-component: Recent Projects
 function BuilderRecentProjectsList({ onOpenAdd }) {
-  const { data, loading } = useData('projects?limit=4');
+  const { data, loading } = useData('projects?mine=true&limit=4');
   const items = data?.items || [];
 
   if (loading) {
@@ -392,7 +399,7 @@ function BuilderProfileSection() {
 
 // Section: My Projects
 function BuilderProjectsSection({ onPromote, onOpenAdd }) {
-  const { data, loading } = useData('projects?limit=100');
+  const { data, loading } = useData('projects?mine=true&limit=100');
   const items = data?.items || [];
 
   const columns = [
@@ -487,8 +494,28 @@ function BuilderProjectsSection({ onPromote, onOpenAdd }) {
 
 // Section: Project Enquiries
 function BuilderEnquiriesSection() {
-  const { data } = useData('leads?kind=project&page=1&limit=50');
+  const { toast } = useApp();
+  const { data, reload } = useData('leads?kind=project&page=1&limit=50');
   const items = data?.items || [];
+  const [busy, setBusy] = useState('');
+  const [selectedClientForModal, setSelectedClientForModal] = useState(null);
+
+  async function updateStatus(id, newStatus) {
+    setBusy(id);
+    try {
+      await api(`leads/${id}`, { method: 'PATCH', body: { status: newStatus } });
+      if (['deal_closed', 'closed', 'converted'].includes(newStatus)) {
+        toast('🎉 Deal marked as closed! Customer added to your Project Clients directory.');
+      } else {
+        toast(`Enquiry marked as ${newStatus.replace(/_/g, ' ')}.`);
+      }
+      reload();
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusy('');
+    }
+  }
 
   const columns = [
     {
@@ -521,6 +548,50 @@ function BuilderEnquiriesSection() {
     {
       header: 'Customer Requirement',
       render: (row) => <span className="text-stone-500 text-xs line-clamp-1">{row.note || '—'}</span>
+    },
+    {
+      header: 'Actions',
+      render: (row) => {
+        const isClosed = ['deal_closed', 'closed', 'converted'].includes(row.status);
+        return (
+          <div className="flex items-center gap-2">
+            {!isClosed ? (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => updateStatus(row._id, 'deal_closed')}
+                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                title="Mark deal as closed & add customer to clients"
+              >
+                <CheckCircle2 size={12} />
+                <span>Close Deal</span>
+              </button>
+            ) : (
+              <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 font-extrabold text-[10px] flex items-center gap-1">
+                <CheckCircle2 size={11} className="text-emerald-600" /> Deal Closed
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedClientForModal({
+                name: row.name || 'Client',
+                phone: row.phone || '',
+                email: row.email || '',
+                city: row.city || 'Hyderabad',
+                leadId: row._id,
+                customerId: row.user?._id || row.user,
+                hasClosedDeal: isClosed,
+                purchasedProperty: isClosed ? row.project : null
+              })}
+              className="px-2.5 py-1 text-forest hover:bg-forest/10 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-forest/30"
+              title="Recommend a unit or property listing"
+            >
+              <Sparkles size={12} />
+              <span>Recommend</span>
+            </button>
+          </div>
+        );
+      }
     }
   ];
 
@@ -536,6 +607,218 @@ function BuilderEnquiriesSection() {
         data={items}
         emptyTitle="No project inquiries found"
         emptySubtitle="Prospective homebuyer inquiries will be captured here."
+      />
+
+      <PropertyRecommendationModal
+        isOpen={Boolean(selectedClientForModal)}
+        onClose={() => setSelectedClientForModal(null)}
+        client={selectedClientForModal}
+        onSuccess={() => reload()}
+      />
+    </div>
+  );
+}
+
+// Section: Builder Clients Directory
+function BuilderClientsSection() {
+  const { data, reload } = useData('leads?page=1&limit=100');
+  const items = data?.items || [];
+  const [activeTab, setActiveTab] = useState('buyers'); // 'buyers' | 'all'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedClientForModal, setSelectedClientForModal] = useState(null);
+
+  // Group unique clients and categorize buyers
+  const clientMap = new Map();
+  items.forEach((item) => {
+    const key = String(item.user?._id || item.user || item.phone || item.email || item.name || 'Unknown').toLowerCase().trim();
+    const isClosedDeal = ['deal_closed', 'closed', 'converted'].includes(item.status);
+    const propInfo = item.project || item.property;
+
+    if (!clientMap.has(key)) {
+      clientMap.set(key, {
+        _id: item._id,
+        leadId: item._id,
+        customerId: item.user?._id || item.user || null,
+        name: item.name || item.user?.name || 'Client',
+        phone: item.phone || item.user?.phone || '—',
+        email: item.email || item.user?.email || '—',
+        city: item.city || 'Hyderabad',
+        firstContact: item.createdAt,
+        totalInquiries: 1,
+        latestStatus: item.status,
+        hasClosedDeal: isClosedDeal,
+        closedDealsCount: isClosedDeal ? 1 : 0,
+        purchasedProperties: isClosedDeal && propInfo ? [propInfo] : [],
+        recentProperty: propInfo
+      });
+    } else {
+      const existing = clientMap.get(key);
+      existing.totalInquiries += 1;
+      if (isClosedDeal) {
+        existing.hasClosedDeal = true;
+        existing.closedDealsCount += 1;
+        if (propInfo && !existing.purchasedProperties.some((p) => String(p._id) === String(propInfo._id))) {
+          existing.purchasedProperties.push(propInfo);
+        }
+        existing.latestStatus = item.status;
+      }
+    }
+  });
+
+  const allClients = Array.from(clientMap.values());
+  const buyersList = allClients.filter((c) => c.hasClosedDeal);
+
+  const displayedClients = (activeTab === 'buyers' ? buyersList : allClients).filter((c) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.phone.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      c.city.toLowerCase().includes(q) ||
+      c.purchasedProperties.some((p) => (p.title || '').toLowerCase().includes(q))
+    );
+  });
+
+  const columns = [
+    {
+      header: 'Buyer / Client',
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-stone-100 text-stone-800 font-extrabold flex items-center justify-center text-xs shrink-0 border border-stone-200">
+            {row.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-stone-900">{row.name}</span>
+              {row.hasClosedDeal && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-extrabold text-[10px] border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                  <CheckCircle2 size={10} className="text-emerald-600" /> Closed Deal / Buyer
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] text-stone-400 block">First engaged: {date(row.firstContact)}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Contact Info',
+      render: (row) => (
+        <div className="text-xs space-y-0.5">
+          <a href={`tel:${row.phone}`} className="text-stone-800 hover:text-forest font-semibold flex items-center gap-1">
+            <Phone size={11} className="text-stone-400" /> {row.phone}
+          </a>
+          <a href={`mailto:${row.email}`} className="text-stone-500 hover:text-forest flex items-center gap-1">
+            <Mail size={11} className="text-stone-400" /> {row.email}
+          </a>
+        </div>
+      )
+    },
+    {
+      header: 'Purchased / Project Deal',
+      render: (row) => {
+        if (row.hasClosedDeal && row.purchasedProperties.length > 0) {
+          const prop = row.purchasedProperties[0];
+          return (
+            <div className="text-xs max-w-xs">
+              <span className="font-extrabold text-stone-900 block truncate text-[13px]">{prop.title}</span>
+              <span className="text-[11px] text-emerald-700 font-bold block">
+                {money(prop.price || prop.priceMin || 0)} • {prop.locality || row.city}
+              </span>
+            </div>
+          );
+        }
+        return (
+          <span className="text-xs text-stone-500 truncate block max-w-xs">
+            {row.recentProperty?.title ? `Inquired on ${row.recentProperty.title}` : 'Project Inquiry'}
+          </span>
+        );
+      }
+    },
+    {
+      header: 'Status',
+      render: (row) => <StatusBadge status={row.latestStatus} />
+    },
+    {
+      header: 'Action',
+      render: (row) => (
+        <button
+          type="button"
+          onClick={() => setSelectedClientForModal(row)}
+          className="px-3.5 py-1.5 bg-forest hover:bg-[#114032] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:shadow"
+          title="Click to open recommendation popup form"
+        >
+          <Sparkles size={13} />
+          <span>Recommend Property</span>
+        </button>
+      )
+    }
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-stone-900">Project Buyers &amp; Clients</h2>
+          <p className="text-xs text-stone-500">
+            Clients who bought units or townships from you and prospective buyers who engaged with your projects
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl self-start">
+          <button
+            type="button"
+            onClick={() => setActiveTab('buyers')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'buyers'
+                ? 'bg-white text-emerald-800 shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <CheckCircle2 size={12} className={activeTab === 'buyers' ? 'text-emerald-600' : ''} />
+            <span>Closed Deals / Buyers ({buyersList.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'all'
+                ? 'bg-white text-stone-900 shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <span>All Clients ({allClients.length})</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search buyers by name, phone, email, or development…"
+          className="w-full sm:max-w-md px-3.5 py-2 text-xs bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest text-stone-900 placeholder:text-stone-400 shadow-2xs"
+        />
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={displayedClients}
+        emptyTitle={activeTab === 'buyers' ? 'No closed deals / buyers yet' : 'No clients recorded yet'}
+        emptySubtitle={
+          activeTab === 'buyers'
+            ? 'When you close a deal on a project enquiry, the buyer will automatically appear in this section.'
+            : 'Clients who inquire or tour your projects will be organized into your directory.'
+        }
+      />
+
+      <PropertyRecommendationModal
+        isOpen={Boolean(selectedClientForModal)}
+        onClose={() => setSelectedClientForModal(null)}
+        client={selectedClientForModal}
+        onSuccess={() => reload()}
       />
     </div>
   );
@@ -635,6 +918,10 @@ function BuilderSiteVisitsSection() {
 
 // Section: Performance
 function BuilderPerformanceSection({ stats }) {
+  const conversionRate = stats.views > 0
+    ? (((Number(stats.enquiries) || 0) / Number(stats.views)) * 100).toFixed(1) + '%'
+    : (stats.enquiries > 0 ? '100%' : '0.0%');
+
   return (
     <div className="space-y-6">
       <div>
@@ -666,7 +953,7 @@ function BuilderPerformanceSection({ stats }) {
         />
         <StatCard
           title="Conversion"
-          value="14.2%"
+          value={conversionRate}
           subtitle="Tour-to-inquiry ratio"
           icon={TrendingUp}
           color="#6d28d9"
@@ -675,8 +962,14 @@ function BuilderPerformanceSection({ stats }) {
       </div>
 
       <AnalyticsChart
-        title="Weekly Township Impressions &amp; Tours"
+        title="Weekly Township Impressions & Tours"
         subtitle="Interaction volume across your development portfolio"
+        data={stats.analytics}
+        dataKeys={[
+          { key: 'views', name: 'Views', color: '#b45309' },
+          { key: 'enquiries', name: 'Enquiries', color: '#0369a1' },
+          { key: 'visits', name: 'Site Visits', color: '#047857' }
+        ]}
         type="area"
         height={260}
       />

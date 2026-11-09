@@ -109,7 +109,7 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
     return lCount + vCount;
   }, [propLeadsData?.items, propVisitsData?.items]);
 
-  const totalIncoming = allReqs.length || stats.requests || 14;
+  const totalIncoming = allReqs.length || stats.requests || 0;
   const totalOffers = totalOffersCount;
   const totalEngaged = totalEngagedCount;
 

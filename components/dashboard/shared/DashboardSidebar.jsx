@@ -74,7 +74,7 @@ export default function DashboardSidebar({
     broker: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
       { id: 'listings', label: 'My Listings', icon: House },
-      { id: 'leads', label: 'New Leads', icon: ClipboardList },
+      { id: 'leads', label: 'My Leads', icon: ClipboardList },
       { id: 'visits', label: 'Property Visits', icon: Calendar },
       { id: 'clients', label: 'Clients', icon: Users },
       { id: 'analytics', label: 'Performance Analytics', icon: BarChart3 },
@@ -87,6 +87,7 @@ export default function DashboardSidebar({
       { id: 'projects', label: 'Manage Projects', icon: Layers },
       { id: 'enquiries', label: 'Manage Project Enquiries', icon: ClipboardList },
       { id: 'visits', label: 'Schedule Site Visits', icon: Calendar },
+      { id: 'clients', label: 'Clients & Buyers', icon: Users },
       { id: 'performance', label: 'Track Project Performance', icon: BarChart3 },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
       { id: 'profile', label: 'Settings', icon: Settings }

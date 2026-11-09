@@ -36,16 +36,21 @@ export default function AnalyticsChart({
     if (onPeriodChange) onPeriodChange(p);
   }
 
-  const defaultSampleData = [
-    { name: 'May', views: 42, enquiries: 8, visits: 3 },
-    { name: 'Jun', views: 78, enquiries: 14, visits: 6 },
-    { name: 'Jul', views: 110, enquiries: 22, visits: 9 },
-    { name: 'Aug', views: 145, enquiries: 31, visits: 14 },
-    { name: 'Sep', views: 190, enquiries: 38, visits: 18 },
-    { name: 'Oct', views: 240, enquiries: 46, visits: 24 }
-  ];
+  const generateDynamicTimeline = () => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ name: monthNames[d.getMonth()], views: 0, enquiries: 0, visits: 0 });
+    }
+    return months;
+  };
 
-  const chartData = data && data.length > 0 ? data : defaultSampleData;
+  const chartData = data && data.length > 0 ? data : generateDynamicTimeline();
+  const hasActivity = chartData.some((row) =>
+    dataKeys.some((k) => Number(row[k.key] || 0) > 0)
+  );
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -197,6 +202,11 @@ export default function AnalyticsChart({
           )}
         </ResponsiveContainer>
       </div>
+      {!hasActivity && (
+        <div className="mt-3 text-center text-xs text-stone-400">
+          Live metrics will plot here automatically as prospective buyers view listings, inquire, and schedule tours on your account.
+        </div>
+      )}
     </div>
   );
 }

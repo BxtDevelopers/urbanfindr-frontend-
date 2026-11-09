@@ -10,6 +10,7 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
+import PropertyRecommendationModal from '../shared/PropertyRecommendationModal';
 import {
   Briefcase,
   House,
@@ -33,7 +34,17 @@ import {
   MapPin,
   TrendingUp,
   ShieldCheck,
-  Award
+  Award,
+  Check,
+  Mail,
+  Send,
+  Handshake,
+  LayoutGrid,
+  List,
+  Search,
+  BedDouble,
+  Bath,
+  Maximize
 } from 'lucide-react';
 
 export default function BrokerWorkspace({ section = 'overview', onSelectSection }) {
@@ -107,7 +118,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
             onClick={() => onSelectSection('leads')}
             className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20"
           >
-            New Leads ({stats.totalLeads})
+            My Leads ({stats.totalLeads})
           </button>
         </div>
       </div>
@@ -123,9 +134,9 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
           onClick={() => onSelectSection('listings')}
         />
         <StatCard
-          title="Manage Leads"
+          title="My Leads"
           value={stats.totalLeads}
-          subtitle={`${stats.newLeads} new leads this week`}
+          subtitle={`${stats.newLeads} active leads this week`}
           icon={ClipboardList}
           color="#749546" bgIcon="#ecf2e4"
           onClick={() => onSelectSection('leads')}
@@ -152,6 +163,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
       <AnalyticsChart
         title="Portfolio Leads &amp; Buyer Activity"
         subtitle="Weekly lead generation and property inquiry volume"
+        data={stats.analytics}
         dataKeys={[
           { key: 'views', name: 'Views', color: '#0369a1' },
           { key: 'enquiries', name: 'Inquiries', color: '#0284c7' },
@@ -163,7 +175,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
       <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-stone-900 text-base">Recent New Leads</h3>
+            <h3 className="font-bold text-stone-900 text-base">Recent Leads</h3>
             <p className="text-xs text-stone-500">Prospective buyers inquiring on your properties</p>
           </div>
           <button
@@ -171,7 +183,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
             onClick={() => onSelectSection('leads')}
             className="text-xs font-bold text-sky-800 hover:text-sky-900 flex items-center gap-1"
           >
-            <span>Open Leads</span>
+            <span>Open My Leads</span>
             <ArrowUpRight size={13} />
           </button>
         </div>
@@ -261,12 +273,58 @@ function BrokerRecentLeadsList({ onSelectSection }) {
   );
 }
 
-// Section: My Listings
+// Section: My Listings (Card View with Property Image + Table View)
 function BrokerListingsSection({ onPromote }) {
   const { toast } = useApp();
   const { data, loading, reload } = useData('properties?mine=true&limit=100');
+  const { data: leadsData } = useData('leads?page=1&limit=100');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'approved' | 'closed' | 'pending' | 'archived'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
+
+  // Identify properties with closed deals from leads
+  const closedPropIdsFromLeads = useMemo(() => {
+    const ids = new Set();
+    (leadsData?.items || []).forEach((l) => {
+      if (['deal_closed', 'closed', 'converted'].includes(l.status)) {
+        const pId = l.property?._id || l.property;
+        if (pId) ids.add(String(pId));
+      }
+    });
+    return ids;
+  }, [leadsData]);
+
+  const isPropClosed = (p) => p.status === 'closed' || closedPropIdsFromLeads.has(String(p._id));
+
+  async function handleCloseListing(id) {
+    if (!window.confirm('Mark this listing as Closed / Deal Closed? It will be shown as Closed across your portfolio.')) return;
+    setBusy(id);
+    try {
+      await api(`properties/${id}`, { method: 'PATCH', body: { status: 'closed' } });
+      toast('Listing marked as Closed.');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to close listing.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function handleReopenListing(id) {
+    if (!window.confirm('Re-open this listing as Active?')) return;
+    setBusy(id);
+    try {
+      await api(`properties/${id}`, { method: 'PATCH', body: { status: 'approved' } });
+      toast('Listing re-opened as Active.');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to re-open listing.');
+    } finally {
+      setBusy('');
+    }
+  }
 
   async function handleArchive(id) {
     if (!window.confirm('Archive this listing?')) return;
@@ -282,24 +340,60 @@ function BrokerListingsSection({ onPromote }) {
     }
   }
 
+  const filteredListings = useMemo(() => {
+    return items.filter((p) => {
+      const closed = isPropClosed(p);
+      if (statusFilter === 'approved' && (closed || p.status !== 'approved')) return false;
+      if (statusFilter === 'closed' && !closed) return false;
+      if (statusFilter === 'pending' && p.status !== 'pending') return false;
+      if (statusFilter === 'archived' && p.status !== 'archived') return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const titleMatch = (p.title || '').toLowerCase().includes(q);
+        const cityMatch = (p.city || '').toLowerCase().includes(q);
+        const localityMatch = (p.locality || '').toLowerCase().includes(q);
+        const typeMatch = (p.type || '').toLowerCase().includes(q);
+        const purposeMatch = (p.purpose || '').toLowerCase().includes(q);
+        if (!titleMatch && !cityMatch && !localityMatch && !typeMatch && !purposeMatch) return false;
+      }
+      return true;
+    });
+  }, [items, statusFilter, searchQuery, closedPropIdsFromLeads]);
+
+  const activeCount = useMemo(() => items.filter((p) => !isPropClosed(p) && p.status === 'approved').length, [items, closedPropIdsFromLeads]);
+  const closedCount = useMemo(() => items.filter((p) => isPropClosed(p)).length, [items, closedPropIdsFromLeads]);
+  const pendingCount = useMemo(() => items.filter((p) => p.status === 'pending').length, [items]);
+  const archivedCount = useMemo(() => items.filter((p) => p.status === 'archived').length, [items]);
+
   const columns = [
     {
       header: 'Listing',
-      render: (row) => (
-        <div className="flex items-center gap-3 min-w-[200px]">
-          <img
-            src={propertyImages(row)[0] || '/placeholder.jpg'}
-            alt={row.title}
-            className="w-12 h-12 rounded-lg object-cover shrink-0 bg-stone-100"
-          />
-          <div className="min-w-0">
-            <span className="font-bold text-stone-900 block truncate">{row.title}</span>
-            <span className="text-[11px] text-stone-400 block truncate">
-              {row.locality}, {row.city} • {row.type}
-            </span>
+      render: (row) => {
+        const closed = isPropClosed(row);
+        return (
+          <div className="flex items-center gap-3 min-w-[200px]">
+            <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-stone-100">
+              <img
+                src={propertyImages(row)[0] || '/placeholder.jpg'}
+                alt={row.title}
+                className={`w-full h-full object-cover ${closed ? 'grayscale-[40%]' : ''}`}
+              />
+              {closed && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <span className="text-[9px] font-black text-rose-300 uppercase">Closed</span>
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <span className="font-bold text-stone-900 block truncate">{row.title}</span>
+              <span className="text-[11px] text-stone-400 block truncate">
+                {row.locality}, {row.city} • {row.type}
+              </span>
+            </div>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       header: 'Price / Purpose',
@@ -314,83 +408,428 @@ function BrokerListingsSection({ onPromote }) {
     },
     {
       header: 'Status',
-      render: (row) => <StatusBadge status={row.status} />
+      render: (row) => {
+        const closed = isPropClosed(row);
+        if (closed) {
+          return (
+            <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300 font-black text-[11px] uppercase tracking-wider flex items-center gap-1 w-fit">
+              <CheckCircle2 size={11} className="text-rose-600" /> Closed
+            </span>
+          );
+        }
+        return <StatusBadge status={row.status} />;
+      }
     },
     {
       header: 'Actions',
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <Link href={`/properties/${row._id}`} className="text-stone-700 hover:text-stone-900 font-semibold text-xs">
-            View
-          </Link>
-          <Link href={`/properties/${row._id}/edit`} className="text-sky-800 hover:text-sky-900 font-semibold text-xs">
-            Edit
-          </Link>
-          {onPromote && row.status !== 'archived' && row.status !== 'closed' && (
-            <button
-              type="button"
-              onClick={() => onPromote(row)}
-              className="text-amber-700 hover:text-amber-900 font-semibold text-xs flex items-center gap-1 cursor-pointer"
-            >
-              <Sparkles size={12} className="text-amber-500" />
-              Promote
-            </button>
-          )}
-          {row.status !== 'archived' && (
-            <button
-              type="button"
-              disabled={busy === row._id}
-              onClick={() => handleArchive(row._id)}
-              className="text-rose-600 hover:text-rose-800 font-semibold text-xs"
-            >
-              Archive
-            </button>
-          )}
-        </div>
-      )
+      render: (row) => {
+        const closed = isPropClosed(row);
+        return (
+          <div className="flex items-center gap-2.5">
+            <Link href={`/properties/${row._id}`} className="text-stone-700 hover:text-stone-900 font-semibold text-xs">
+              View
+            </Link>
+            <Link href={`/properties/${row._id}/edit`} className="text-sky-800 hover:text-sky-900 font-semibold text-xs">
+              Edit
+            </Link>
+            {closed ? (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => handleReopenListing(row._id)}
+                className="text-emerald-700 hover:text-emerald-800 font-bold text-xs"
+              >
+                Re-open
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => handleCloseListing(row._id)}
+                className="text-rose-600 hover:text-rose-800 font-semibold text-xs"
+              >
+                Close
+              </button>
+            )}
+            {onPromote && !closed && row.status !== 'archived' && (
+              <button
+                type="button"
+                onClick={() => onPromote(row)}
+                className="text-amber-700 hover:text-amber-900 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles size={12} className="text-amber-500" />
+                Promote
+              </button>
+            )}
+            {row.status !== 'archived' && (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => handleArchive(row._id)}
+                className="text-stone-400 hover:text-rose-600 font-semibold text-xs"
+              >
+                Archive
+              </button>
+            )}
+          </div>
+        );
+      }
     }
   ];
 
   return (
     <div className="space-y-4">
+      {/* Header with Title, Status Pills, View Switcher & Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold text-stone-900">Broker Portfolio Listings</h2>
-          <p className="text-xs text-stone-500">Manage client listings, pricing, and promotional reach</p>
+          <h2 className="text-xl font-bold text-stone-900">My Listings</h2>
+          <p className="text-xs text-stone-500">Manage client listings, track closed deals, pricing, and promotional reach</p>
         </div>
-        <Link
-          href="/post-property"
-          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
-        >
-          <Plus size={15} className="shrink-0" />
-          <span className="whitespace-nowrap">Add New Listing</span>
-        </Link>
+
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {/* Status filter pills with dedicated Closed Deals tab */}
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                statusFilter === 'all' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              All ({items.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('approved')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                statusFilter === 'approved' ? 'bg-white text-emerald-800 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              Active ({activeCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('closed')}
+              className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${
+                statusFilter === 'closed'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-rose-700 hover:text-rose-900'
+              }`}
+            >
+              <CheckCircle2 size={12} />
+              <span>Closed ({closedCount})</span>
+            </button>
+            {pendingCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setStatusFilter('pending')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  statusFilter === 'pending' ? 'bg-white text-amber-800 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+                }`}
+              >
+                Pending ({pendingCount})
+              </button>
+            )}
+            {archivedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setStatusFilter('archived')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  statusFilter === 'archived' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+                }`}
+              >
+                Archived ({archivedCount})
+              </button>
+            )}
+          </div>
+
+          {/* Cards vs Table view switch */}
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'cards' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-400 hover:text-stone-700'
+              }`}
+              title="Cards View"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'table' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-400 hover:text-stone-700'
+              }`}
+              title="Table View"
+            >
+              <List size={15} />
+            </button>
+          </div>
+
+          <Link
+            href="/post-property"
+            className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
+          >
+            <Plus size={15} className="shrink-0" />
+            <span className="whitespace-nowrap">Add New Listing</span>
+          </Link>
+        </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={items}
-        searchKey="title"
-        searchPlaceholder="Search listings by title or city…"
-        filterKey="status"
-        filterOptions={[
-          { value: 'approved', label: 'Approved & Active' },
-          { value: 'pending', label: 'Pending Approval' },
-          { value: 'archived', label: 'Archived' }
-        ]}
-      />
+      {/* Search Input */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-full sm:max-w-md">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search listings by title, locality, city, or type…"
+            className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest text-stone-900 placeholder:text-stone-400 shadow-2xs"
+          />
+        </div>
+      </div>
+
+      {/* Main Content: Card View vs Table View */}
+      {loading ? (
+        <div className="p-12 text-center text-xs text-stone-400">Loading listings portfolio…</div>
+      ) : filteredListings.length === 0 ? (
+        <div className="p-12 text-center space-y-2 border border-dashed border-stone-200 rounded-2xl bg-white">
+          <House size={30} className="mx-auto text-stone-300" />
+          <h3 className="font-bold text-stone-700 text-sm">No listings match your filter</h3>
+          <p className="text-xs text-stone-400">Post a new client property to expand your brokerage portfolio.</p>
+        </div>
+      ) : viewMode === 'table' ? (
+        <DataTable
+          columns={columns}
+          data={filteredListings}
+          emptyTitle="No listings available"
+          emptySubtitle="Listings added to your broker account will appear here."
+        />
+      ) : (
+        /* CARDS GRID WITH HIGH-VISIBILITY CLOSED IDENTIFICATION */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filteredListings.map((prop) => {
+            const images = propertyImages(prop);
+            const propImage = images[0] || '/placeholder.jpg';
+            const isRent = prop.purpose === 'rent';
+            const isPg = prop.purpose === 'pg';
+            const isClosed = isPropClosed(prop);
+            const bedrooms = prop.bedrooms || (prop.type?.toLowerCase().includes('bhk') ? prop.type : null);
+            const bathrooms = prop.bathrooms;
+            const area = prop.area || prop.builtUpArea || prop.carpetArea;
+            const propLocation = [prop.locality, prop.city].filter(Boolean).join(', ') || 'Hyderabad';
+
+            return (
+              <div
+                key={prop._id}
+                className={`rounded-2xl border transition-all overflow-hidden flex flex-col justify-between group ${
+                  isClosed
+                    ? 'bg-rose-50/25 border-rose-300 shadow-xs ring-1 ring-rose-200/60'
+                    : 'bg-white border-stone-200/90 shadow-sm hover:shadow-md'
+                }`}
+              >
+                {/* Property Image Banner */}
+                <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
+                  <img
+                    src={propImage}
+                    alt={prop.title}
+                    className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                      isClosed ? 'grayscale-[35%] opacity-90' : ''
+                    }`}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+
+                  {/* High-Visibility Center Overlay for Closed Properties */}
+                  {isClosed && (
+                    <div className="absolute inset-0 bg-stone-950/60 backdrop-blur-[1px] flex flex-col items-center justify-center gap-1 z-10">
+                      <span className="px-3.5 py-1.5 rounded-xl bg-rose-600 text-white font-extrabold text-xs uppercase tracking-widest shadow-lg border border-rose-400/50 flex items-center gap-1.5">
+                        <CheckCircle2 size={14} /> DEAL CLOSED
+                      </span>
+                      <span className="text-[10px] text-stone-200 font-semibold drop-shadow-sm">
+                        Off Market • Transaction Completed
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Top Badges: Price & Status */}
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 z-20">
+                    <span className="px-2.5 py-1 rounded-lg bg-stone-900/90 text-white font-black text-xs backdrop-blur-xs shadow-xs">
+                      {money(prop.price)}
+                      {(isRent || isPg) && <span className="text-[10px] font-normal text-stone-300"> / mo</span>}
+                    </span>
+
+                    {isClosed ? (
+                      <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1 shadow-sm ring-1 ring-white/30">
+                        <CheckCircle2 size={12} className="text-white" /> CLOSED
+                      </span>
+                    ) : (
+                      <StatusBadge status={prop.status} />
+                    )}
+                  </div>
+
+                  {/* Bottom Overlay on Image: Property Title & Locality */}
+                  <div className="absolute bottom-2.5 left-3 right-3 text-white z-20">
+                    <h4 className="font-bold text-sm tracking-tight truncate drop-shadow-sm">{prop.title}</h4>
+                    <p className="text-[11px] text-stone-200 font-medium truncate flex items-center gap-1 mt-0.5">
+                      <MapPin size={11} className="shrink-0 text-emerald-400" />
+                      <span>{propLocation}</span>
+                      <span className="text-stone-300">•</span>
+                      <span className="capitalize">For {prop.purpose}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card Content Body */}
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                  <div>
+                    {/* Specs Row */}
+                    <div className="flex items-center gap-2.5 text-xs text-stone-600 pb-2.5 border-b border-stone-100">
+                      <span className="flex items-center gap-1">
+                        <BedDouble size={13} className="text-stone-400 shrink-0" />
+                        <span>{bedrooms ? `${bedrooms} Beds` : prop.type || '1 Unit'}</span>
+                      </span>
+                      <span className="text-stone-300">•</span>
+                      <span className="flex items-center gap-1">
+                        <Bath size={13} className="text-stone-400 shrink-0" />
+                        <span>{bathrooms ? `${bathrooms} Baths` : '1 Bath'}</span>
+                      </span>
+                      <span className="text-stone-300">•</span>
+                      <span className="flex items-center gap-1">
+                        <Maximize size={13} className="text-stone-400 shrink-0" />
+                        <span>{area ? `${area} sq.ft` : 'Standard'}</span>
+                      </span>
+                    </div>
+
+                    {/* Listing Attributes / Category */}
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-semibold">
+                        {prop.type || 'Residential'}
+                      </span>
+                      {prop.furnishing && (
+                        <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-semibold capitalize">
+                          {prop.furnishing}
+                        </span>
+                      )}
+                      {prop.createdAt && (
+                        <span className="text-[10px] text-stone-400 ml-auto flex items-center gap-1">
+                          <Clock size={11} /> {date(prop.createdAt)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Prominent Closed Notice Banner inside Card */}
+                    {isClosed && (
+                      <div className="mt-2.5 px-3 py-1.5 bg-rose-50 border border-rose-200/90 rounded-xl flex items-center justify-between text-xs font-bold text-rose-900">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-rose-600 shrink-0" />
+                          <span>Listing Closed • Deal Completed</span>
+                        </span>
+                        <button
+                          type="button"
+                          disabled={busy === prop._id}
+                          onClick={() => handleReopenListing(prop._id)}
+                          className="text-[11px] font-bold text-rose-700 hover:text-rose-900 underline cursor-pointer shrink-0 ml-2"
+                        >
+                          Re-open
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Actions Footer */}
+                  <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Link
+                        href={`/properties/${prop._id}`}
+                        className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        title="View property details page"
+                      >
+                        <Eye size={12} />
+                        <span>View</span>
+                      </Link>
+
+                      <Link
+                        href={`/properties/${prop._id}/edit`}
+                        className="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-sky-200/60"
+                        title="Edit listing details"
+                      >
+                        <Edit size={12} />
+                        <span>Edit</span>
+                      </Link>
+
+                      {isClosed ? (
+                        <button
+                          type="button"
+                          disabled={busy === prop._id}
+                          onClick={() => handleReopenListing(prop._id)}
+                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-emerald-200"
+                          title="Re-open this listing as active"
+                        >
+                          <CheckCircle2 size={12} className="text-emerald-600" />
+                          <span>Re-open</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busy === prop._id}
+                          onClick={() => handleCloseListing(prop._id)}
+                          className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-rose-200"
+                          title="Mark this listing as Closed / Deal Closed"
+                        >
+                          <CheckCircle2 size={12} />
+                          <span>Close Listing</span>
+                        </button>
+                      )}
+
+                      {onPromote && !isClosed && (
+                        <button
+                          type="button"
+                          onClick={() => onPromote(prop)}
+                          className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-amber-200"
+                          title="Promote this listing for higher reach"
+                        >
+                          <Sparkles size={12} className="text-amber-600" />
+                          <span>Promote</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {prop.status !== 'archived' && (
+                      <button
+                        type="button"
+                        disabled={busy === prop._id}
+                        onClick={() => handleArchive(prop._id)}
+                        className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Archive listing"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-// Section: Leads Pipeline
+// Section: My Leads Pipeline (Card View with Property Image + Table View)
 function BrokerLeadsSection() {
   const { toast } = useApp();
   const { data, loading, reload } = useData('leads?page=1&limit=100');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
+  const [selectedClientForModal, setSelectedClientForModal] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [stageFilter, setStageFilter] = useState('all'); // 'all' | 'new' | 'closed'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
 
-  // Deduplicate leads so each customer request shows only once. If other users send, their details show.
+  // Deduplicate leads by customer + listing
   const uniqueItems = useMemo(() => {
     const seen = new Set();
     return items.filter((row) => {
@@ -404,20 +843,31 @@ function BrokerLeadsSection() {
   }, [items]);
 
   const leadStatuses = [
-    'new',
-    'contacted',
-    'interested',
-    'visit_scheduled',
-    'negotiation',
-    'converted',
-    'closed'
+    { value: 'new', label: 'NEW' },
+    { value: 'contacted', label: 'CONTACTED' },
+    { value: 'interested', label: 'INTERESTED' },
+    { value: 'visit_scheduled', label: 'VISIT SCHEDULED' },
+    { value: 'negotiation', label: 'IN NEGOTIATION' },
+    { value: 'deal_closed', label: 'DEAL CLOSED' },
+    { value: 'lost', label: 'LOST / DROPPED' }
   ];
 
   async function updateStatus(id, newStatus) {
     setBusy(id);
     try {
       await api(`leads/${id}`, { method: 'PATCH', body: { status: newStatus } });
-      toast(`Lead updated to ${newStatus}.`);
+      if (['deal_closed', 'closed', 'converted'].includes(newStatus)) {
+        const targetLead = items.find((l) => String(l._id) === String(id));
+        const propId = targetLead?.property?._id || targetLead?.property;
+        if (propId) {
+          try {
+            await api(`properties/${propId}`, { method: 'PATCH', body: { status: 'closed' } });
+          } catch {}
+        }
+        toast('🎉 Deal marked as closed! Customer visit status updated to Closed.');
+      } else {
+        toast(`Lead updated to ${newStatus.replace(/_/g, ' ')}.`);
+      }
       reload();
     } catch (e) {
       toast(e.message);
@@ -425,6 +875,27 @@ function BrokerLeadsSection() {
       setBusy('');
     }
   }
+
+  // Filter leads by stage and search
+  const filteredLeads = useMemo(() => {
+    return uniqueItems.filter((lead) => {
+      if (stageFilter === 'new' && !['new', 'uncontacted'].includes(lead.status)) return false;
+      if (stageFilter === 'closed' && !['deal_closed', 'closed', 'converted'].includes(lead.status)) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const propTitle = (lead.property?.title || lead.project?.title || '').toLowerCase();
+        const propLoc = (lead.property?.locality || lead.property?.city || '').toLowerCase();
+        const custName = (lead.name || '').toLowerCase();
+        const custPhone = (lead.phone || '').toLowerCase();
+        const custEmail = (lead.email || '').toLowerCase();
+        if (!propTitle.includes(q) && !propLoc.includes(q) && !custName.includes(q) && !custPhone.includes(q) && !custEmail.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [uniqueItems, stageFilter, searchQuery]);
 
   const columns = [
     {
@@ -442,7 +913,7 @@ function BrokerLeadsSection() {
       header: 'Interested Property',
       render: (row) => (
         <span className="font-semibold text-stone-800 truncate block max-w-xs">
-          {row.property?.title || 'Property listing'}
+          {row.property?.title || row.project?.title || 'Property listing'}
         </span>
       )
     },
@@ -457,11 +928,11 @@ function BrokerLeadsSection() {
           value={row.status}
           disabled={busy === row._id}
           onChange={(e) => updateStatus(row._id, e.target.value)}
-          className="text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-semibold focus:outline-none focus:border-stone-800"
+          className="text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-semibold focus:outline-none focus:border-stone-800 cursor-pointer"
         >
           {leadStatuses.map((st) => (
-            <option key={st} value={st}>
-              {st.replace(/_/g, ' ').toUpperCase()}
+            <option key={st.value} value={st.value}>
+              {st.label}
             </option>
           ))}
         </select>
@@ -474,26 +945,332 @@ function BrokerLeadsSection() {
           {row.note || 'No notes added'}
         </span>
       )
+    },
+    {
+      header: 'Actions',
+      render: (row) => {
+        const isClosed = ['deal_closed', 'closed', 'converted'].includes(row.status);
+        return (
+          <div className="flex items-center gap-2">
+            {!isClosed ? (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => updateStatus(row._id, 'deal_closed')}
+                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                title="Mark deal as closed and convert lead to client"
+              >
+                <CheckCircle2 size={12} />
+                <span>Close Deal</span>
+              </button>
+            ) : (
+              <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 font-extrabold text-[10px] flex items-center gap-1">
+                <CheckCircle2 size={11} className="text-emerald-600" /> Won / Closed
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedClientForModal({
+                name: row.name || 'Client',
+                phone: row.phone || '',
+                email: row.email || '',
+                city: row.city || 'Hyderabad',
+                leadId: row._id,
+                customerId: row.user?._id || row.user,
+                hasClosedDeal: isClosed,
+                purchasedProperty: isClosed ? (row.property || row.project) : null
+              })}
+              className="px-2.5 py-1 text-forest hover:bg-forest/10 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-forest/30"
+              title="Recommend a property listing to this customer"
+            >
+              <Sparkles size={12} />
+              <span>Recommend</span>
+            </button>
+          </div>
+        );
+      }
     }
   ];
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-stone-900">New Leads</h2>
-        <p className="text-xs text-stone-500">Track prospective buyers across New, Contacted, Interested, Visit, Negotiation &amp; Converted</p>
+      {/* Header with Title & View Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-stone-900">My Leads</h2>
+          <p className="text-xs text-stone-500">
+            Track customer inquiries with property photo cards, advance pipeline stages, close deals, and recommend properties
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 self-start">
+          {/* Stage filter pills */}
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setStageFilter('all')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                stageFilter === 'all' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              All ({uniqueItems.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStageFilter('new')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                stageFilter === 'new' ? 'bg-white text-emerald-800 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              New
+            </button>
+            <button
+              type="button"
+              onClick={() => setStageFilter('closed')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                stageFilter === 'closed' ? 'bg-white text-emerald-800 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              Closed Deals
+            </button>
+          </div>
+
+          {/* Cards vs Table view switch */}
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'cards' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-400 hover:text-stone-700'
+              }`}
+              title="Cards View"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'table' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-400 hover:text-stone-700'
+              }`}
+              title="Table View"
+            >
+              <List size={15} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={uniqueItems}
-        emptyTitle="No leads generated yet"
-        emptySubtitle="Inquiries from interested buyers will appear here in real-time."
+      {/* Search Input */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-full sm:max-w-md">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search leads by customer name, phone, property title, or location…"
+            className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest text-stone-900 placeholder:text-stone-400 shadow-2xs"
+          />
+        </div>
+      </div>
+
+      {/* Main Content: Card View vs Table View */}
+      {loading ? (
+        <div className="p-12 text-center text-xs text-stone-400">Loading leads portfolio…</div>
+      ) : filteredLeads.length === 0 ? (
+        <div className="p-12 text-center space-y-2 border border-dashed border-stone-200 rounded-2xl bg-white">
+          <ClipboardList size={30} className="mx-auto text-stone-300" />
+          <h3 className="font-bold text-stone-700 text-sm">No leads match your filter</h3>
+          <p className="text-xs text-stone-400">Buyer inquiries submitted on your listings will appear here in real-time.</p>
+        </div>
+      ) : viewMode === 'table' ? (
+        <DataTable
+          columns={columns}
+          data={filteredLeads}
+          emptyTitle="No leads generated yet"
+          emptySubtitle="Inquiries from interested buyers will appear here in real-time."
+        />
+      ) : (
+        /* CARDS GRID WITH PROPERTY PHOTO (User Request) */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filteredLeads.map((lead) => {
+            const isClosed = ['deal_closed', 'closed', 'converted'].includes(lead.status);
+            const prop = lead.property || lead.project;
+            const propImage =
+              prop?.images?.[0] ||
+              'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
+            const propTitle = prop?.title || 'Verified Property Listing';
+            const propPrice = prop?.price ? money(prop.price) : prop?.priceMin ? money(prop.priceMin) : 'Price on Request';
+            const propLocation = [prop?.locality, prop?.city].filter(Boolean).join(', ') || 'Hyderabad';
+
+            return (
+              <div
+                key={lead._id}
+                className="bg-white rounded-2xl border border-stone-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
+              >
+                {/* Property Image Banner */}
+                <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
+                  <img
+                    src={propImage}
+                    alt={propTitle}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+
+                  {/* Top Badges: Price & Status */}
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-1 rounded-lg bg-stone-900/90 text-white font-black text-xs backdrop-blur-xs shadow-xs">
+                      {propPrice}
+                    </span>
+                    <StatusBadge status={lead.status} />
+                  </div>
+
+                  {/* Bottom Overlay on Image: Property Title & Locality */}
+                  <div className="absolute bottom-2.5 left-3 right-3 text-white">
+                    <h4 className="font-bold text-sm tracking-tight truncate drop-shadow-sm">{propTitle}</h4>
+                    <p className="text-[11px] text-stone-200 font-medium truncate flex items-center gap-1 mt-0.5">
+                      <MapPin size={11} className="shrink-0 text-emerald-400" />
+                      <span>{propLocation}</span>
+                      {prop?.bhk && <span>• {prop.bhk} BHK</span>}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card Content Body */}
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                  <div>
+                    {/* Customer Info Header */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-extrabold flex items-center justify-center text-xs shrink-0 border border-emerald-200">
+                          {(lead.name || 'P').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-bold text-sm text-stone-900 truncate">
+                          {lead.name || 'Prospective Buyer'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-stone-400 shrink-0 flex items-center gap-1">
+                        <Clock size={11} /> {date(lead.createdAt)}
+                      </span>
+                    </div>
+
+                    {/* Contact Links */}
+                    <div className="mt-2.5 space-y-1 text-xs">
+                      <a
+                        href={`tel:${lead.phone}`}
+                        className="text-stone-700 hover:text-forest font-semibold flex items-center gap-1.5 truncate"
+                      >
+                        <Phone size={12} className="text-stone-400 shrink-0" />
+                        <span>{lead.phone || 'No phone provided'}</span>
+                      </a>
+                      {lead.email && (
+                        <a
+                          href={`mailto:${lead.email}`}
+                          className="text-stone-500 hover:text-forest flex items-center gap-1.5 truncate text-[11px]"
+                        >
+                          <Mail size={12} className="text-stone-400 shrink-0" />
+                          <span className="truncate">{lead.email}</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Customer Requirement / Note */}
+                    {lead.note && (
+                      <div className="mt-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200/80 text-[11px] text-stone-600 line-clamp-2">
+                        "{lead.note}"
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stage Dropdown & Action Buttons */}
+                  <div className="pt-3 border-t border-stone-100 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Lead Stage:</span>
+                      <select
+                        value={lead.status}
+                        disabled={busy === lead._id}
+                        onChange={(e) => updateStatus(lead._id, e.target.value)}
+                        className="text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 font-bold text-stone-800 focus:outline-none focus:border-stone-800 cursor-pointer max-w-[170px] truncate"
+                      >
+                        {leadStatuses.map((st) => (
+                          <option key={st.value} value={st.value}>
+                            {st.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Actions Bar: Close Deal, Recommend Property, WhatsApp */}
+                    <div className="flex items-center gap-2">
+                      {!isClosed ? (
+                        <button
+                          type="button"
+                          disabled={busy === lead._id}
+                          onClick={() => updateStatus(lead._id, 'deal_closed')}
+                          className="flex-1 py-1.5 px-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                          title="Mark deal as closed & convert lead to client"
+                        >
+                          <CheckCircle2 size={13} />
+                          <span>Close Deal</span>
+                        </button>
+                      ) : (
+                        <span className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 font-extrabold text-[11px] flex items-center justify-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-emerald-600" /> Deal Closed
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedClientForModal({
+                            name: lead.name || 'Client',
+                            phone: lead.phone || '',
+                            email: lead.email || '',
+                            city: lead.city || 'Hyderabad',
+                            leadId: lead._id,
+                            customerId: lead.user?._id || lead.user,
+                            hasClosedDeal: isClosed,
+                            purchasedProperty: isClosed ? prop : null
+                          })
+                        }
+                        className="py-1.5 px-3 bg-forest hover:bg-[#114032] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                        title="Open recommendation popup form"
+                      >
+                        <Sparkles size={13} />
+                        <span>Recommend</span>
+                      </button>
+
+                      {lead.phone && (
+                        <a
+                          href={`https://wa.me/${(lead.phone || '').replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1.5 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center justify-center"
+                          title="Chat on WhatsApp"
+                        >
+                          <MessageCircle size={15} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Property Recommendation Popup Modal */}
+      <PropertyRecommendationModal
+        isOpen={Boolean(selectedClientForModal)}
+        onClose={() => setSelectedClientForModal(null)}
+        client={selectedClientForModal}
+        onSuccess={() => reload()}
       />
     </div>
   );
 }
-
 // Section: Visits
 function BrokerVisitsSection() {
   const { toast } = useApp();
@@ -611,70 +1388,407 @@ function BrokerVisitsSection() {
 
 // Section: Clients Directory
 function BrokerClientsSection() {
-  const { data } = useData('leads?page=1&limit=100');
+  const { data, reload } = useData('leads?page=1&limit=100');
   const items = data?.items || [];
+  const [activeTab, setActiveTab] = useState('buyers'); // 'buyers' | 'all'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
+  const [selectedClientForModal, setSelectedClientForModal] = useState(null);
 
-  // Group unique clients by phone or name
+  // Group unique clients and categorize buyers who closed deals
   const clientMap = new Map();
   items.forEach((item) => {
-    const key = item.phone || item.name || 'Unknown';
+    const key = String(item.user?._id || item.user || item.phone || item.email || item.name || 'Unknown').toLowerCase().trim();
+    const isClosedDeal = ['deal_closed', 'closed', 'converted'].includes(item.status);
+    const propInfo = item.property || item.project;
+
     if (!clientMap.has(key)) {
       clientMap.set(key, {
-        name: item.name || 'Client',
-        phone: item.phone || '—',
-        email: item.email || '—',
-        city: item.city || 'Bengaluru',
+        _id: item._id,
+        leadId: item._id,
+        customerId: item.user?._id || item.user || null,
+        name: item.name || item.user?.name || 'Client',
+        phone: item.phone || item.user?.phone || '—',
+        email: item.email || item.user?.email || '—',
+        city: item.city || item.property?.city || 'Bengaluru',
         firstContact: item.createdAt,
         totalInquiries: 1,
-        latestStatus: item.status
+        latestStatus: item.status,
+        hasClosedDeal: isClosedDeal,
+        closedDealsCount: isClosedDeal ? 1 : 0,
+        purchasedProperties: isClosedDeal && propInfo ? [propInfo] : [],
+        recentProperty: propInfo
       });
     } else {
-      clientMap.get(key).totalInquiries += 1;
+      const existing = clientMap.get(key);
+      existing.totalInquiries += 1;
+      if (isClosedDeal) {
+        existing.hasClosedDeal = true;
+        existing.closedDealsCount += 1;
+        if (propInfo && !existing.purchasedProperties.some((p) => String(p._id) === String(propInfo._id))) {
+          existing.purchasedProperties.push(propInfo);
+        }
+        existing.latestStatus = item.status;
+      }
     }
   });
 
-  const clients = Array.from(clientMap.values());
+  const allClients = Array.from(clientMap.values());
+  const buyersList = allClients.filter((c) => c.hasClosedDeal);
+
+  // Apply tab filter & search
+  const displayedClients = (activeTab === 'buyers' ? buyersList : allClients).filter((c) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.phone.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      c.city.toLowerCase().includes(q) ||
+      c.purchasedProperties.some((p) => (p.title || '').toLowerCase().includes(q))
+    );
+  });
 
   const columns = [
     {
-      header: 'Client Name',
-      render: (row) => <span className="font-bold text-stone-900">{row.name}</span>
-    },
-    {
-      header: 'Contact Info',
+      header: 'Client / Buyer',
       render: (row) => (
-        <div className="text-xs">
-          <span className="text-stone-800 block">{row.phone}</span>
-          <span className="text-stone-400 block">{row.email}</span>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-stone-100 text-stone-800 font-extrabold flex items-center justify-center text-xs shrink-0 border border-stone-200">
+            {row.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-stone-900">{row.name}</span>
+              {row.hasClosedDeal && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-extrabold text-[10px] border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                  <CheckCircle2 size={10} className="text-emerald-600" /> Closed Deal / Buyer
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] text-stone-400 block">First engaged: {date(row.firstContact)}</span>
+          </div>
         </div>
       )
     },
     {
-      header: 'City',
-      render: (row) => <span className="text-stone-600 text-xs">{row.city}</span>
+      header: 'Contact Info',
+      render: (row) => (
+        <div className="text-xs space-y-0.5">
+          <a href={`tel:${row.phone}`} className="text-stone-800 hover:text-forest font-semibold flex items-center gap-1">
+            <Phone size={11} className="text-stone-400" /> {row.phone}
+          </a>
+          <a href={`mailto:${row.email}`} className="text-stone-500 hover:text-forest flex items-center gap-1">
+            <Mail size={11} className="text-stone-400" /> {row.email}
+          </a>
+        </div>
+      )
     },
     {
-      header: 'Total Inquiries',
-      render: (row) => <span className="font-bold text-stone-800">{row.totalInquiries}</span>
+      header: 'Purchased / Deal Details',
+      render: (row) => {
+        if (row.hasClosedDeal && row.purchasedProperties.length > 0) {
+          const prop = row.purchasedProperties[0];
+          return (
+            <div className="text-xs max-w-xs">
+              <span className="font-extrabold text-stone-900 block truncate text-[13px]">{prop.title}</span>
+              <span className="text-[11px] text-emerald-700 font-bold block">
+                {money(prop.price)} • {prop.locality || row.city}
+              </span>
+            </div>
+          );
+        }
+        return (
+          <span className="text-xs text-stone-500 truncate block max-w-xs">
+            {row.recentProperty?.title ? `Inquired on ${row.recentProperty.title}` : 'General Inquiry'}
+          </span>
+        );
+      }
+    },
+    {
+      header: 'Deals & Inquiries',
+      render: (row) => (
+        <div className="text-xs">
+          <span className="font-bold text-stone-900 block">
+            {row.closedDealsCount > 0 ? `${row.closedDealsCount} Deal${row.closedDealsCount > 1 ? 's' : ''} Closed` : '0 Deals Closed'}
+          </span>
+          <span className="text-stone-400 text-[11px]">{row.totalInquiries} Total Inquiries</span>
+        </div>
+      )
     },
     {
       header: 'Latest Status',
       render: (row) => <StatusBadge status={row.latestStatus} />
+    },
+    {
+      header: 'Action',
+      render: (row) => (
+        <button
+          type="button"
+          onClick={() => setSelectedClientForModal(row)}
+          className="px-3.5 py-1.5 bg-forest hover:bg-[#114032] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:shadow"
+          title="Click to open recommendation popup form"
+        >
+          <Sparkles size={13} />
+          <span>Recommend Property</span>
+        </button>
+      )
     }
   ];
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-stone-900">Client Directory</h2>
-        <p className="text-xs text-stone-500">Homebuyers and prospective investors who have engaged with your listings</p>
+      {/* Header & Filter Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-stone-900">Client Directory</h2>
+          <p className="text-xs text-stone-500">
+            Clients who bought properties from you and prospective buyers who engaged with your listings
+          </p>
+        </div>
+
+        {/* Filter Toggle Tabs */}
+        <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl self-start">
+          <button
+            type="button"
+            onClick={() => setActiveTab('buyers')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'buyers'
+                ? 'bg-white text-emerald-800 shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <CheckCircle2 size={12} className={activeTab === 'buyers' ? 'text-emerald-600' : ''} />
+            <span>Closed Deals / Buyers ({buyersList.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'all'
+                ? 'bg-white text-stone-900 shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <span>All Clients ({allClients.length})</span>
+          </button>
+        </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={clients}
-        emptyTitle="No clients recorded yet"
-        emptySubtitle="Clients who inquire or schedule visits will be organized into your directory."
+      {/* Search Bar & View Mode Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search clients by name, contact phone, email, or purchased property…"
+            className="w-full sm:max-w-md px-3.5 py-2 text-xs bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest text-stone-900 placeholder:text-stone-400 shadow-2xs"
+          />
+          {buyersList.length > 0 && activeTab === 'buyers' && (
+            <span className="text-xs text-emerald-700 font-bold hidden sm:inline-block">
+              ★ Click any buyer card to recommend a property
+            </span>
+          )}
+        </div>
+
+        {/* View Mode Toggle: Cards / Table */}
+        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl self-start sm:self-auto shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewMode('cards')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'cards'
+                ? 'bg-white text-forest shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <LayoutGrid size={13} />
+            <span>Cards</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('table')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'table'
+                ? 'bg-white text-forest shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <List size={13} />
+            <span>Table</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Cards View */}
+      {viewMode === 'cards' ? (
+        displayedClients.length === 0 ? (
+          <div className="bg-white border border-stone-200 rounded-2xl p-12 text-center shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto mb-3">
+              <Users size={24} />
+            </div>
+            <h3 className="font-bold text-base text-stone-900">
+              {activeTab === 'buyers' ? 'No closed deals / buyers yet' : 'No clients recorded yet'}
+            </h3>
+            <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+              {activeTab === 'buyers'
+                ? 'When you close a deal on a lead, the buyer will automatically appear in this section.'
+                : 'Clients who inquire or schedule visits will be organized into your directory.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {displayedClients.map((client) => {
+              const prop = (client.purchasedProperties && client.purchasedProperties.length > 0)
+                ? client.purchasedProperties[0]
+                : client.recentProperty;
+              const propImage =
+                prop?.images?.[0] ||
+                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
+              const propTitle = prop?.title || (client.hasClosedDeal ? 'Purchased Property' : 'Inquired Property');
+              const propPrice = prop?.price ? money(prop.price) : prop?.priceMin ? money(prop.priceMin) : '—';
+              const propLocation = [prop?.locality, prop?.city || client.city].filter(Boolean).join(', ') || client.city;
+
+              return (
+                <div
+                  key={client._id || client.leadId}
+                  className="bg-white rounded-2xl border border-stone-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
+                >
+                  {/* Property Image Banner */}
+                  <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
+                    <img
+                      src={propImage}
+                      alt={propTitle}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+
+                    {/* Top Badges: Price & Buyer/Status Badge */}
+                    <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-stone-900/90 text-white font-black text-xs backdrop-blur-xs shadow-xs">
+                        {propPrice}
+                      </span>
+                      {client.hasClosedDeal ? (
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-700/95 text-white font-black text-xs backdrop-blur-xs shadow-xs flex items-center gap-1">
+                          <CheckCircle2 size={12} /> Deal Closed
+                        </span>
+                      ) : (
+                        <StatusBadge status={client.latestStatus} />
+                      )}
+                    </div>
+
+                    {/* Bottom Overlay on Image: Property Title & Locality */}
+                    <div className="absolute bottom-2.5 left-3 right-3 text-white">
+                      <h4 className="font-bold text-sm tracking-tight truncate drop-shadow-sm">{propTitle}</h4>
+                      <p className="text-[11px] text-stone-200 font-medium truncate flex items-center gap-1 mt-0.5">
+                        <MapPin size={11} className="shrink-0 text-emerald-400" />
+                        <span>{propLocation}</span>
+                        {prop?.bhk && <span>• {prop.bhk} BHK</span>}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card Content Body */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      {/* Customer Info Header */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-extrabold flex items-center justify-center text-xs shrink-0 border border-emerald-200">
+                            {(client.name || 'C').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-bold text-sm text-stone-900 truncate block">
+                              {client.name || 'Client'}
+                            </span>
+                            <span className="text-[10px] text-emerald-700 font-semibold block">
+                              {client.closedDealsCount > 0 ? `${client.closedDealsCount} Deal Closed` : 'Client Lead'}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-stone-400 shrink-0 flex items-center gap-1">
+                          <Clock size={11} /> {client.firstContact ? date(client.firstContact) : 'Active'}
+                        </span>
+                      </div>
+
+                      {/* Contact Links */}
+                      <div className="mt-2.5 space-y-1 text-xs">
+                        <a
+                          href={`tel:${client.phone}`}
+                          className="text-stone-700 hover:text-forest font-semibold flex items-center gap-1.5 truncate"
+                        >
+                          <Phone size={12} className="text-stone-400 shrink-0" />
+                          <span>{client.phone && client.phone !== '—' ? client.phone : 'No phone provided'}</span>
+                        </a>
+                        {client.email && client.email !== '—' && (
+                          <a
+                            href={`mailto:${client.email}`}
+                            className="text-stone-500 hover:text-forest flex items-center gap-1.5 truncate text-[11px]"
+                          >
+                            <Mail size={12} className="text-stone-400 shrink-0" />
+                            <span className="truncate">{client.email}</span>
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Activity Summary Chip */}
+                      <div className="mt-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200/80 text-[11px] text-stone-600 flex items-center justify-between">
+                        <span>Total Inquiries: <strong className="text-stone-900">{client.totalInquiries}</strong></span>
+                        <span className="font-bold text-emerald-700">{client.city}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions Bar */}
+                    <div className="pt-3 border-t border-stone-100 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClientForModal(client)}
+                        className="flex-1 py-1.5 px-3 bg-forest hover:bg-[#114032] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                        title="Recommend a new property to this buyer"
+                      >
+                        <Sparkles size={13} />
+                        <span>Recommend Property</span>
+                      </button>
+
+                      {client.phone && client.phone !== '—' && (
+                        <a
+                          href={`https://wa.me/${client.phone.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1.5 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center justify-center"
+                          title="Chat on WhatsApp"
+                        >
+                          <MessageCircle size={15} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        <DataTable
+          columns={columns}
+          data={displayedClients}
+          onRowClick={(row) => setSelectedClientForModal(row)}
+          emptyTitle={activeTab === 'buyers' ? 'No closed deals / buyers yet' : 'No clients recorded yet'}
+          emptySubtitle={
+            activeTab === 'buyers'
+              ? 'When you close a deal on a lead, the buyer will automatically appear in this section.'
+              : 'Clients who inquire or schedule visits will be organized into your directory.'
+          }
+        />
+      )}
+
+      {/* Property Recommendation Popup Modal */}
+      <PropertyRecommendationModal
+        isOpen={Boolean(selectedClientForModal)}
+        onClose={() => setSelectedClientForModal(null)}
+        client={selectedClientForModal}
+        onSuccess={() => reload()}
       />
     </div>
   );
@@ -682,6 +1796,10 @@ function BrokerClientsSection() {
 
 // Section: Analytics
 function BrokerAnalyticsSection({ stats }) {
+  const conversionRate = stats.views > 0
+    ? (((Number(stats.totalLeads) || 0) / Number(stats.views)) * 100).toFixed(1) + '%'
+    : (stats.totalLeads > 0 ? '100%' : '0.0%');
+
   return (
     <div className="space-y-6">
       <div>
@@ -713,7 +1831,7 @@ function BrokerAnalyticsSection({ stats }) {
         />
         <StatCard
           title="Conversion Rate"
-          value="18.6%"
+          value={conversionRate}
           subtitle="Lead-to-tour closure"
           icon={TrendingUp}
           color="#b45309"
@@ -724,6 +1842,12 @@ function BrokerAnalyticsSection({ stats }) {
       <AnalyticsChart
         title="Weekly Deal Flow &amp; Interactions"
         subtitle="Trend analysis for your brokerage team"
+        data={stats.analytics}
+        dataKeys={[
+          { key: 'views', name: 'Views', color: '#0369a1' },
+          { key: 'enquiries', name: 'Inquiries', color: '#0284c7' },
+          { key: 'visits', name: 'Visits', color: '#047857' }
+        ]}
         type="bar"
         height={260}
       />

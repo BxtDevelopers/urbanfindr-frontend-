@@ -20,6 +20,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
+import NotificationPanel from './dashboard/shared/NotificationPanel';
 
 import { useApp, useData } from './providers';
 import { cityGuides } from '@/lib/catalog';
@@ -183,8 +184,13 @@ export function Header() {
     }).length;
   }, [requestData?.items, isCustomer, user]);
 
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const { data: notifData } = useData(user ? 'notifications?limit=5' : null);
+  const unreadNotifCount = notifData?.unread || 0;
+
   useEffect(() => {
     setUserMenuOpen(false);
+    setNotificationOpen(false);
   }, [pathname]);
 
   const [servicesLauncherOpen, setServicesLauncherOpen] = useState(false);
@@ -450,36 +456,28 @@ export function Header() {
             </Link>
           )}
 
-          {/* Service Provider Leads Notification */}
-          {isServiceProvider && (
-            <Link
-              href="/dashboard/leads"
-              className="relative p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 transition-all shadow-xs flex items-center justify-center cursor-pointer"
-              title={`New Leads (${newLeadsCount})`}
-            >
-              <Bell size={18} className="text-emerald-800" />
-              {newLeadsCount > 0 && (
-                <span className="animate-ping absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400 opacity-75 pointer-events-none"></span>
-              )}
-              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-emerald-700 text-white text-[10px] font-extrabold shadow-xs">
-                {newLeadsCount}
-              </span>
-            </Link>
+          {/* Universal Notification Bell for Logged-In Users */}
+          {user && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setNotificationOpen(!notificationOpen)}
+                className="relative p-2.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-950 border border-emerald-300/80 transition-all shadow-xs flex items-center justify-center cursor-pointer"
+                title="Notifications"
+              >
+                <Bell size={21} className="text-emerald-900" />
+                {unreadNotifCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white shadow-xs" />
+                )}
+              </button>
+              <NotificationPanel
+                isOpen={notificationOpen}
+                onClose={() => setNotificationOpen(false)}
+              />
+            </div>
           )}
 
-          {/* Customer Requests Counter */}
-          {isCustomer && (
-            <Link
-              href="/dashboard/bookings"
-              className="relative p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300/80 transition-all shadow-xs flex items-center justify-center cursor-pointer"
-              title={`My Requests (${customerRequestsCount})`}
-            >
-              <Wrench size={18} className="text-[#163e35]" />
-              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[#163e35] text-white text-[10px] font-extrabold shadow-xs">
-                {customerRequestsCount}
-              </span>
-            </Link>
-          )}
+
 
           {/* Google-style 9-Dots Services / Category App Launcher */}
           <div

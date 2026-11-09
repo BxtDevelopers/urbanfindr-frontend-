@@ -159,6 +159,7 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
         title="Property Inquiries &amp; Discovery Views"
         subtitle="Organic search impressions across your active listings"
         height={240}
+        data={stats.analytics}
         dataKeys={[
           { key: 'views', name: 'Views', color: '#0f766e' },
           { key: 'enquiries', name: 'Inquiries', color: '#0369a1' },
@@ -856,6 +857,10 @@ function OwnerVisitsSection() {
 
 // Section: Owner Performance
 function OwnerPerformanceSection({ stats }) {
+  const conversionRate = stats.views > 0
+    ? (((Number(stats.enquiries) || 0) / Number(stats.views)) * 100).toFixed(1) + '%'
+    : (stats.enquiries > 0 ? '100%' : '0.0%');
+
   return (
     <div className="space-y-6">
       <div>
@@ -867,7 +872,7 @@ function OwnerPerformanceSection({ stats }) {
         <StatCard
           title="Total Views"
           value={stats.views}
-          subtitle="+18% this month"
+          subtitle="Portfolio reach"
           icon={Eye}
           color="#163e35" bgIcon="#ecf2e4"
         />
@@ -887,7 +892,7 @@ function OwnerPerformanceSection({ stats }) {
         />
         <StatCard
           title="Conversion"
-          value="12.4%"
+          value={conversionRate}
           subtitle="Tour-to-inquiry ratio"
           icon={TrendingUp}
           color="#749546" bgIcon="#ecf2e4"
@@ -897,6 +902,12 @@ function OwnerPerformanceSection({ stats }) {
       <AnalyticsChart
         title="Weekly Discovery Views &amp; Enquiries"
         subtitle="Interaction volume across your active portfolio"
+        data={stats.analytics}
+        dataKeys={[
+          { key: 'views', name: 'Views', color: '#0f766e' },
+          { key: 'enquiries', name: 'Inquiries', color: '#0369a1' },
+          { key: 'visits', name: 'Visits', color: '#047857' }
+        ]}
         type="area"
         height={260}
       />

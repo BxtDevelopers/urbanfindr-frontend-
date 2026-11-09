@@ -296,37 +296,69 @@ function CustomerRecentVisitsList({ onSelectSection }) {
   }
 
   const items = useMemo(() => {
-    const rawVisits = (visitsData?.items || []).map((v) => ({
-      _id: v._id,
-      title: v.property?.title || v.project?.title || 'Property Visit',
-      property: v.property,
-      project: v.project,
-      images: v.property?.images || [],
-      scheduledAt: v.scheduledAt,
-      createdAt: v.createdAt || v.scheduledAt,
-      status: v.status || 'requested',
-      ownerName: v.owner?.name || 'Property Host',
-      locality: v.property?.locality || '',
-      city: v.property?.city || 'Bengaluru',
-      isVisit: true
-    }));
+    // Identify closed property/project IDs from leads where deal was closed
+    const closedPropertyIds = new Set();
+    (leadsData?.items || []).forEach((l) => {
+      if (['deal_closed', 'closed', 'converted'].includes(l.status)) {
+        const pId = l.property?._id || l.property;
+        if (pId) closedPropertyIds.add(String(pId));
+        const prjId = l.project?._id || l.project;
+        if (prjId) closedPropertyIds.add(String(prjId));
+      }
+    });
+
+    const rawVisits = (visitsData?.items || []).map((v) => {
+      const propId = String(v.property?._id || v.property || '');
+      const prjId = String(v.project?._id || v.project || '');
+      const isClosed =
+        v.status === 'closed' ||
+        v.status === 'deal_closed' ||
+        v.property?.status === 'closed' ||
+        (propId && closedPropertyIds.has(propId)) ||
+        (prjId && closedPropertyIds.has(prjId));
+
+      return {
+        _id: v._id,
+        title: v.property?.title || v.project?.title || 'Property Visit',
+        property: v.property,
+        project: v.project,
+        images: v.property?.images || [],
+        scheduledAt: v.scheduledAt,
+        createdAt: v.createdAt || v.scheduledAt,
+        status: isClosed ? 'closed' : (v.status || 'requested'),
+        ownerName: v.owner?.name || 'Property Host',
+        locality: v.property?.locality || '',
+        city: v.property?.city || 'Bengaluru',
+        isVisit: true
+      };
+    });
 
     const rawLeads = (leadsData?.items || [])
       .filter((l) => l.preferredAt || l.status === 'site_visit_scheduled')
-      .map((l) => ({
-        _id: l._id,
-        title: l.property?.title || l.project?.title || 'Property Visit',
-        property: l.property,
-        project: l.project,
-        images: l.property?.images || [],
-        scheduledAt: l.preferredAt || l.createdAt,
-        createdAt: l.createdAt,
-        status: l.status === 'site_visit_scheduled' ? 'requested' : l.status,
-        ownerName: l.manager?.name || 'Property Host',
-        locality: l.property?.locality || '',
-        city: l.property?.city || l.city || 'Bengaluru',
-        isVisit: false
-      }));
+      .map((l) => {
+        const propId = String(l.property?._id || l.property || '');
+        const prjId = String(l.project?._id || l.project || '');
+        const isClosed =
+          ['deal_closed', 'closed', 'converted'].includes(l.status) ||
+          l.property?.status === 'closed' ||
+          (propId && closedPropertyIds.has(propId)) ||
+          (prjId && closedPropertyIds.has(prjId));
+
+        return {
+          _id: l._id,
+          title: l.property?.title || l.project?.title || 'Property Visit',
+          property: l.property,
+          project: l.project,
+          images: l.property?.images || [],
+          scheduledAt: l.preferredAt || l.createdAt,
+          createdAt: l.createdAt,
+          status: isClosed ? 'closed' : (l.status === 'site_visit_scheduled' ? 'requested' : l.status || 'requested'),
+          ownerName: l.manager?.name || 'Property Host',
+          locality: l.property?.locality || '',
+          city: l.property?.city || l.city || 'Bengaluru',
+          isVisit: false
+        };
+      });
 
     const combined = [...rawVisits];
     const seen = new Set(rawVisits.map((v) => String(v.property?._id || v.project?._id || v._id)));
@@ -452,25 +484,57 @@ function PropertyEnquiriesSection() {
   }
 
   const items = useMemo(() => {
-    const leadItems = (leadsData?.items || []).map((l) => ({
-      ...l,
-      title: l.property?.title || l.project?.title || l.service || l.note || 'Property Enquiry',
-      isVisit: false
-    }));
+    const closedPropertyIds = new Set();
+    (leadsData?.items || []).forEach((l) => {
+      if (['deal_closed', 'closed', 'converted'].includes(l.status)) {
+        const pId = l.property?._id || l.property;
+        if (pId) closedPropertyIds.add(String(pId));
+        const prjId = l.project?._id || l.project;
+        if (prjId) closedPropertyIds.add(String(prjId));
+      }
+    });
+
+    const leadItems = (leadsData?.items || []).map((l) => {
+      const propId = String(l.property?._id || l.property || '');
+      const prjId = String(l.project?._id || l.project || '');
+      const isClosed =
+        ['deal_closed', 'closed', 'converted'].includes(l.status) ||
+        l.property?.status === 'closed' ||
+        (propId && closedPropertyIds.has(propId)) ||
+        (prjId && closedPropertyIds.has(prjId));
+
+      return {
+        ...l,
+        title: l.property?.title || l.project?.title || l.service || l.note || 'Property Enquiry',
+        status: isClosed ? 'closed' : l.status,
+        isVisit: false
+      };
+    });
 
     // Also include site visits booked via the property form so every visited/enquired property shows here
-    const visitItems = (visitsData?.items || []).map((v) => ({
-      _id: v._id,
-      createdAt: v.createdAt || v.scheduledAt,
-      property: v.property,
-      project: v.project,
-      title: v.property?.title || v.project?.title || 'Property Site Visit Enquiry',
-      city: v.property?.city || 'Bengaluru',
-      budget: v.property?.price || undefined,
-      note: v.note || `Site visit scheduled for ${date(v.scheduledAt)}`,
-      status: v.status || 'requested',
-      isVisit: true
-    }));
+    const visitItems = (visitsData?.items || []).map((v) => {
+      const propId = String(v.property?._id || v.property || '');
+      const prjId = String(v.project?._id || v.project || '');
+      const isClosed =
+        v.status === 'closed' ||
+        v.status === 'deal_closed' ||
+        v.property?.status === 'closed' ||
+        (propId && closedPropertyIds.has(propId)) ||
+        (prjId && closedPropertyIds.has(prjId));
+
+      return {
+        _id: v._id,
+        createdAt: v.createdAt || v.scheduledAt,
+        property: v.property,
+        project: v.project,
+        title: v.property?.title || v.project?.title || 'Property Site Visit Enquiry',
+        city: v.property?.city || 'Bengaluru',
+        budget: v.property?.price || undefined,
+        note: v.note || `Site visit scheduled for ${date(v.scheduledAt)}`,
+        status: isClosed ? 'closed' : (v.status || 'requested'),
+        isVisit: true
+      };
+    });
 
     // Combine and deduplicate if same property is in both
     const merged = [...leadItems];
@@ -603,43 +667,74 @@ function PropertyVisitsSection() {
   const [busy, setBusy] = useState('');
 
   const items = useMemo(() => {
-    const rawVisits = (visitsData?.items || []).map((v) => ({
-      _id: v._id,
-      title: v.property?.title || v.project?.title || 'Property Visit',
-      property: v.property,
-      project: v.project,
-      images: v.property?.images || [],
-      scheduledAt: v.scheduledAt,
-      createdAt: v.createdAt || v.scheduledAt,
-      status: v.status || 'requested',
-      owner: v.owner,
-      ownerName: v.owner?.name || 'Property Host',
-      locality: v.property?.locality || '',
-      city: v.property?.city || 'Bengaluru',
-      price: v.property?.price,
-      note: v.note || '',
-      isVisit: true
-    }));
+    const closedPropertyIds = new Set();
+    (leadsData?.items || []).forEach((l) => {
+      if (['deal_closed', 'closed', 'converted'].includes(l.status)) {
+        const pId = l.property?._id || l.property;
+        if (pId) closedPropertyIds.add(String(pId));
+        const prjId = l.project?._id || l.project;
+        if (prjId) closedPropertyIds.add(String(prjId));
+      }
+    });
+
+    const rawVisits = (visitsData?.items || []).map((v) => {
+      const propId = String(v.property?._id || v.property || '');
+      const prjId = String(v.project?._id || v.project || '');
+      const isClosed =
+        v.status === 'closed' ||
+        v.status === 'deal_closed' ||
+        v.property?.status === 'closed' ||
+        (propId && closedPropertyIds.has(propId)) ||
+        (prjId && closedPropertyIds.has(prjId));
+
+      return {
+        _id: v._id,
+        title: v.property?.title || v.project?.title || 'Property Visit',
+        property: v.property,
+        project: v.project,
+        images: v.property?.images || [],
+        scheduledAt: v.scheduledAt,
+        createdAt: v.createdAt || v.scheduledAt,
+        status: isClosed ? 'closed' : (v.status || 'requested'),
+        owner: v.owner,
+        ownerName: v.owner?.name || 'Property Host',
+        locality: v.property?.locality || '',
+        city: v.property?.city || 'Bengaluru',
+        price: v.property?.price,
+        note: v.note || '',
+        isVisit: true
+      };
+    });
 
     const rawLeads = (leadsData?.items || [])
       .filter((l) => l.preferredAt || l.status === 'site_visit_scheduled')
-      .map((l) => ({
-        _id: l._id,
-        title: l.property?.title || l.project?.title || 'Property Visit',
-        property: l.property,
-        project: l.project,
-        images: l.property?.images || [],
-        scheduledAt: l.preferredAt || l.createdAt,
-        createdAt: l.createdAt,
-        status: l.status === 'site_visit_scheduled' ? 'requested' : l.status,
-        owner: l.manager,
-        ownerName: l.manager?.name || 'Property Host',
-        locality: l.property?.locality || '',
-        city: l.property?.city || l.city || 'Bengaluru',
-        price: l.property?.price,
-        note: l.note || '',
-        isVisit: false
-      }));
+      .map((l) => {
+        const propId = String(l.property?._id || l.property || '');
+        const prjId = String(l.project?._id || l.project || '');
+        const isClosed =
+          ['deal_closed', 'closed', 'converted'].includes(l.status) ||
+          l.property?.status === 'closed' ||
+          (propId && closedPropertyIds.has(propId)) ||
+          (prjId && closedPropertyIds.has(prjId));
+
+        return {
+          _id: l._id,
+          title: l.property?.title || l.project?.title || 'Property Visit',
+          property: l.property,
+          project: l.project,
+          images: l.property?.images || [],
+          scheduledAt: l.preferredAt || l.createdAt,
+          createdAt: l.createdAt,
+          status: isClosed ? 'closed' : (l.status === 'site_visit_scheduled' ? 'requested' : l.status || 'requested'),
+          owner: l.manager,
+          ownerName: l.manager?.name || 'Property Host',
+          locality: l.property?.locality || '',
+          city: l.property?.city || l.city || 'Bengaluru',
+          price: l.property?.price,
+          note: l.note || '',
+          isVisit: false
+        };
+      });
 
     const combined = [...rawVisits];
     const seen = new Set(rawVisits.map((v) => String(v.property?._id || v.project?._id || v._id)));

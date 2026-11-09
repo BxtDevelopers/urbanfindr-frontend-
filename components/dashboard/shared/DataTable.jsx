@@ -13,7 +13,8 @@ export default function DataTable({
   emptyTitle = 'No records found',
   emptySubtitle = 'There are no items to display matching your criteria.',
   pageSize = 10,
-  actions = null
+  actions = null,
+  onRowClick = null
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
@@ -131,7 +132,10 @@ export default function DataTable({
               paginatedData.map((row, rowIdx) => (
                 <tr
                   key={row._id || row.id || rowIdx}
-                  className="hover:bg-stone-50/60 transition-colors"
+                  onClick={() => onRowClick && onRowClick(row)}
+                  className={`transition-colors ${
+                    onRowClick ? 'cursor-pointer hover:bg-emerald-50/40' : 'hover:bg-stone-50/60'
+                  }`}
                 >
                   {columns.map((col, colIdx) => (
                     <td key={colIdx} className={`p-3.5 align-middle ${col.className || ''}`}>

@@ -45,31 +45,32 @@ export default function NotificationPanel({ isOpen, onClose }) {
   }
 
   const items = data?.items || [];
-  const unreadCount = data?.unread || items.filter((i) => !i.read).length;
+  const unreadCount = data?.unread ?? items.filter((i) => !i.read).length;
 
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-12 z-50 w-80 sm:w-96 bg-white border border-stone-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+      className="absolute right-0 top-12 z-[9999] w-80 sm:w-96 bg-white border border-stone-200/90 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
     >
-      <div className="p-4 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Bell size={16} className="text-stone-700" />
-          <h3 className="font-bold text-xs text-stone-900 uppercase tracking-wider">
-            Notifications
+      {/* Header bar matching user's design */}
+      <div className="p-3.5 sm:p-4 bg-white border-b border-stone-100 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Bell size={16} className="text-stone-800 shrink-0" />
+          <h3 className="font-extrabold text-xs text-stone-900 uppercase tracking-wider">
+            NOTIFICATIONS
           </h3>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#fee7eb] text-[#e11d48] shrink-0">
               {unreadCount} new
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
+        <div className="flex items-center gap-2.5 shrink-0">
+          {items.length > 0 && (
             <button
               type="button"
               onClick={markAllRead}
-              className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline transition-colors cursor-pointer"
             >
               Mark all read
             </button>
@@ -77,54 +78,61 @@ export default function NotificationPanel({ isOpen, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-stone-400 hover:text-stone-700 rounded-md"
+            className="p-1 text-stone-400 hover:text-stone-700 rounded-md transition-colors cursor-pointer"
+            aria-label="Close notifications"
           >
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
       </div>
 
-      <div className="max-h-80 overflow-y-auto divide-y divide-stone-100">
+      {/* Notifications List */}
+      <div className="max-h-84 overflow-y-auto divide-y divide-stone-100">
         {items.length === 0 ? (
-          <div className="p-8 text-center text-xs text-stone-400">
-            <Bell size={24} className="mx-auto text-stone-300 mb-2" />
-            No notifications yet.
+          <div className="p-8 text-center text-xs text-stone-400 space-y-2">
+            <Bell size={24} className="mx-auto text-stone-300" />
+            <p>No notifications yet.</p>
           </div>
         ) : (
           items.map((item) => (
             <div
               key={item._id}
-              className={`p-3.5 transition-colors ${
-                !item.read ? 'bg-amber-50/40' : 'hover:bg-stone-50/80'
+              className={`p-3.5 sm:p-4 transition-colors ${
+                !item.read ? 'bg-[#fafaf7]' : 'hover:bg-stone-50/80'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start justify-between gap-2.5">
                 <Link
                   href={item.link || '/dashboard'}
                   onClick={() => {
-                    markRead(item._id);
+                    if (!item.read) markRead(item._id);
                     onClose();
                   }}
-                  className="font-semibold text-xs text-stone-900 hover:text-emerald-700 transition-colors"
+                  className="font-bold text-xs sm:text-sm text-stone-900 hover:text-emerald-800 transition-colors leading-snug"
                 >
                   {item.title}
                 </Link>
                 {!item.read && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0 mt-1" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0 mt-1" />
                 )}
               </div>
-              <p className="text-xs text-stone-500 mt-1 line-clamp-2 leading-relaxed">
-                {item.body}
-              </p>
-              <div className="mt-2 flex items-center justify-between text-[11px] text-stone-400">
-                <span className="flex items-center gap-1">
-                  <Clock size={11} /> {date(item.createdAt)}
+
+              {item.body && (
+                <p className="text-xs text-stone-500 mt-1 leading-relaxed">
+                  {item.body}
+                </p>
+              )}
+
+              <div className="mt-2.5 flex items-center justify-between text-xs text-stone-400">
+                <span className="flex items-center gap-1.5 text-stone-400">
+                  <Clock size={12} className="text-stone-400" />
+                  <span>{item.createdAt ? date(item.createdAt) : 'Just now'}</span>
                 </span>
                 {!item.read && (
                   <button
                     type="button"
                     onClick={() => markRead(item._id)}
-                    className="text-stone-500 hover:text-stone-800"
+                    className="text-stone-400 hover:text-stone-700 transition-colors cursor-pointer text-xs font-medium"
                   >
                     Mark read
                   </button>
@@ -135,11 +143,12 @@ export default function NotificationPanel({ isOpen, onClose }) {
         )}
       </div>
 
-      <div className="p-2.5 bg-stone-50 border-t border-stone-100 text-center">
+      {/* Footer */}
+      <div className="py-2.5 px-4 bg-white border-t border-stone-100 text-center">
         <Link
           href="/dashboard/notifications"
           onClick={onClose}
-          className="text-xs font-semibold text-stone-600 hover:text-stone-900"
+          className="text-xs font-bold text-stone-700 hover:text-stone-900 transition-colors inline-block"
         >
           View all notifications →
         </Link>
@@ -147,4 +156,3 @@ export default function NotificationPanel({ isOpen, onClose }) {
     </div>
   );
 }
-

@@ -30,7 +30,7 @@ const STATUS_MAP = {
   scheduled: { label: 'Scheduled', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Calendar },
   in_progress: { label: 'In Progress', color: '#749546', bg: '#f7f8f3', border: '#e6e8e1', icon: Clock },
   completed: { label: 'Completed', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: CheckCircle2 },
-  closed: { label: 'Closed', color: '#475569', bg: '#f8fafc', border: '#cbd5e1', icon: CheckCircle2 },
+  closed: { label: 'Closed', color: '#9f1239', bg: '#ffe4e6', border: '#fecdd3', icon: CheckCircle2 },
   cancelled: { label: 'Cancelled', color: '#be123c', bg: '#fff1f2', border: '#fecdd3', icon: XCircle },
   rejected: { label: 'Declined', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', icon: XCircle },
   disputed: { label: 'Disputed', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', icon: AlertCircle },
@@ -45,8 +45,8 @@ const STATUS_MAP = {
   interested: { label: 'Interested', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Sparkles },
   visit_scheduled: { label: 'Visit Set', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Calendar },
   negotiation: { label: 'Negotiation', color: '#749546', bg: '#f7f8f3', border: '#e6e8e1', icon: Clock },
-  deal_closed: { label: 'Converted', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: CheckCircle2 },
-  converted: { label: 'Converted', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: CheckCircle2 },
+  deal_closed: { label: 'Closed', color: '#9f1239', bg: '#ffe4e6', border: '#fecdd3', icon: CheckCircle2 },
+  converted: { label: 'Closed', color: '#9f1239', bg: '#ffe4e6', border: '#fecdd3', icon: CheckCircle2 },
 
   // Project stages
   'New launch': { label: 'New Launch', color: '#163e35', bg: '#ecf2e4', border: '#d6dcd3', icon: Sparkles },
