@@ -9,7 +9,6 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
-import PropertyRecommendationModal from '../shared/PropertyRecommendationModal';
 import {
   Building2,
   Layers,
@@ -498,7 +497,6 @@ function BuilderEnquiriesSection() {
   const { data, reload } = useData('leads?kind=project&page=1&limit=50');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
-  const [selectedClientForModal, setSelectedClientForModal] = useState(null);
 
   async function updateStatus(id, newStatus) {
     setBusy(id);
@@ -571,24 +569,6 @@ function BuilderEnquiriesSection() {
                 <CheckCircle2 size={11} className="text-emerald-600" /> Deal Closed
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => setSelectedClientForModal({
-                name: row.name || 'Client',
-                phone: row.phone || '',
-                email: row.email || '',
-                city: row.city || 'Hyderabad',
-                leadId: row._id,
-                customerId: row.user?._id || row.user,
-                hasClosedDeal: isClosed,
-                purchasedProperty: isClosed ? row.project : null
-              })}
-              className="px-2.5 py-1 text-forest hover:bg-forest/10 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-forest/30"
-              title="Recommend a unit or property listing"
-            >
-              <Sparkles size={12} />
-              <span>Recommend</span>
-            </button>
           </div>
         );
       }
@@ -608,13 +588,6 @@ function BuilderEnquiriesSection() {
         emptyTitle="No project inquiries found"
         emptySubtitle="Prospective homebuyer inquiries will be captured here."
       />
-
-      <PropertyRecommendationModal
-        isOpen={Boolean(selectedClientForModal)}
-        onClose={() => setSelectedClientForModal(null)}
-        client={selectedClientForModal}
-        onSuccess={() => reload()}
-      />
     </div>
   );
 }
@@ -625,7 +598,6 @@ function BuilderClientsSection() {
   const items = data?.items || [];
   const [activeTab, setActiveTab] = useState('buyers'); // 'buyers' | 'all'
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedClientForModal, setSelectedClientForModal] = useState(null);
 
   // Group unique clients and categorize buyers
   const clientMap = new Map();
@@ -741,17 +713,24 @@ function BuilderClientsSection() {
       render: (row) => <StatusBadge status={row.latestStatus} />
     },
     {
-      header: 'Action',
+      header: 'Contact',
       render: (row) => (
-        <button
-          type="button"
-          onClick={() => setSelectedClientForModal(row)}
-          className="px-3.5 py-1.5 bg-forest hover:bg-[#114032] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:shadow"
-          title="Click to open recommendation popup form"
-        >
-          <Sparkles size={13} />
-          <span>Recommend Property</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {row.phone && row.phone !== '—' ? (
+            <a
+              href={`https://wa.me/${row.phone.replace(/[^0-9]/g, '')}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs font-bold flex items-center gap-1.5 transition-colors"
+              title="Chat on WhatsApp"
+            >
+              <MessageCircle size={13} />
+              <span>WhatsApp</span>
+            </a>
+          ) : (
+            <span className="text-xs text-stone-400">—</span>
+          )}
+        </div>
       )
     }
   ];
@@ -812,13 +791,6 @@ function BuilderClientsSection() {
             ? 'When you close a deal on a project enquiry, the buyer will automatically appear in this section.'
             : 'Clients who inquire or tour your projects will be organized into your directory.'
         }
-      />
-
-      <PropertyRecommendationModal
-        isOpen={Boolean(selectedClientForModal)}
-        onClose={() => setSelectedClientForModal(null)}
-        client={selectedClientForModal}
-        onSuccess={() => reload()}
       />
     </div>
   );

@@ -15,7 +15,7 @@ export default function ExploreCategories() {
     : serviceCategories.slice(0, 6);
 
   return (
-    <section className="wrap !pt-28 pb-4" aria-label="Explore by Category">
+    <section className="wrap pt-28 sm:pt-20 pb-4" aria-label="Explore by Category">
       {/* Section Header */}
       <div className="flex items-end justify-between gap-4 mb-3 sm:mb-4">
         <div>

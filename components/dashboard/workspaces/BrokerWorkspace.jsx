@@ -10,7 +10,6 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
-import PropertyRecommendationModal from '../shared/PropertyRecommendationModal';
 import {
   Briefcase,
   House,
@@ -31,6 +30,8 @@ import {
   Clock,
   Phone,
   User,
+  UserPlus,
+  UserCheck,
   MapPin,
   TrendingUp,
   ShieldCheck,
@@ -68,7 +69,7 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
       return <BrokerListingsSection onPromote={setPromotionTarget} />;
     }
     if (section === 'leads' || section === 'enquiries') {
-      return <BrokerLeadsSection />;
+      return <BrokerLeadsSection onSelectSection={onSelectSection} />;
     }
     if (section === 'visits') {
       return <BrokerVisitsSection />;
@@ -97,10 +98,10 @@ export default function BrokerWorkspace({ section = 'overview', onSelectSection 
       <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
         <div className="max-w-2xl relative z-10 space-y-2">
           <div className="flex items-center gap-2 text-[#d8edb3] font-bold text-xs uppercase tracking-wider">
-            <Briefcase size={14} /> Broker &amp; Channel Command
+            <Briefcase size={14} /> Agent &amp; Channel Command
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Broker
+            Agent
           </h2>
           <p className="text-xs sm:text-sm text-[#ecf2e4]/90 leading-relaxed">
             Manage your verified property portfolio, accelerate lead pipeline progression, organize inspection tours, and close buyer deals across key localities.
@@ -605,7 +606,7 @@ function BrokerListingsSection({ onPromote }) {
           columns={columns}
           data={filteredListings}
           emptyTitle="No listings available"
-          emptySubtitle="Listings added to your broker account will appear here."
+          emptySubtitle="Listings added to your agent account will appear here."
         />
       ) : (
         /* CARDS GRID WITH HIGH-VISIBILITY CLOSED IDENTIFICATION */
@@ -819,12 +820,11 @@ function BrokerListingsSection({ onPromote }) {
 }
 
 // Section: My Leads Pipeline (Card View with Property Image + Table View)
-function BrokerLeadsSection() {
+function BrokerLeadsSection({ onSelectSection }) {
   const { toast } = useApp();
   const { data, loading, reload } = useData('leads?page=1&limit=100');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
-  const [selectedClientForModal, setSelectedClientForModal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState('all'); // 'all' | 'new' | 'closed'
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
@@ -846,11 +846,25 @@ function BrokerLeadsSection() {
     { value: 'new', label: 'NEW' },
     { value: 'contacted', label: 'CONTACTED' },
     { value: 'interested', label: 'INTERESTED' },
-    { value: 'visit_scheduled', label: 'VISIT SCHEDULED' },
+    { value: 'site_visit_scheduled', label: 'VISIT SCHEDULED' },
     { value: 'negotiation', label: 'IN NEGOTIATION' },
     { value: 'deal_closed', label: 'DEAL CLOSED' },
     { value: 'lost', label: 'LOST / DROPPED' }
   ];
+
+  async function addToClient(lead) {
+    setBusy(lead._id);
+    try {
+      await api(`leads/${lead._id}`, { method: 'PATCH', body: { isClient: true } });
+      const custName = lead.name || lead.user?.name || 'Customer';
+      toast(`${custName} added to Clients!`);
+      reload();
+    } catch (e) {
+      toast(e.message || 'Could not add customer to Clients.');
+    } finally {
+      setBusy('');
+    }
+  }
 
   async function updateStatus(id, newStatus) {
     setBusy(id);
@@ -880,7 +894,12 @@ function BrokerLeadsSection() {
   const filteredLeads = useMemo(() => {
     return uniqueItems.filter((lead) => {
       if (stageFilter === 'new' && !['new', 'uncontacted'].includes(lead.status)) return false;
-      if (stageFilter === 'closed' && !['deal_closed', 'closed', 'converted'].includes(lead.status)) return false;
+      if (
+        stageFilter === 'closed' &&
+        !['deal_closed', 'closed', 'converted'].includes(lead.status) &&
+        lead.property?.status !== 'closed' &&
+        lead.project?.status !== 'closed'
+      ) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -900,14 +919,18 @@ function BrokerLeadsSection() {
   const columns = [
     {
       header: 'Customer / Lead',
-      render: (row) => (
-        <div>
-          <span className="font-bold text-stone-900 block truncate">{row.name || 'Prospect'}</span>
-          <span className="text-[11px] text-stone-500 block truncate flex items-center gap-1">
-            <Phone size={11} /> {row.phone}
-          </span>
-        </div>
-      )
+      render: (row) => {
+        const custName = row.name || row.user?.name || 'Prospect';
+        const custPhone = row.phone || row.user?.phone || '—';
+        return (
+          <div>
+            <span className="font-bold text-stone-900 block truncate">{custName}</span>
+            <span className="text-[11px] text-stone-500 block truncate flex items-center gap-1">
+              <Phone size={11} /> {custPhone}
+            </span>
+          </div>
+        );
+      }
     },
     {
       header: 'Interested Property',
@@ -949,15 +972,42 @@ function BrokerLeadsSection() {
     {
       header: 'Actions',
       render: (row) => {
-        const isClosed = ['deal_closed', 'closed', 'converted'].includes(row.status);
+        const isDealClosed = ['deal_closed', 'closed', 'converted'].includes(row.status);
+        const isPropertyClosed = row.property?.status === 'closed' || row.project?.status === 'closed';
+        const isClosed = isDealClosed || isPropertyClosed;
+        const isAddedToClient = Boolean(row.isClient || isDealClosed);
+        const custName = row.name || row.user?.name || 'Client';
+        const custPhone = row.phone || row.user?.phone || '';
+        const custEmail = row.email || row.user?.email || '';
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!isAddedToClient ? (
+              <button
+                type="button"
+                disabled={busy === row._id}
+                onClick={() => addToClient(row)}
+                className="px-2.5 py-1 bg-[#163e35] hover:bg-[#24564a] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer disabled:opacity-60"
+                title="Add customer details to Clients"
+              >
+                <UserPlus size={12} />
+                <span>{busy === row._id ? 'Adding…' : 'Add to Client'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onSelectSection?.('clients')}
+                className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 font-extrabold text-[10px] flex items-center gap-1 cursor-pointer"
+                title="Customer added to Clients — click to view Clients"
+              >
+                <UserCheck size={11} className="text-emerald-600" /> Added to Clients
+              </button>
+            )}
             {!isClosed ? (
               <button
                 type="button"
                 disabled={busy === row._id}
                 onClick={() => updateStatus(row._id, 'deal_closed')}
-                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer disabled:opacity-60"
                 title="Mark deal as closed and convert lead to client"
               >
                 <CheckCircle2 size={12} />
@@ -965,27 +1015,9 @@ function BrokerLeadsSection() {
               </button>
             ) : (
               <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 font-extrabold text-[10px] flex items-center gap-1">
-                <CheckCircle2 size={11} className="text-emerald-600" /> Won / Closed
+                <CheckCircle2 size={11} className="text-emerald-600" /> Closed
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => setSelectedClientForModal({
-                name: row.name || 'Client',
-                phone: row.phone || '',
-                email: row.email || '',
-                city: row.city || 'Hyderabad',
-                leadId: row._id,
-                customerId: row.user?._id || row.user,
-                hasClosedDeal: isClosed,
-                purchasedProperty: isClosed ? (row.property || row.project) : null
-              })}
-              className="px-2.5 py-1 text-forest hover:bg-forest/10 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-forest/30"
-              title="Recommend a property listing to this customer"
-            >
-              <Sparkles size={12} />
-              <span>Recommend</span>
-            </button>
           </div>
         );
       }
@@ -999,7 +1031,7 @@ function BrokerLeadsSection() {
         <div>
           <h2 className="text-xl font-bold text-stone-900">My Leads</h2>
           <p className="text-xs text-stone-500">
-            Track customer inquiries with property photo cards, advance pipeline stages, close deals, and recommend properties
+            Track customer inquiries, add active prospects to Clients, advance pipeline stages, and close deals
           </p>
         </div>
 
@@ -1095,7 +1127,13 @@ function BrokerLeadsSection() {
         /* CARDS GRID WITH PROPERTY PHOTO (User Request) */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredLeads.map((lead) => {
-            const isClosed = ['deal_closed', 'closed', 'converted'].includes(lead.status);
+            const isDealClosed = ['deal_closed', 'closed', 'converted'].includes(lead.status);
+            const isPropertyClosed = lead.property?.status === 'closed' || lead.project?.status === 'closed';
+            const isClosed = isDealClosed || isPropertyClosed;
+            const isAddedToClient = Boolean(lead.isClient || isDealClosed);
+            const custName = lead.name || lead.user?.name || 'Prospective Buyer';
+            const custPhone = lead.phone || lead.user?.phone || '';
+            const custEmail = lead.email || lead.user?.email || '';
             const prop = lead.property || lead.project;
             const propImage =
               prop?.images?.[0] ||
@@ -1123,7 +1161,7 @@ function BrokerLeadsSection() {
                     <span className="px-2.5 py-1 rounded-lg bg-stone-900/90 text-white font-black text-xs backdrop-blur-xs shadow-xs">
                       {propPrice}
                     </span>
-                    <StatusBadge status={lead.status} />
+                    <StatusBadge status={isClosed ? 'closed' : lead.status} />
                   </div>
 
                   {/* Bottom Overlay on Image: Property Title & Locality */}
@@ -1144,10 +1182,10 @@ function BrokerLeadsSection() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-extrabold flex items-center justify-center text-xs shrink-0 border border-emerald-200">
-                          {(lead.name || 'P').charAt(0).toUpperCase()}
+                          {custName.charAt(0).toUpperCase()}
                         </div>
                         <span className="font-bold text-sm text-stone-900 truncate">
-                          {lead.name || 'Prospective Buyer'}
+                          {custName}
                         </span>
                       </div>
                       <span className="text-[10px] text-stone-400 shrink-0 flex items-center gap-1">
@@ -1158,19 +1196,19 @@ function BrokerLeadsSection() {
                     {/* Contact Links */}
                     <div className="mt-2.5 space-y-1 text-xs">
                       <a
-                        href={`tel:${lead.phone}`}
+                        href={custPhone ? `tel:${custPhone}` : undefined}
                         className="text-stone-700 hover:text-forest font-semibold flex items-center gap-1.5 truncate"
                       >
                         <Phone size={12} className="text-stone-400 shrink-0" />
-                        <span>{lead.phone || 'No phone provided'}</span>
+                        <span>{custPhone || 'No phone provided'}</span>
                       </a>
-                      {lead.email && (
+                      {custEmail && (
                         <a
-                          href={`mailto:${lead.email}`}
+                          href={`mailto:${custEmail}`}
                           className="text-stone-500 hover:text-forest flex items-center gap-1.5 truncate text-[11px]"
                         >
                           <Mail size={12} className="text-stone-400 shrink-0" />
-                          <span className="truncate">{lead.email}</span>
+                          <span className="truncate">{custEmail}</span>
                         </a>
                       )}
                     </div>
@@ -1201,14 +1239,37 @@ function BrokerLeadsSection() {
                       </select>
                     </div>
 
-                    {/* Actions Bar: Close Deal, Recommend Property, WhatsApp */}
+                    {/* Actions Bar: Add to Client, Close Deal, WhatsApp */}
                     <div className="flex items-center gap-2">
+                      {!isAddedToClient ? (
+                        <button
+                          type="button"
+                          disabled={busy === lead._id}
+                          onClick={() => addToClient(lead)}
+                          className="flex-1 py-1.5 px-2 bg-[#163e35] hover:bg-[#24564a] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-60"
+                          title="Add this customer's details to Clients"
+                        >
+                          <UserPlus size={13} />
+                          <span>{busy === lead._id ? 'Adding…' : 'Add to Client'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onSelectSection?.('clients')}
+                          className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          title="Customer is in Clients — click to view Clients"
+                        >
+                          <UserCheck size={13} className="text-emerald-600" />
+                          <span>Added to Clients</span>
+                        </button>
+                      )}
+
                       {!isClosed ? (
                         <button
                           type="button"
                           disabled={busy === lead._id}
                           onClick={() => updateStatus(lead._id, 'deal_closed')}
-                          className="flex-1 py-1.5 px-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                          className="flex-1 py-1.5 px-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-60"
                           title="Mark deal as closed & convert lead to client"
                         >
                           <CheckCircle2 size={13} />
@@ -1216,37 +1277,16 @@ function BrokerLeadsSection() {
                         </button>
                       ) : (
                         <span className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 font-extrabold text-[11px] flex items-center justify-center gap-1.5">
-                          <CheckCircle2 size={13} className="text-emerald-600" /> Deal Closed
+                          <CheckCircle2 size={13} className="text-emerald-600" /> Closed
                         </span>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedClientForModal({
-                            name: lead.name || 'Client',
-                            phone: lead.phone || '',
-                            email: lead.email || '',
-                            city: lead.city || 'Hyderabad',
-                            leadId: lead._id,
-                            customerId: lead.user?._id || lead.user,
-                            hasClosedDeal: isClosed,
-                            purchasedProperty: isClosed ? prop : null
-                          })
-                        }
-                        className="py-1.5 px-3 bg-forest hover:bg-[#114032] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                        title="Open recommendation popup form"
-                      >
-                        <Sparkles size={13} />
-                        <span>Recommend</span>
-                      </button>
-
-                      {lead.phone && (
+                      {custPhone && (
                         <a
-                          href={`https://wa.me/${(lead.phone || '').replace(/[^0-9]/g, '')}`}
+                          href={`https://wa.me/${custPhone.replace(/[^0-9]/g, '')}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-1.5 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center justify-center"
+                          className="p-1.5 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center justify-center shrink-0"
                           title="Chat on WhatsApp"
                         >
                           <MessageCircle size={15} />
@@ -1260,14 +1300,6 @@ function BrokerLeadsSection() {
           })}
         </div>
       )}
-
-      {/* Property Recommendation Popup Modal */}
-      <PropertyRecommendationModal
-        isOpen={Boolean(selectedClientForModal)}
-        onClose={() => setSelectedClientForModal(null)}
-        client={selectedClientForModal}
-        onSuccess={() => reload()}
-      />
     </div>
   );
 }
@@ -1388,40 +1420,79 @@ function BrokerVisitsSection() {
 
 // Section: Clients Directory
 function BrokerClientsSection() {
+  const { toast } = useApp();
   const { data, reload } = useData('leads?page=1&limit=100');
   const items = data?.items || [];
-  const [activeTab, setActiveTab] = useState('buyers'); // 'buyers' | 'all'
+  const [activeTab, setActiveTab] = useState('clients'); // 'clients' | 'buyers' | 'all'
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
-  const [selectedClientForModal, setSelectedClientForModal] = useState(null);
+  const [busy, setBusy] = useState('');
 
-  // Group unique clients and categorize buyers who closed deals
+  async function addLeadToClient(client) {
+    const targetLeadId = client.leadId || client._id;
+    if (!targetLeadId) return;
+    setBusy(targetLeadId);
+    try {
+      await api(`leads/${targetLeadId}`, { method: 'PATCH', body: { isClient: true } });
+      toast(`${client.name || 'Customer'} added to My Clients!`);
+      reload();
+    } catch (e) {
+      toast(e.message || 'Could not add customer to Clients.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  // Group unique clients and categorize added clients & buyers who closed deals
   const clientMap = new Map();
   items.forEach((item) => {
-    const key = String(item.user?._id || item.user || item.phone || item.email || item.name || 'Unknown').toLowerCase().trim();
+    const rawKey = item.user?._id || item.user || item.phone || item.email || item.name || item._id;
+    const key = String(rawKey).toLowerCase().trim();
     const isClosedDeal = ['deal_closed', 'closed', 'converted'].includes(item.status);
+    const isMarkedClient = Boolean(item.isClient || isClosedDeal);
     const propInfo = item.property || item.project;
+    const custName = item.name || item.user?.name || 'Client';
+    const custPhone = item.phone || item.user?.phone || '—';
+    const custEmail = item.email || item.user?.email || '—';
+    const custCity = item.city || item.user?.city || item.property?.city || 'Bengaluru';
 
     if (!clientMap.has(key)) {
       clientMap.set(key, {
         _id: item._id,
         leadId: item._id,
         customerId: item.user?._id || item.user || null,
-        name: item.name || item.user?.name || 'Client',
-        phone: item.phone || item.user?.phone || '—',
-        email: item.email || item.user?.email || '—',
-        city: item.city || item.property?.city || 'Bengaluru',
+        name: custName,
+        phone: custPhone,
+        email: custEmail,
+        city: custCity,
         firstContact: item.createdAt,
+        addedToClientAt: item.addedToClientAt || (isMarkedClient ? item.updatedAt || item.createdAt : null),
         totalInquiries: 1,
         latestStatus: item.status,
+        latestNote: item.note || '',
+        isAddedClient: isMarkedClient,
         hasClosedDeal: isClosedDeal,
         closedDealsCount: isClosedDeal ? 1 : 0,
         purchasedProperties: isClosedDeal && propInfo ? [propInfo] : [],
+        interestedProperties: propInfo ? [propInfo] : [],
         recentProperty: propInfo
       });
     } else {
       const existing = clientMap.get(key);
       existing.totalInquiries += 1;
+      if (existing.phone === '—' && custPhone !== '—') existing.phone = custPhone;
+      if (existing.email === '—' && custEmail !== '—') existing.email = custEmail;
+      if (!existing.latestNote && item.note) existing.latestNote = item.note;
+      if (!existing.recentProperty && propInfo) existing.recentProperty = propInfo;
+      if (propInfo && !existing.interestedProperties.some((p) => String(p._id) === String(propInfo._id))) {
+        existing.interestedProperties.push(propInfo);
+      }
+      if (isMarkedClient) {
+        existing.isAddedClient = true;
+        if (!existing.addedToClientAt) {
+          existing.addedToClientAt = item.addedToClientAt || item.updatedAt || item.createdAt;
+        }
+      }
       if (isClosedDeal) {
         existing.hasClosedDeal = true;
         existing.closedDealsCount += 1;
@@ -1434,10 +1505,18 @@ function BrokerClientsSection() {
   });
 
   const allClients = Array.from(clientMap.values());
+  const addedClientsList = allClients.filter((c) => c.isAddedClient);
   const buyersList = allClients.filter((c) => c.hasClosedDeal);
 
+  const tabSource =
+    activeTab === 'clients'
+      ? addedClientsList
+      : activeTab === 'buyers'
+      ? buyersList
+      : allClients;
+
   // Apply tab filter & search
-  const displayedClients = (activeTab === 'buyers' ? buyersList : allClients).filter((c) => {
+  const displayedClients = tabSource.filter((c) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
     return (
@@ -1445,7 +1524,8 @@ function BrokerClientsSection() {
       c.phone.toLowerCase().includes(q) ||
       c.email.toLowerCase().includes(q) ||
       c.city.toLowerCase().includes(q) ||
-      c.purchasedProperties.some((p) => (p.title || '').toLowerCase().includes(q))
+      c.purchasedProperties.some((p) => (p.title || '').toLowerCase().includes(q)) ||
+      c.interestedProperties.some((p) => (p.title || '').toLowerCase().includes(q))
     );
   });
 
@@ -1458,15 +1538,21 @@ function BrokerClientsSection() {
             {row.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-stone-900">{row.name}</span>
-              {row.hasClosedDeal && (
+              {row.hasClosedDeal ? (
                 <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-extrabold text-[10px] border border-emerald-300 flex items-center gap-1 shadow-2xs">
                   <CheckCircle2 size={10} className="text-emerald-600" /> Closed Deal / Buyer
                 </span>
-              )}
+              ) : row.isAddedClient ? (
+                <span className="px-2 py-0.5 rounded-full bg-[#ecf2e4] text-[#163e35] font-extrabold text-[10px] border border-[#163e35]/20 flex items-center gap-1 shadow-2xs">
+                  <UserCheck size={10} className="text-[#163e35]" /> Added Client
+                </span>
+              ) : null}
             </div>
-            <span className="text-[11px] text-stone-400 block">First engaged: {date(row.firstContact)}</span>
+            <span className="text-[11px] text-stone-400 block">
+              {row.addedToClientAt ? `Added: ${date(row.addedToClientAt)}` : `First engaged: ${date(row.firstContact)}`}
+            </span>
           </div>
         </div>
       )
@@ -1475,17 +1561,17 @@ function BrokerClientsSection() {
       header: 'Contact Info',
       render: (row) => (
         <div className="text-xs space-y-0.5">
-          <a href={`tel:${row.phone}`} className="text-stone-800 hover:text-forest font-semibold flex items-center gap-1">
+          <a href={row.phone && row.phone !== '—' ? `tel:${row.phone}` : undefined} className="text-stone-800 hover:text-forest font-semibold flex items-center gap-1">
             <Phone size={11} className="text-stone-400" /> {row.phone}
           </a>
-          <a href={`mailto:${row.email}`} className="text-stone-500 hover:text-forest flex items-center gap-1">
+          <a href={row.email && row.email !== '—' ? `mailto:${row.email}` : undefined} className="text-stone-500 hover:text-forest flex items-center gap-1">
             <Mail size={11} className="text-stone-400" /> {row.email}
           </a>
         </div>
       )
     },
     {
-      header: 'Purchased / Deal Details',
+      header: 'Property / Deal Details',
       render: (row) => {
         if (row.hasClosedDeal && row.purchasedProperties.length > 0) {
           const prop = row.purchasedProperties[0];
@@ -1499,9 +1585,16 @@ function BrokerClientsSection() {
           );
         }
         return (
-          <span className="text-xs text-stone-500 truncate block max-w-xs">
-            {row.recentProperty?.title ? `Inquired on ${row.recentProperty.title}` : 'General Inquiry'}
-          </span>
+          <div className="text-xs max-w-xs">
+            <span className="font-semibold text-stone-800 truncate block">
+              {row.recentProperty?.title || 'General Inquiry'}
+            </span>
+            {row.interestedProperties.length > 1 && (
+              <span className="text-[11px] text-emerald-700 font-semibold block">
+                +{row.interestedProperties.length - 1} more property discussed
+              </span>
+            )}
+          </div>
         );
       }
     },
@@ -1510,7 +1603,7 @@ function BrokerClientsSection() {
       render: (row) => (
         <div className="text-xs">
           <span className="font-bold text-stone-900 block">
-            {row.closedDealsCount > 0 ? `${row.closedDealsCount} Deal${row.closedDealsCount > 1 ? 's' : ''} Closed` : '0 Deals Closed'}
+            {row.closedDealsCount > 0 ? `${row.closedDealsCount} Deal${row.closedDealsCount > 1 ? 's' : ''} Closed` : 'Active Prospect'}
           </span>
           <span className="text-stone-400 text-[11px]">{row.totalInquiries} Total Inquiries</span>
         </div>
@@ -1523,15 +1616,36 @@ function BrokerClientsSection() {
     {
       header: 'Action',
       render: (row) => (
-        <button
-          type="button"
-          onClick={() => setSelectedClientForModal(row)}
-          className="px-3.5 py-1.5 bg-forest hover:bg-[#114032] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:shadow"
-          title="Click to open recommendation popup form"
-        >
-          <Sparkles size={13} />
-          <span>Recommend Property</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {!row.isAddedClient ? (
+            <button
+              type="button"
+              disabled={busy === (row.leadId || row._id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                addLeadToClient(row);
+              }}
+              className="px-3 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+              title="Add this customer to My Clients"
+            >
+              <UserPlus size={12} />
+              <span>Add to Client</span>
+            </button>
+          ) : row.phone && row.phone !== '—' ? (
+            <a
+              href={`https://wa.me/${row.phone.replace(/[^0-9]/g, '')}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs font-bold flex items-center gap-1 transition-colors"
+              title="Chat on WhatsApp"
+            >
+              <MessageCircle size={12} />
+              <span>WhatsApp</span>
+            </a>
+          ) : (
+            <span className="text-[11px] font-semibold text-emerald-700">In Clients</span>
+          )}
+        </div>
       )
     }
   ];
@@ -1543,12 +1657,24 @@ function BrokerClientsSection() {
         <div>
           <h2 className="text-xl font-bold text-stone-900">Client Directory</h2>
           <p className="text-xs text-stone-500">
-            Clients who bought properties from you and prospective buyers who engaged with your listings
+            Customers added from My Leads, buyers with closed deals, and prospective inquiries
           </p>
         </div>
 
         {/* Filter Toggle Tabs */}
-        <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl self-start">
+        <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl self-start flex-wrap">
+          <button
+            type="button"
+            onClick={() => setActiveTab('clients')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'clients'
+                ? 'bg-white text-[#163e35] shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <UserCheck size={12} className={activeTab === 'clients' ? 'text-[#163e35]' : ''} />
+            <span>My Clients ({addedClientsList.length})</span>
+          </button>
           <button
             type="button"
             onClick={() => setActiveTab('buyers')}
@@ -1570,7 +1696,7 @@ function BrokerClientsSection() {
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <span>All Clients ({allClients.length})</span>
+            <span>All Inquiries ({allClients.length})</span>
           </button>
         </div>
       </div>
@@ -1582,14 +1708,9 @@ function BrokerClientsSection() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search clients by name, contact phone, email, or purchased property…"
+            placeholder="Search clients by name, contact phone, email, or property…"
             className="w-full sm:max-w-md px-3.5 py-2 text-xs bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest text-stone-900 placeholder:text-stone-400 shadow-2xs"
           />
-          {buyersList.length > 0 && activeTab === 'buyers' && (
-            <span className="text-xs text-emerald-700 font-bold hidden sm:inline-block">
-              ★ Click any buyer card to recommend a property
-            </span>
-          )}
         </div>
 
         {/* View Mode Toggle: Cards / Table */}
@@ -1629,12 +1750,18 @@ function BrokerClientsSection() {
               <Users size={24} />
             </div>
             <h3 className="font-bold text-base text-stone-900">
-              {activeTab === 'buyers' ? 'No closed deals / buyers yet' : 'No clients recorded yet'}
+              {activeTab === 'clients'
+                ? 'No clients added yet'
+                : activeTab === 'buyers'
+                ? 'No closed deals / buyers yet'
+                : 'No inquiries recorded yet'}
             </h3>
             <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
-              {activeTab === 'buyers'
+              {activeTab === 'clients'
+                ? 'Go to My Leads and click "Add to Client" on any customer card to move their details into Clients.'
+                : activeTab === 'buyers'
                 ? 'When you close a deal on a lead, the buyer will automatically appear in this section.'
-                : 'Clients who inquire or schedule visits will be organized into your directory.'}
+                : 'Customers who inquire, call, message, or schedule visits will appear here.'}
             </p>
           </div>
         ) : (
@@ -1646,7 +1773,7 @@ function BrokerClientsSection() {
               const propImage =
                 prop?.images?.[0] ||
                 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
-              const propTitle = prop?.title || (client.hasClosedDeal ? 'Purchased Property' : 'Inquired Property');
+              const propTitle = prop?.title || (client.hasClosedDeal ? 'Purchased Property' : 'Interested Property');
               const propPrice = prop?.price ? money(prop.price) : prop?.priceMin ? money(prop.priceMin) : '—';
               const propLocation = [prop?.locality, prop?.city || client.city].filter(Boolean).join(', ') || client.city;
 
@@ -1664,7 +1791,7 @@ function BrokerClientsSection() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
-                    {/* Top Badges: Price & Buyer/Status Badge */}
+                    {/* Top Badges: Price & Client/Buyer/Status Badge */}
                     <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
                       <span className="px-2.5 py-1 rounded-lg bg-stone-900/90 text-white font-black text-xs backdrop-blur-xs shadow-xs">
                         {propPrice}
@@ -1672,6 +1799,10 @@ function BrokerClientsSection() {
                       {client.hasClosedDeal ? (
                         <span className="px-2.5 py-1 rounded-lg bg-emerald-700/95 text-white font-black text-xs backdrop-blur-xs shadow-xs flex items-center gap-1">
                           <CheckCircle2 size={12} /> Deal Closed
+                        </span>
+                      ) : client.isAddedClient ? (
+                        <span className="px-2.5 py-1 rounded-lg bg-[#163e35]/95 text-[#d8edb3] font-black text-xs backdrop-blur-xs shadow-xs flex items-center gap-1">
+                          <UserCheck size={12} /> Client
                         </span>
                       ) : (
                         <StatusBadge status={client.latestStatus} />
@@ -1703,19 +1834,23 @@ function BrokerClientsSection() {
                               {client.name || 'Client'}
                             </span>
                             <span className="text-[10px] text-emerald-700 font-semibold block">
-                              {client.closedDealsCount > 0 ? `${client.closedDealsCount} Deal Closed` : 'Client Lead'}
+                              {client.closedDealsCount > 0
+                                ? `${client.closedDealsCount} Deal Closed`
+                                : client.isAddedClient
+                                ? 'Added Client'
+                                : 'Prospective Lead'}
                             </span>
                           </div>
                         </div>
                         <span className="text-[10px] text-stone-400 shrink-0 flex items-center gap-1">
-                          <Clock size={11} /> {client.firstContact ? date(client.firstContact) : 'Active'}
+                          <Clock size={11} /> {client.addedToClientAt ? date(client.addedToClientAt) : client.firstContact ? date(client.firstContact) : 'Active'}
                         </span>
                       </div>
 
                       {/* Contact Links */}
                       <div className="mt-2.5 space-y-1 text-xs">
                         <a
-                          href={`tel:${client.phone}`}
+                          href={client.phone && client.phone !== '—' ? `tel:${client.phone}` : undefined}
                           className="text-stone-700 hover:text-forest font-semibold flex items-center gap-1.5 truncate"
                         >
                           <Phone size={12} className="text-stone-400 shrink-0" />
@@ -1732,34 +1867,64 @@ function BrokerClientsSection() {
                         )}
                       </div>
 
+                      {/* Latest Note / Discussion */}
+                      {client.latestNote && (
+                        <div className="mt-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200/80 text-[11px] text-stone-600 line-clamp-2">
+                          "{client.latestNote}"
+                        </div>
+                      )}
+
                       {/* Activity Summary Chip */}
-                      <div className="mt-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200/80 text-[11px] text-stone-600 flex items-center justify-between">
-                        <span>Total Inquiries: <strong className="text-stone-900">{client.totalInquiries}</strong></span>
-                        <span className="font-bold text-emerald-700">{client.city}</span>
+                      <div className="mt-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200/80 text-[11px] text-stone-600 flex items-center justify-between gap-2">
+                        <span>
+                          Inquiries: <strong className="text-stone-900">{client.totalInquiries}</strong>
+                          {client.interestedProperties.length > 1 && (
+                            <> • <strong className="text-stone-900">{client.interestedProperties.length}</strong> properties</>
+                          )}
+                        </span>
+                        <span className="font-bold text-emerald-700 truncate">{client.city}</span>
                       </div>
                     </div>
 
                     {/* Actions Bar */}
                     <div className="pt-3 border-t border-stone-100 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedClientForModal(client)}
-                        className="flex-1 py-1.5 px-3 bg-forest hover:bg-[#114032] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                        title="Recommend a new property to this buyer"
-                      >
-                        <Sparkles size={13} />
-                        <span>Recommend Property</span>
-                      </button>
+                      {!client.isAddedClient ? (
+                        <button
+                          type="button"
+                          disabled={busy === (client.leadId || client._id)}
+                          onClick={() => addLeadToClient(client)}
+                          className="flex-1 py-1.5 px-3 bg-[#163e35] hover:bg-[#24564a] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                          title="Add customer to My Clients"
+                        >
+                          <UserPlus size={13} />
+                          <span>Add to Client</span>
+                        </button>
+                      ) : client.phone && client.phone !== '—' ? (
+                        <a
+                          href={`tel:${client.phone}`}
+                          className="flex-1 py-1.5 px-3 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                          title="Call client"
+                        >
+                          <Phone size={13} className="text-[#163e35]" />
+                          <span>Call Client</span>
+                        </a>
+                      ) : (
+                        <span className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5">
+                          <UserCheck size={13} className="text-emerald-600" />
+                          <span>Added Client</span>
+                        </span>
+                      )}
 
                       {client.phone && client.phone !== '—' && (
                         <a
                           href={`https://wa.me/${client.phone.replace(/[^0-9]/g, '')}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-1.5 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center justify-center"
+                          className="py-1.5 px-3 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5 text-xs font-bold"
                           title="Chat on WhatsApp"
                         >
-                          <MessageCircle size={15} />
+                          <MessageCircle size={14} />
+                          <span>WhatsApp</span>
                         </a>
                       )}
                     </div>
@@ -1773,23 +1938,22 @@ function BrokerClientsSection() {
         <DataTable
           columns={columns}
           data={displayedClients}
-          onRowClick={(row) => setSelectedClientForModal(row)}
-          emptyTitle={activeTab === 'buyers' ? 'No closed deals / buyers yet' : 'No clients recorded yet'}
+          emptyTitle={
+            activeTab === 'clients'
+              ? 'No clients added yet'
+              : activeTab === 'buyers'
+              ? 'No closed deals / buyers yet'
+              : 'No inquiries recorded yet'
+          }
           emptySubtitle={
-            activeTab === 'buyers'
+            activeTab === 'clients'
+              ? 'Go to My Leads and click "Add to Client" on any customer card to add their details here.'
+              : activeTab === 'buyers'
               ? 'When you close a deal on a lead, the buyer will automatically appear in this section.'
               : 'Clients who inquire or schedule visits will be organized into your directory.'
           }
         />
       )}
-
-      {/* Property Recommendation Popup Modal */}
-      <PropertyRecommendationModal
-        isOpen={Boolean(selectedClientForModal)}
-        onClose={() => setSelectedClientForModal(null)}
-        client={selectedClientForModal}
-        onSuccess={() => reload()}
-      />
     </div>
   );
 }
@@ -1993,7 +2157,7 @@ function BrokerProfileSection() {
         }
       });
       setUser(res.user);
-      toast('Broker agency profile updated.');
+      toast('Agent agency profile updated.');
     } catch (err) {
       toast(err.message);
     } finally {
@@ -2004,14 +2168,14 @@ function BrokerProfileSection() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h2 className="text-xl font-bold text-stone-900">Broker &amp; Agency Accreditation</h2>
+        <h2 className="text-xl font-bold text-stone-900">Agent &amp; Agency Accreditation</h2>
         <p className="text-xs text-stone-500">RERA licensing, firm name, and professional advisory details</p>
       </div>
 
       <form onSubmit={handleSave} className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">Lead Broker Name</label>
+            <label className="block text-xs font-semibold text-stone-700 mb-1">Lead Agent Name</label>
             <input
               name="name"
               required
@@ -2069,7 +2233,7 @@ function BrokerProfileSection() {
             disabled={busy}
             className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-lg shadow-sm"
           >
-            {busy ? 'Saving Changes…' : 'Save Broker Profile'}
+            {busy ? 'Saving Changes…' : 'Save Agent Profile'}
           </button>
         </div>
       </form>

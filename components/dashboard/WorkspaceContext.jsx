@@ -48,9 +48,9 @@ export const WORKSPACE_CONFIG = {
   broker: {
     id: 'broker',
     type: 'broker',
-    label: 'Broker Dashboard',
-    shortLabel: 'Broker',
-    title: 'Broker Workspace',
+    label: 'Agent Dashboard',
+    shortLabel: 'Agent',
+    title: 'Agent Workspace',
     description: 'Manage client property portfolio, leads pipeline, and client deals',
     path: '/dashboard/broker',
     accentColor: '#1c4a40',
