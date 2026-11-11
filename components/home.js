@@ -438,7 +438,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Left Hero Content */}
-      <div className="wrap relative z-30 pt-8 sm:pt-12 lg:pt-14 pb-6 lg:pb-8 pointer-events-none">
+      <div className="wrap relative z-30 pt-8 sm:pt-12 lg:pt-14 pb-4 lg:pb-5 pointer-events-none">
         <div className="max-w-[650px] pointer-events-auto">
           {/* Pill Tag */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#eef5f0] border border-[#dce8e0] shadow-2xs mb-5">
@@ -510,12 +510,12 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Bottom Search Bar: Half Inside Hero, Half Outside Below (matching previous search-panel layout) */}
-      <div className="wrap relative z-40 -mb-20 sm:-mb-[44px] pointer-events-auto">
+      {/* Bottom Search Bar: ~35% Inside Hero (upper), ~65% Outside Below (bottom) */}
+      <div className="wrap relative z-40 -mb-40 sm:-mb-[72px] pointer-events-auto">
         <form
           ref={searchBarRef}
           onSubmit={search}
-          className="bg-white rounded-2xl border border-stone-200/80 shadow-[0_14px_40px_rgba(15,23,42,0.10)] p-2.5 sm:p-3 grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] items-center gap-1.5 sm:gap-0"
+          className="bg-white rounded-2xl border border-stone-200/80 shadow-[0_16px_48px_rgba(15,23,42,0.12)] p-3 sm:p-4 sm:px-5 grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] items-center gap-2 sm:gap-0"
         >
           {/* 1. Location Custom Searchable Dropdown */}
           <div className="relative">
@@ -527,20 +527,20 @@ export default function HomePage() {
                 if (next === 'city') setCitySearch('');
               }}
               aria-expanded={openDropdown === 'city'}
-              className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-colors cursor-pointer ${
                 openDropdown === 'city' ? 'bg-[#f4f8f5]' : 'hover:bg-stone-50'
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-8 h-8 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
-                  <MapPin size={15} />
+              <div className="flex items-center gap-3.5 min-w-0">
+                <span className="w-11 h-11 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
+                  <MapPin size={19} />
                 </span>
                 <div className="min-w-0">
-                  <span className="block text-[10px] font-semibold text-[#65705f] leading-none mb-1 whitespace-nowrap">
+                  <span className="block text-[11px] font-semibold text-[#65705f] leading-none mb-1.5 whitespace-nowrap">
                     Location
                   </span>
                   <span
-                    className={`block text-xs sm:text-[13.5px] truncate ${
+                    className={`block text-sm sm:text-[15px] truncate ${
                       selectedCity || locationKeyword ? 'font-bold text-[#1f2923]' : 'font-semibold text-[#65705f]'
                     }`}
                   >
@@ -549,7 +549,7 @@ export default function HomePage() {
                 </div>
               </div>
               <ChevronDown
-                size={15}
+                size={17}
                 className={`text-stone-400 shrink-0 transition-transform duration-200 ${
                   openDropdown === 'city' ? 'rotate-180 text-[#163e35]' : ''
                 }`}
@@ -645,20 +645,20 @@ export default function HomePage() {
                 if (next === 'type') setTypeSearch('');
               }}
               aria-expanded={openDropdown === 'type'}
-              className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-colors cursor-pointer ${
                 openDropdown === 'type' ? 'bg-[#f4f8f5]' : 'hover:bg-stone-50'
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-8 h-8 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
-                  <House size={15} />
+              <div className="flex items-center gap-3.5 min-w-0">
+                <span className="w-11 h-11 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
+                  <House size={19} />
                 </span>
                 <div className="min-w-0">
-                  <span className="block text-[10px] font-semibold text-[#65705f] leading-none mb-1 whitespace-nowrap">
+                  <span className="block text-[11px] font-semibold text-[#65705f] leading-none mb-1.5 whitespace-nowrap">
                     Property Type
                   </span>
                   <span
-                    className={`block text-xs sm:text-[13.5px] truncate ${
+                    className={`block text-sm sm:text-[15px] truncate ${
                       hasChosenType ? 'font-bold text-[#1f2923]' : 'font-semibold text-[#65705f]'
                     }`}
                   >
@@ -667,7 +667,7 @@ export default function HomePage() {
                 </div>
               </div>
               <ChevronDown
-                size={15}
+                size={17}
                 className={`text-stone-400 shrink-0 transition-transform duration-200 ${
                   openDropdown === 'type' ? 'rotate-180 text-[#163e35]' : ''
                 }`}
@@ -735,20 +735,20 @@ export default function HomePage() {
                 if (next === 'budget') setBudgetSearch('');
               }}
               aria-expanded={openDropdown === 'budget'}
-              className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-colors cursor-pointer ${
                 openDropdown === 'budget' ? 'bg-[#f4f8f5]' : 'hover:bg-stone-50'
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-8 h-8 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
-                  <IndianRupee size={15} />
+              <div className="flex items-center gap-3.5 min-w-0">
+                <span className="w-11 h-11 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
+                  <IndianRupee size={19} />
                 </span>
                 <div className="min-w-0">
-                  <span className="block text-[10px] font-semibold text-[#65705f] leading-none mb-1 whitespace-nowrap">
+                  <span className="block text-[11px] font-semibold text-[#65705f] leading-none mb-1.5 whitespace-nowrap">
                     {budgetFieldLabel}
                   </span>
                   <span
-                    className={`block text-xs sm:text-[13.5px] truncate ${
+                    className={`block text-sm sm:text-[15px] truncate ${
                       hasChosenBudget ? 'font-bold text-[#1f2923]' : 'font-semibold text-[#65705f]'
                     }`}
                   >
@@ -757,7 +757,7 @@ export default function HomePage() {
                 </div>
               </div>
               <ChevronDown
-                size={15}
+                size={17}
                 className={`text-stone-400 shrink-0 transition-transform duration-200 ${
                   openDropdown === 'budget' ? 'rotate-180 text-[#163e35]' : ''
                 }`}
@@ -815,9 +815,9 @@ export default function HomePage() {
           {/* Search Button */}
           <button
             type="submit"
-            className="w-full sm:w-auto sm:ml-2 px-6 py-3 bg-[#163e35] hover:bg-[#24564a] text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+            className="w-full sm:w-auto sm:ml-3 px-8 sm:px-10 py-3.5 sm:py-4 bg-[#163e35] hover:bg-[#24564a] text-white rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-sm transition-colors cursor-pointer whitespace-nowrap"
           >
-            <Search size={16} />
+            <Search size={18} />
             <span>Search</span>
           </button>
         </form>
