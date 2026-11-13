@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useApp } from './providers';
 import { WorkspaceProvider, useWorkspace, WORKSPACE_CONFIG } from './dashboard/WorkspaceContext';
 import DashboardLayout from './dashboard/shared/DashboardLayout';
+import RegistrationModal from './dashboard/shared/RegistrationModal';
 import CustomerWorkspace from './dashboard/workspaces/CustomerWorkspace';
 import OwnerWorkspace from './dashboard/workspaces/OwnerWorkspace';
 import BrokerWorkspace from './dashboard/workspaces/BrokerWorkspace';
@@ -20,7 +21,7 @@ function UnifiedDashboardInner({ initialSection = '', initialAction = '' }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const { activeWorkspace, switchWorkspace } = useWorkspace();
+  const { activeWorkspace, authorizedTypes, memberships = [], loadingWorkspaces, switchWorkspace, openRegisterModal } = useWorkspace();
 
   // Determine effective workspace & section
   // Examples:
@@ -90,6 +91,125 @@ function UnifiedDashboardInner({ initialSection = '', initialAction = '' }) {
   function handleActionClick(actionType) {
     if (actionType === 'add-service') {
       setActiveSection('services');
+    }
+  }
+
+  // Gate business dashboards outside DashboardLayout so pending/unapproved users never see the business sidebar or dashboard
+  if (activeWorkspace !== 'customer') {
+    if (loadingWorkspaces) {
+      return (
+        <div className="min-h-[75vh] bg-[#fafbfc] flex items-center justify-center p-6">
+          <div className="text-sm font-medium text-stone-500">Verifying workspace access…</div>
+          <RegistrationModal />
+        </div>
+      );
+    }
+
+    if (!authorizedTypes.includes(activeWorkspace)) {
+      const label = WORKSPACE_CONFIG[activeWorkspace]?.label || activeWorkspace;
+      const membership = memberships.find((m) => m.workspaceType === activeWorkspace);
+
+      if (membership?.status === 'pending') {
+        return (
+          <div className="min-h-[75vh] bg-[#fafbfc] flex items-center justify-center p-4 sm:p-8">
+            <div className="bg-white border border-amber-200 rounded-3xl p-8 sm:p-12 text-center space-y-6 max-w-2xl w-full shadow-md">
+              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wider">
+                Application In Review
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 leading-snug">
+                {label} Pending Admin Approval
+              </h2>
+              <p className="text-base sm:text-lg text-stone-600 leading-relaxed max-w-xl mx-auto">
+                Your registration request{membership.businessName ? ` for ${membership.businessName}` : ''} has been submitted to the Admin team and is currently under review. Once approved by an administrator, your <strong>{label}</strong> will unlock automatically.
+              </p>
+              <div className="bg-stone-50 border border-stone-200/80 rounded-2xl p-5 text-left text-sm sm:text-base text-stone-700 space-y-2 max-w-lg mx-auto">
+                {membership.businessName && (
+                  <div><strong>Business Name:</strong> {membership.businessName}</div>
+                )}
+                {membership.businessProfile?.category && (
+                  <div><strong>Specialization:</strong> {membership.businessProfile.category}</div>
+                )}
+                {membership.businessProfile?.city && (
+                  <div><strong>City:</strong> {membership.businessProfile.city}</div>
+                )}
+              </div>
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => switchWorkspace('customer')}
+                  className="px-6 py-3 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-sm font-bold rounded-xl shadow-sm transition-colors cursor-pointer"
+                >
+                  Go to Customer Workspace
+                </button>
+              </div>
+            </div>
+            <RegistrationModal />
+          </div>
+        );
+      }
+
+      if (membership?.status === 'rejected') {
+        return (
+          <div className="min-h-[75vh] bg-[#fafbfc] flex items-center justify-center p-4 sm:p-8">
+            <div className="bg-white border border-rose-200 rounded-3xl p-8 sm:p-12 text-center space-y-5 max-w-2xl w-full shadow-md">
+              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-rose-100 text-rose-800 text-xs font-bold uppercase tracking-wider">
+                Application Not Approved
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 leading-snug">
+                {label} Request Declined
+              </h2>
+              <p className="text-base text-stone-600 leading-relaxed max-w-xl mx-auto">
+                {membership.rejectionReason || 'Your previous application did not meet verification requirements.'}
+              </p>
+              <div className="flex flex-wrap justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => openRegisterModal(activeWorkspace)}
+                  className="px-5 py-2.5 bg-[#163e35] text-white text-sm font-bold rounded-xl cursor-pointer"
+                >
+                  Update &amp; Re-apply
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchWorkspace('customer')}
+                  className="px-5 py-2.5 bg-stone-100 text-stone-700 text-sm font-semibold rounded-xl cursor-pointer"
+                >
+                  Go to Customer Workspace
+                </button>
+              </div>
+            </div>
+            <RegistrationModal />
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-[75vh] bg-[#fafbfc] flex items-center justify-center p-4 sm:p-8">
+          <div className="bg-white border border-stone-200 rounded-3xl p-8 sm:p-10 text-center space-y-5 max-w-xl w-full shadow-sm">
+            <h2 className="text-2xl font-bold text-stone-900">Workspace Access Required</h2>
+            <p className="text-sm sm:text-base text-stone-600">
+              Your account does not have an active <strong>{label}</strong> membership.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => openRegisterModal(activeWorkspace)}
+                className="px-5 py-2.5 bg-[#163e35] text-white text-sm font-bold rounded-xl cursor-pointer"
+              >
+                Register for {label}
+              </button>
+              <button
+                type="button"
+                onClick={() => switchWorkspace('customer')}
+                className="px-5 py-2.5 bg-stone-100 text-stone-700 text-sm font-semibold rounded-xl cursor-pointer"
+              >
+                Go to Customer Workspace
+              </button>
+            </div>
+          </div>
+          <RegistrationModal />
+        </div>
+      );
     }
   }
 

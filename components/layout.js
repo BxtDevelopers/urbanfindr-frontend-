@@ -185,8 +185,22 @@ export function Header() {
   }, [requestData?.items, isCustomer, user]);
 
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const { data: notifData } = useData(user ? 'notifications?limit=5' : null);
+  const { data: notifData, reload: reloadNotifs } = useData(user ? 'notifications?limit=5' : null);
   const unreadNotifCount = notifData?.unread || 0;
+
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => reloadNotifs(), 15000);
+    const onFocus = () => reloadNotifs();
+    const onNotifSync = () => reloadNotifs();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('urbanfindr:notifications-updated', onNotifSync);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('urbanfindr:notifications-updated', onNotifSync);
+    };
+  }, [user, reloadNotifs]);
 
   useEffect(() => {
     setUserMenuOpen(false);
@@ -462,17 +476,19 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => setNotificationOpen(!notificationOpen)}
-                className="relative p-2.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-950 border border-emerald-300/80 transition-all shadow-xs flex items-center justify-center cursor-pointer"
+                className="relative p-2 text-emerald-900 hover:text-[#163e35] transition-colors flex items-center justify-center cursor-pointer"
                 title="Notifications"
+                aria-label="Notifications"
               >
                 <Bell size={21} className="text-emerald-900" />
                 {unreadNotifCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white shadow-xs" />
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
                 )}
               </button>
               <NotificationPanel
                 isOpen={notificationOpen}
                 onClose={() => setNotificationOpen(false)}
+                onUpdated={reloadNotifs}
               />
             </div>
           )}
@@ -837,7 +853,7 @@ export function Header() {
       )}
 
       {/* Discovery navbar */}
-      {!isServiceProviderDashboard && (
+      {!pathname?.startsWith('/dashboard') && (
         <nav
           className="discovery-nav"
           aria-label="More ways to explore"

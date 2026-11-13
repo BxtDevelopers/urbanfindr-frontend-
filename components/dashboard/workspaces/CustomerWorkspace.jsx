@@ -1439,6 +1439,7 @@ function CustomerNotificationsSection() {
     try {
       await api('notifications', { method: 'PATCH' });
       reload();
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('urbanfindr:notifications-updated'));
       toast('All notifications marked as read.');
     } catch (e) {
       toast(e.message);

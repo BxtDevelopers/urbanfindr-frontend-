@@ -96,6 +96,7 @@ export function WorkspaceProvider({ children, initialWorkspace, initialSection }
   const searchParams = useSearchParams();
 
   const [authorizedTypes, setAuthorizedTypes] = useState(['customer']);
+  const [memberships, setMemberships] = useState([]);
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(true);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [registerModalType, setRegisterModalType] = useState('provider');
@@ -137,6 +138,7 @@ export function WorkspaceProvider({ children, initialWorkspace, initialSection }
   const fetchWorkspaces = useCallback(async () => {
     if (!user) {
       setAuthorizedTypes(['customer']);
+      setMemberships([]);
       setLoadingWorkspaces(false);
       return;
     }
@@ -145,6 +147,9 @@ export function WorkspaceProvider({ children, initialWorkspace, initialSection }
       const res = await api('workspaces');
       if (res?.authorizedTypes) {
         setAuthorizedTypes(res.authorizedTypes);
+      }
+      if (Array.isArray(res?.memberships)) {
+        setMemberships(res.memberships);
       }
     } catch (e) {
       // Fallback from user.role
@@ -206,6 +211,7 @@ export function WorkspaceProvider({ children, initialWorkspace, initialSection }
         availableWorkspaces,
         upgradeOptions,
         authorizedTypes,
+        memberships,
         loadingWorkspaces,
         switchWorkspace,
         fetchWorkspaces,

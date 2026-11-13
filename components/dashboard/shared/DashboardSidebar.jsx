@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useWorkspace, WORKSPACE_CONFIG } from '../WorkspaceContext';
-import { useApp } from '../../providers';
+import { useApp, useData } from '../../providers';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 import {
   House,
@@ -18,8 +18,6 @@ import {
   Settings,
   HelpCircle,
   LogOut,
-  ChevronLeft,
-  ChevronRight,
   PlusCircle,
   Search,
   Building2,
@@ -33,6 +31,7 @@ import {
   Layers,
   Sparkles,
   ShieldCheck,
+  User,
   Menu,
   X
 } from 'lucide-react';
@@ -47,6 +46,21 @@ export default function DashboardSidebar({
 }) {
   const { user, logout } = useApp();
   const { activeWorkspace, currentConfig, openRegisterModal } = useWorkspace();
+  const { data: notifSummary, reload: reloadNotifSummary } = useData(user ? 'notifications?limit=1' : null);
+  const unreadMessagesCount = notifSummary?.unreadMessages || 0;
+
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => reloadNotifSummary(), 15000);
+    const sync = () => reloadNotifSummary();
+    window.addEventListener('focus', sync);
+    window.addEventListener('urbanfindr:notifications-updated', sync);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', sync);
+      window.removeEventListener('urbanfindr:notifications-updated', sync);
+    };
+  }, [user, reloadNotifSummary]);
 
   // Role-specific navigation items (Quotations, calendar schedules, and booking terms replaced with direct requests & offers)
   const navItems = {
@@ -125,60 +139,39 @@ export default function DashboardSidebar({
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Top Branding & Workspace Switcher */}
-        <div className="p-4 border-b border-[#e6e8e1] space-y-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#163e35] flex items-center justify-center text-[#d8edb3] font-black text-lg shadow-xs shrink-0">
-                U
-              </div>
-              {!collapsed && (
-                <div className="min-w-0">
-                  <span className="font-extrabold text-[#163e35] tracking-tight text-base block truncate">
-                    Business Suite
-                  </span>
-                </div>
-              )}
-            </Link>
-
-            <div className="flex items-center gap-1">
-              {/* Collapse desktop toggle */}
-              <button
-                type="button"
-                onClick={onToggleCollapse}
-                className="hidden lg:flex p-1.5 text-stone-400 hover:text-[#163e35] hover:bg-[#ecf2e4] rounded-lg transition-colors"
-                title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-              </button>
-
-              {/* Mobile close */}
-              <button
-                type="button"
-                onClick={onCloseMobile}
-                className="lg:hidden p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg"
-              >
-                <X size={18} />
-              </button>
-            </div>
+        {/* Top Profile Card & Mobile Close */}
+        <div className="p-4 border-b border-[#e6e8e1]">
+          <div className="flex items-center justify-end mb-3 lg:hidden">
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg"
+              aria-label="Close sidebar"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          {/* Workspace Switcher */}
+          {/* Profile Card */}
           {!collapsed ? (
-            <WorkspaceSwitcher />
+            <WorkspaceSwitcher
+              onSelectProfile={() => {
+                onSelectSection('profile');
+                if (onCloseMobile) onCloseMobile();
+              }}
+            />
           ) : (
             <div className="flex justify-center">
               <button
                 type="button"
-                onClick={onToggleCollapse}
-                className="w-10 h-10 rounded-xl flex items-center justify-center shadow-xs"
-                style={{ backgroundColor: currentConfig.bgBadge, color: currentConfig.accentColor }}
-                title={`Active: ${currentConfig.label}`}
+                onClick={() => {
+                  onSelectSection('profile');
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center shadow-xs bg-[#163e35] text-[#d8edb3] hover:bg-[#1f5247] transition-colors cursor-pointer"
+                title="My Profile"
               >
-                {(() => {
-                  const Icon = currentConfig.icon;
-                  return <Icon size={18} />;
-                })()}
+                <User size={18} />
               </button>
             </div>
           )}
@@ -188,13 +181,14 @@ export default function DashboardSidebar({
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           {!collapsed && (
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">
-              {currentConfig.shortLabel} Menu
+              Menu
             </p>
           )}
 
           {currentNav.map((item) => {
             const Icon = item.icon;
             const isSelected = activeSection === item.id || (item.id === 'requests' && activeSection === 'bookings');
+            const showMessageGreenDot = item.id === 'messages' && unreadMessagesCount > 0;
             return (
               <button
                 key={item.id}
@@ -211,7 +205,13 @@ export default function DashboardSidebar({
                 title={item.label}
               >
                 <Icon size={18} className="shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
+                {!collapsed && <span className="truncate flex-1 text-left">{item.label}</span>}
+                {showMessageGreenDot && (
+                  <span
+                    className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"
+                    aria-label="New message"
+                  />
+                )}
               </button>
             );
           })}

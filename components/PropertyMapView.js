@@ -29,6 +29,14 @@ import {
   groupPropertiesByLocality,
 } from '@/lib/geo';
 
+const escapeHtml = (val = '') =>
+  String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 export default function PropertyMapView({ properties = [], city = 'Bengaluru' }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -235,9 +243,10 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             markersRef.current.push(circle);
           }
 
-          const priceLabel = money(prop.price);
+          const priceLabel = escapeHtml(money(prop.price));
+          const safeTitle = escapeHtml(prop.title || '');
           const markerHtml = `
-            <div class="uf-marker-pill ${purposeClass} ${isSelected ? 'selected' : ''}" title="${prop.title}">
+            <div class="uf-marker-pill ${purposeClass} ${isSelected ? 'selected' : ''}" title="${safeTitle}">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
                 <circle cx="12" cy="10" r="3"/>
@@ -257,8 +266,8 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
 
           const tooltipHtml = isApproximate
-            ? `<strong>${prop.title}</strong><br/><span>${priceLabel}</span><br/><span style="color:#d97706;font-weight:600;font-size:11px;">Approximate Area (~${radiusMeters}m)</span>`
-            : `<strong>${prop.title}</strong><br/><span>${priceLabel}</span>`;
+            ? `<strong>${safeTitle}</strong><br/><span>${priceLabel}</span><br/><span style="color:#d97706;font-weight:600;font-size:11px;">Approximate Area (~${radiusMeters}m)</span>`
+            : `<strong>${safeTitle}</strong><br/><span>${priceLabel}</span>`;
 
           marker.bindTooltip(tooltipHtml, {
             direction: 'top',
@@ -305,15 +314,16 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
             markersRef.current.push(circle);
           }
 
-          const minPriceLabel = money(item.minPrice);
+          const minPriceLabel = escapeHtml(money(item.minPrice));
+          const safeLocality = escapeHtml(item.locality || '');
           const dotsHtml = item.purposes?.length
-            ? `<div class="uf-cluster-dots">${item.purposes.map((p) => `<span class="uf-cluster-dot ${p}"></span>`).join('')}</div>`
+            ? `<div class="uf-cluster-dots">${item.purposes.map((p) => `<span class="uf-cluster-dot ${escapeHtml(p)}"></span>`).join('')}</div>`
             : '';
           const clusterHtml = `
-            <div class="uf-cluster-pill" title="Click to inspect all ${item.count} properties in ${item.locality}">
+            <div class="uf-cluster-pill" title="Click to inspect all ${item.count} properties in ${safeLocality}">
               <span class="uf-cluster-count">${item.count}</span>
               <div class="uf-cluster-body">
-                <span class="uf-cluster-locality">${item.locality}</span>
+                <span class="uf-cluster-locality">${safeLocality}</span>
                 <span class="uf-cluster-price">from ${minPriceLabel}</span>
                 ${dotsHtml}
               </div>
@@ -331,8 +341,8 @@ export default function PropertyMapView({ properties = [], city = 'Bengaluru' })
           const marker = L.marker(latLng, { icon: clusterIcon }).addTo(map);
 
           const clusterTooltip = isClusterApprox
-            ? `<strong>${item.count} Properties</strong> in ${item.locality}<br/><span style="color:#d97706;font-weight:600;font-size:11px;">Approximate Area (~${clusterRadius}m)</span><br/><span style="color:#163e35;font-weight:600">Click to view all</span>`
-            : `<strong>${item.count} Properties</strong> in ${item.locality}<br/><span style="color:#163e35;font-weight:600">Click to view all</span>`;
+            ? `<strong>${item.count} Properties</strong> in ${safeLocality}<br/><span style="color:#d97706;font-weight:600;font-size:11px;">Approximate Area (~${clusterRadius}m)</span><br/><span style="color:#163e35;font-weight:600">Click to view all</span>`
+            : `<strong>${item.count} Properties</strong> in ${safeLocality}<br/><span style="color:#163e35;font-weight:600">Click to view all</span>`;
 
           marker.bindTooltip(clusterTooltip, {
             direction: 'top',

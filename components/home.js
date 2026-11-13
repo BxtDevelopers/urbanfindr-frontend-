@@ -245,7 +245,7 @@ export default function HomePage() {
     return !q || opt.label.toLowerCase().includes(q) || opt.sub.toLowerCase().includes(q);
   });
 
-  const featured = useData(`properties?featured=true&limit=3${featuredPurpose ? '&purpose=' + featuredPurpose : ''}`);
+  const featured = useData(`properties?featured=true&limit=7${featuredPurpose ? '&purpose=' + featuredPurpose : ''}`);
   const verified = useData('properties?verified=true&limit=12');
   const latest = useData('properties?limit=6');
   const discovery = useData('discovery');
@@ -827,35 +827,38 @@ export default function HomePage() {
     {/* Explore by Category Section */}
     <ExploreCategories />
 
-    {/* 1. Featured Properties */}
+    {/* 1. Featured Properties (Seamless Infinite Carousel) */}
     <section className="wrap section !pt-8" id="featured-properties">
-      <SectionTitle
+      <VerifiedPropertiesCarousel
+        items={featured.data?.items}
+        loading={featured.loading}
+        error={featured.error}
+        total={featured.data?.total}
         eyebrow="A LITTLE EXTRA SOMETHING"
         title="Featured properties"
         description="A curated selection of approved listings, chosen by our platform team."
         href={`/properties?featured=true${featuredPurpose ? '&purpose=' + featuredPurpose : ''}`}
-        link="See featured properties"
+        linkLabel="See featured properties"
+        prevAriaLabel="Previous featured property"
+        nextAriaLabel="Next featured property"
+        showDot={false}
+        filterTabs={
+          <div className="tab-row mb-6">
+            <button className={!featuredPurpose ? 'active' : ''} onClick={() => setFeaturedPurpose('')}>
+              All properties
+            </button>
+            {categories.map(item => (
+              <button
+                key={item.purpose}
+                className={featuredPurpose === item.purpose ? 'active' : ''}
+                onClick={() => setFeaturedPurpose(item.purpose)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        }
       />
-      <div className="tab-row mb-6">
-        <button className={!featuredPurpose ? 'active' : ''} onClick={() => setFeaturedPurpose('')}>
-          All properties
-        </button>
-        {categories.map(item => (
-          <button
-            key={item.purpose}
-            className={featuredPurpose === item.purpose ? 'active' : ''}
-            onClick={() => setFeaturedPurpose(item.purpose)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-      <State loading={featured.loading} error={featured.error} empty={featured.data?.total === 0} />
-      <div className="grid md:grid-cols-3 gap-6">
-        {!featured.loading && featured.data?.items?.map(item => (
-          <PropertyCard key={item._id} item={item} />
-        ))}
-      </div>
     </section>
 
     {/* Builder Projects Investment Showcase (directly after Featured Properties) */}

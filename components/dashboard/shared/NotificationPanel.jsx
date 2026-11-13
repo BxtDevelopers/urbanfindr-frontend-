@@ -6,10 +6,16 @@ import { useApp, useData, api } from '../../providers';
 import { Bell, Check, ExternalLink, X, Clock } from 'lucide-react';
 import { date } from '@/lib/format';
 
-export default function NotificationPanel({ isOpen, onClose }) {
+export default function NotificationPanel({ isOpen, onClose, onUpdated }) {
   const { toast } = useApp();
   const { data, reload } = useData('notifications?limit=15');
   const panelRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      reload();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -29,6 +35,8 @@ export default function NotificationPanel({ isOpen, onClose }) {
     try {
       await api('notifications', { method: 'PATCH' });
       reload();
+      onUpdated?.();
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('urbanfindr:notifications-updated'));
       toast('All notifications marked as read.');
     } catch (e) {
       toast(e.message);
@@ -39,6 +47,8 @@ export default function NotificationPanel({ isOpen, onClose }) {
     try {
       await api(`notifications/${id}`, { method: 'PATCH' });
       reload();
+      onUpdated?.();
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('urbanfindr:notifications-updated'));
     } catch (e) {
       // non-blocking
     }
@@ -60,7 +70,7 @@ export default function NotificationPanel({ isOpen, onClose }) {
             NOTIFICATIONS
           </h3>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#fee7eb] text-[#e11d48] shrink-0">
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 shrink-0">
               {unreadCount} new
             </span>
           )}

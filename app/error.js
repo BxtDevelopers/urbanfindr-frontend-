@@ -10,7 +10,7 @@ export default function Error({ error, reset }) {
     <main className="wrap py-24">
       <h1 className="text-3xl font-bold text-stone-900 mb-2">Something went wrong</h1>
       <p className="my-4 text-stone-600">Please try again. Your saved information remains in the database.</p>
-      {error && (
+      {error && process.env.NODE_ENV === 'development' && (
         <details className="my-6 p-4 bg-stone-100 rounded text-xs text-red-600 font-mono overflow-auto max-h-64 whitespace-pre-wrap border border-stone-200">
           <summary className="cursor-pointer font-sans font-semibold mb-2 text-stone-700">Diagnostic details</summary>
           {error.message || String(error)}

@@ -87,6 +87,7 @@ export default function Admin() {
   // Sidebar navigation sections
   const navSections = [
     { id: 'overview', label: 'Dashboard Overview', icon: LayoutDashboard },
+    { id: 'workspace-requests', label: 'Business Approvals', icon: ShieldCheck, count: stats.data?.pendingWorkspaces || 0, badgeColor: Number(stats.data?.pendingWorkspaces) > 0 ? 'bg-amber-500' : null },
     { id: 'service-providers', label: 'Service Providers', icon: Wrench, count: initialServiceProviders.length },
     { id: 'channel-partners', label: 'Channel Partners', icon: Handshake, count: stats.data?.channelPartners || 0 },
     { id: 'builders', label: 'Builders & Projects', icon: Building2, count: stats.data?.projects || 8 },
@@ -94,7 +95,7 @@ export default function Admin() {
     { id: 'users', label: 'All Users & Owners', icon: Users, count: stats.data?.users || 0 },
     { id: 'properties', label: 'Properties & Listings', icon: Home, badgeColor: Number(stats.data?.pending) > 0 ? 'bg-amber-500' : null },
     { id: 'enquiries', label: 'Enquiries & Visits', icon: Mail, count: stats.data?.leads || 0 },
-    { id: 'notifications', label: 'Notifications', icon: Bell, badgeColor: unreadCount > 0 ? 'bg-red-500' : null },
+    { id: 'notifications', label: 'Notifications', icon: Bell, badgeColor: unreadCount > 0 ? 'bg-emerald-500' : null },
     { id: 'support', label: 'Customer Support', icon: LifeBuoy, count: stats.data?.openTickets || 0, badgeColor: Number(stats.data?.openTickets) > 0 ? 'bg-red-500' : null },
     { id: 'cities', label: 'Operational Cities', icon: MapPin },
   ];
@@ -161,7 +162,7 @@ export default function Admin() {
             >
               <Bell size={18} />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
               )}
             </button>
           </div>
@@ -216,6 +217,10 @@ export default function Admin() {
               onNavigate={handleNavigate}
               onOpenProperty={handleOpenProperty}
             />
+          )}
+
+          {tab === 'workspace-requests' && (
+            <WorkspaceRequestsView onReload={stats.reload} />
           )}
 
           {tab === 'service-providers' && (
@@ -2359,6 +2364,189 @@ function AdminNotificationsView({ onNotificationsChanged, onNavigate }) {
 // ─────────────────────────────────────────────────────────────
 // 2. DASHBOARD OVERVIEW VIEW
 // ─────────────────────────────────────────────────────────────
+function WorkspaceRequestsView({ onReload }) {
+  const { toast } = useApp();
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [busyId, setBusyId] = useState(null);
+
+  const { data, loading, error, reload } = useData(
+    `admin/workspace-requests?status=${statusFilter}&page=${page}&limit=10${search ? `&q=${encodeURIComponent(search)}` : ''}`
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, search]);
+
+  async function handleDecision(item, nextStatus) {
+    let rejectionReason;
+    if (nextStatus === 'rejected') {
+      const reason = window.prompt('Reason for declining this business workspace application (optional):', '');
+      if (reason === null) return;
+      rejectionReason = reason;
+    }
+    setBusyId(item._id);
+    try {
+      await api(`admin/workspace-requests/${item._id}`, {
+        method: 'PATCH',
+        body: { status: nextStatus, ...(rejectionReason ? { rejectionReason } : {}) }
+      });
+      toast(nextStatus === 'approved' ? `${item.businessName || item.user?.name || 'Workspace'} approved!` : 'Application declined.');
+      reload();
+      onReload?.();
+    } catch (e) {
+      toast(e.message || 'Unable to update workspace application.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const workspaceLabels = {
+    provider: 'Service Provider',
+    owner: 'Property Owner',
+    broker: 'Broker / Agent',
+    builder: 'Builder / Developer'
+  };
+
+  return (
+    <>
+      <div className="section-title">
+        <div>
+          <p className="eyebrow">BUSINESS ACCESS CONTROL</p>
+          <h1 className="!text-4xl">Business workspace approvals.</h1>
+          <p className="muted mt-4 mb-7">
+            Approve or decline customer applications to unlock Service Provider, Owner, Broker, and Builder dashboards.
+          </p>
+        </div>
+        <span className="pill text-sm font-semibold !p-2 px-3">
+          {data?.pendingCount || 0} Pending Review
+        </span>
+      </div>
+
+      <div className="tab-row mb-6">
+        {[
+          ['pending', 'Pending Approval'],
+          ['approved', 'Approved'],
+          ['rejected', 'Declined'],
+          ['all', 'All Applications']
+        ].map(([st, label]) => (
+          <button
+            key={st}
+            className={statusFilter === st ? 'active' : ''}
+            onClick={() => setStatusFilter(st)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="panel !p-4 mb-6 flex items-center gap-2">
+        <Search size={16} className="text-stone-400 shrink-0" />
+        <input
+          type="text"
+          placeholder="Search applicant name, email, business name, category, or city..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input !h-10 !text-sm"
+        />
+      </div>
+
+      <State loading={loading} error={error} empty={!loading && (data?.items?.length || 0) === 0} />
+
+      {data?.items?.length > 0 && (
+        <div className="panel !p-0 overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Workspace</th>
+                <th>Business Profile</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((item) => {
+                const bp = item.businessProfile || {};
+                const isBusy = busyId === item._id;
+                const isPending = item.status === 'pending';
+                const isApproved = item.status === 'approved' || item.status === 'active';
+                return (
+                  <tr key={item._id}>
+                    <td>
+                      <strong className="block text-sm">{item.user?.name || 'Registered User'}</strong>
+                      <div className="text-xs muted">{item.user?.email}</div>
+                      <div className="text-xs muted">{bp.phone || item.user?.phone || ''}</div>
+                    </td>
+                    <td>
+                      <span className="pill text-xs font-semibold">
+                        {workspaceLabels[item.workspaceType] || item.workspaceType}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="text-sm font-semibold text-stone-900">{item.businessName || bp.company || '—'}</div>
+                      <div className="text-xs muted">
+                        {[bp.category, bp.reraId, bp.city, bp.address].filter(Boolean).join(' · ') || 'No extra details'}
+                      </div>
+                      {bp.bio && <div className="text-xs text-stone-500 mt-1 line-clamp-2 max-w-xs">{bp.bio}</div>}
+                    </td>
+                    <td>
+                      <span
+                        className={`pill text-xs font-semibold ${
+                          isApproved
+                            ? '!bg-emerald-100 !text-emerald-800'
+                            : isPending
+                            ? '!bg-amber-100 !text-amber-800'
+                            : '!bg-rose-100 !text-rose-800'
+                        }`}
+                      >
+                        {isApproved ? 'Approved' : isPending ? 'In Review' : 'Declined'}
+                      </span>
+                    </td>
+                    <td className="text-xs muted">{item.createdAt ? date(item.createdAt) : '—'}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        {!isApproved && (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => handleDecision(item, 'approved')}
+                            className="px-3 py-1.5 rounded-lg bg-[#163e35] text-[#d8edb3] text-xs font-bold hover:bg-[#24564a] disabled:opacity-50"
+                          >
+                            Approve
+                          </button>
+                        )}
+                        {item.status !== 'rejected' && (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => handleDecision(item, 'rejected')}
+                            className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold hover:bg-rose-100 disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {data && data.pages > 1 && (
+        <div className="mt-6">
+          <Pagination page={page} pages={data.pages} onPage={setPage} />
+        </div>
+      )}
+    </>
+  );
+}
+
 function OverviewView({ stats, loading, error, onNavigate, onOpenProperty }) {
   const { data: recentProps, reload: reloadProps } = useData('admin/properties?limit=5');
   const { data: recentLeads } = useData('leads?limit=5');
@@ -2409,6 +2597,27 @@ function OverviewView({ stats, loading, error, onNavigate, onOpenProperty }) {
       <State loading={loading} error={error} />
 
       {/* Summary Grid with Direct Tab Routing */}
+      {Number(stats?.pendingWorkspaces) > 0 && (
+        <div
+          onClick={() => onNavigate('workspace-requests')}
+          className="mb-6 p-4 rounded-xl border border-amber-300 bg-amber-50/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-amber-100/70 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <ShieldCheck size={20} className="text-amber-700 shrink-0" />
+            <div>
+              <strong className="text-sm text-amber-950 block">
+                {stats.pendingWorkspaces} Business Workspace {stats.pendingWorkspaces === 1 ? 'Application' : 'Applications'} Waiting for Approval
+              </strong>
+              <span className="text-xs text-amber-800">
+                Review service provider, owner, broker, and builder registration requests before unlocking their business dashboards.
+              </span>
+            </div>
+          </div>
+          <span className="btn !py-2 !px-3 !text-xs shrink-0">
+            Review Approvals <ArrowUpRight size={14} />
+          </span>
+        </div>
+      )}
       <div className="summary-grid">
         <div className="stat cursor-pointer hover:border-forest transition-colors" onClick={() => onNavigate('properties')}>
           <div className="flex justify-between">

@@ -4,6 +4,14 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { MapPin, Navigation, ZoomIn, ZoomOut, Maximize2, ExternalLink } from 'lucide-react';
 import { getCoordinatesForProperty, getTileSources } from '@/lib/geo';
 
+const escapeHtml = (val = '') =>
+  String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 export default function PropertyLocationMap({ item }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -68,7 +76,7 @@ export default function PropertyLocationMap({ item }) {
         }).addTo(map);
 
         circle.bindTooltip(
-          `<strong>Approximate Area</strong><br/>Located within ~${radiusMeters}m in ${locality}, ${city}`,
+          `<strong>Approximate Area</strong><br/>Located within ~${radiusMeters}m in ${escapeHtml(locality)}, ${escapeHtml(city)}`,
           { direction: 'top', opacity: 0.95 }
         );
       } else {
@@ -81,7 +89,7 @@ export default function PropertyLocationMap({ item }) {
                 <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
                 <circle cx="12" cy="10" r="3"/>
               </svg>
-              <span>${item?.locality || 'Property Location'}</span>
+              <span>${escapeHtml(item?.locality || 'Property Location')}</span>
             </div>
           `,
           iconSize: [120, 32],

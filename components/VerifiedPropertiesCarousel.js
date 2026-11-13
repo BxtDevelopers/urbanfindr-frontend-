@@ -10,6 +10,15 @@ export default function VerifiedPropertiesCarousel({
   loading = false,
   error = '',
   total = 0,
+  eyebrow = 'REVIEWED BY OUR TEAM',
+  title = 'Verified direct owner properties',
+  description = 'All listings are thoroughly reviewed for authentic ownership, pricing, and clear documentation.',
+  href = '/properties?verified=true',
+  linkLabel = 'Browse all verified homes',
+  prevAriaLabel = 'Previous verified property',
+  nextAriaLabel = 'Next verified property',
+  showDot = true,
+  filterTabs = null,
 }) {
   const containerRef = useRef(null);
   const cardRefs = useRef([]);
@@ -93,9 +102,16 @@ export default function VerifiedPropertiesCarousel({
     }
   }, []);
 
-  // Initialize and observe resize
+  const itemsSignature = Array.isArray(items) ? items.map((i) => i?._id || '').join(',') : '';
+
+  // Initialize and observe resize (also re-measure when items list changes)
   useEffect(() => {
     if (allCards.length === 0) return;
+
+    if (containerRef.current) {
+      singleWidthRef.current = 0;
+      containerRef.current.scrollLeft = 0;
+    }
 
     // Give DOM a frame to compute styles
     const timer = setTimeout(() => {
@@ -121,7 +137,7 @@ export default function VerifiedPropertiesCarousel({
       window.removeEventListener('resize', handleResize);
       if (resizeObserver) resizeObserver.disconnect();
     };
-  }, [allCards.length, measureWidth]);
+  }, [allCards.length, itemsSignature, measureWidth]);
 
   // Continuous auto-scrolling loop using requestAnimationFrame
   useEffect(() => {
@@ -290,23 +306,23 @@ export default function VerifiedPropertiesCarousel({
       <div className="section-title flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <p className="eyebrow !mb-2 flex items-center gap-2">
-            <span className="w-2 h-2 bg-forest rounded-full" />
-            REVIEWED BY OUR TEAM
+            {showDot && <span className="w-2 h-2 bg-forest rounded-full" />}
+            {eyebrow}
           </p>
           <h2 className="!text-2xl sm:!text-3xl lg:!text-4xl font-semibold text-forest tracking-tight">
-            Verified direct owner properties
+            {title}
           </h2>
           <p className="muted text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
-            All listings are thoroughly reviewed for authentic ownership, pricing, and clear documentation.
+            {description}
           </p>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 shrink-0 self-start md:self-end">
           <Link
             className="text-link text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 hover:text-forest"
-            href="/properties?verified=true"
+            href={href}
           >
-            <span>Browse all verified homes</span>
+            <span>{linkLabel}</span>
             <ArrowUpRight size={16} />
           </Link>
 
@@ -315,7 +331,7 @@ export default function VerifiedPropertiesCarousel({
             <button
               type="button"
               onClick={handlePrev}
-              aria-label="Previous verified property"
+              aria-label={prevAriaLabel}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-stone-300/80 bg-white hover:bg-cream hover:border-forest/50 active:scale-95 text-forest flex items-center justify-center transition-all shadow-sm"
               title="Previous"
             >
@@ -324,7 +340,7 @@ export default function VerifiedPropertiesCarousel({
             <button
               type="button"
               onClick={handleNext}
-              aria-label="Next verified property"
+              aria-label={nextAriaLabel}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-stone-300/80 bg-white hover:bg-cream hover:border-forest/50 active:scale-95 text-forest flex items-center justify-center transition-all shadow-sm"
               title="Next"
             >
@@ -333,6 +349,8 @@ export default function VerifiedPropertiesCarousel({
           </div>
         </div>
       </div>
+
+      {filterTabs}
 
       {/* Loading & Empty States */}
       <State loading={loading} error={error} empty={total === 0 || (!loading && items.length === 0)} />

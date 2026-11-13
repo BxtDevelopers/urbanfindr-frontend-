@@ -622,6 +622,7 @@ export default function ChannelPartnerDashboard({
   const [leadChannelFilter, setLeadChannelFilter] = useState('all');
   const [leadStatusFilter, setLeadStatusFilter] = useState('all');
   const [leadAdvisorFilter, setLeadAdvisorFilter] = useState('all');
+  const [teamViewMemberId, setTeamViewMemberId] = useState('all');
   const [leadSearchQuery, setLeadSearchQuery] = useState('');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
@@ -879,6 +880,58 @@ export default function ChannelPartnerDashboard({
     }
   }
 
+  function getAssignedMembersForProp(prop) {
+    if (!prop) return [];
+    if (Array.isArray(prop.assignedTeamMembers) && prop.assignedTeamMembers.length > 0) {
+      return prop.assignedTeamMembers;
+    }
+    if (prop.assignedTeamMemberId && prop.assignedTeamMemberName) {
+      return [{ memberId: prop.assignedTeamMemberId, name: prop.assignedTeamMemberName }];
+    }
+    return [];
+  }
+
+  function isPropAssignedToMember(prop, memberId) {
+    if (!prop || !memberId) return false;
+    return getAssignedMembersForProp(prop).some((m) => String(m.memberId) === String(memberId));
+  }
+
+  function isPropUnassigned(prop) {
+    return getAssignedMembersForProp(prop).length === 0;
+  }
+
+  // Listing Assignment Handler
+  async function handleAssignListingMember(propertyId, memberId, mode = 'assign') {
+    setBusyAction('assign_prop_' + propertyId);
+    try {
+      const payload =
+        mode === 'unassign'
+          ? { unassignTeamMemberId: memberId }
+          : memberId
+          ? { assignTeamMemberId: memberId }
+          : { assignedTeamMemberId: '' };
+      const updated = await api('properties/' + propertyId, {
+        method: 'PATCH',
+        body: payload
+      });
+      reloadProperties();
+      reloadLeads();
+      if (selectedListing && selectedListing._id === propertyId) {
+        setSelectedListing((prev) => ({
+          ...prev,
+          assignedTeamMembers: updated.assignedTeamMembers || [],
+          assignedTeamMemberId: updated.assignedTeamMemberId || null,
+          assignedTeamMemberName: updated.assignedTeamMemberName || ''
+        }));
+      }
+      toast(mode === 'unassign' ? 'Advisor removed from listing.' : 'Listing assigned to advisor.');
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setBusyAction('');
+    }
+  }
+
   // Team Member Handlers
   async function handleAddMember(e) {
     e.preventDefault();
@@ -1102,7 +1155,7 @@ export default function ChannelPartnerDashboard({
     },
     {
       id: 'team',
-      label: 'Sales Team',
+      label: 'Team Members',
       icon: Users,
       badge: team.length,
       badgeColor: 'bg-sky-100 text-sky-800'
@@ -2123,7 +2176,130 @@ export default function ChannelPartnerDashboard({
                       </button>
                     </div>
 
-                    {team.length === 0 ? (
+                    {/* Advisor Visibility Switcher */}
+              <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-bold text-stone-800">
+                    Assigned Property &amp; Lead Visibility
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    Channel Partner sees all listed properties and leads. Each advisor only sees properties &amp; leads assigned to them.
+                  </p>
+                </div>
+                <select
+                  value={teamViewMemberId}
+                  onChange={(e) => setTeamViewMemberId(e.target.value)}
+                  className="px-3 py-2 text-xs font-semibold bg-stone-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35] cursor-pointer sm:w-64"
+                >
+                  <option value="all">Channel Partner (All Advisors)</option>
+                  {team.map((tm) => (
+                    <option key={tm._id} value={tm._id}>
+                      Advisor View: {tm.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {teamViewMemberId !== 'all' && (() => {
+                const activeMember = team.find((tm) => String(tm._id) === String(teamViewMemberId));
+                const memberOnlyProperties = properties.filter(
+                  (p) => isPropAssignedToMember(p, teamViewMemberId)
+                );
+                const memberPropIds = new Set(memberOnlyProperties.map((p) => String(p._id)));
+                const memberOnlyLeads = leads.filter(
+                  (l) =>
+                    l.assignedTeamMember === activeMember?.name ||
+                    (l.property && memberPropIds.has(String(l.property?._id || l.property)))
+                );
+                return (
+                  <div className="bg-white p-5 rounded-3xl border border-emerald-200 shadow-xs space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-bold text-stone-900">
+                          {activeMember?.name || 'Advisor'} — Assigned Properties ({memberOnlyProperties.length}) &amp; Leads ({memberOnlyLeads.length})
+                        </h3>
+                        <p className="text-xs text-stone-500 mt-0.5">
+                          Scoped view for {activeMember?.name}. Other advisors cannot see these properties or leads.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTeamViewMemberId('all')}
+                        className="text-xs font-bold text-[#163e35] hover:underline cursor-pointer self-start sm:self-auto"
+                      >
+                        Back to Team Members
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                        Assigned Properties ({memberOnlyProperties.length})
+                      </h4>
+                      {memberOnlyProperties.length === 0 ? (
+                        <div className="p-5 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-xs text-stone-500">
+                          No properties assigned to {activeMember?.name} yet.
+                        </div>
+                      ) : (
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                          {memberOnlyProperties.map((prop) => (
+                            <div key={prop._id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50/70 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                  {prop.purpose}
+                                </span>
+                                <span className="text-xs font-extrabold text-[#163e35]">{money(prop.price)}</span>
+                              </div>
+                              <div className="font-bold text-sm text-stone-900 line-clamp-1">{prop.title}</div>
+                              <div className="text-xs text-stone-500 truncate">{prop.locality}, {prop.city}</div>
+                              <div className="pt-2 flex items-center justify-between gap-2 border-t border-stone-200/70 text-xs">
+                                <Link href={'/properties/' + prop._id} className="font-semibold text-[#163e35] hover:underline">
+                                  View Listing
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAssignListingMember(prop._id, teamViewMemberId, 'unassign')}
+                                  className="text-red-700 font-semibold hover:underline cursor-pointer"
+                                >
+                                  Unassign
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3 pt-2 border-t border-stone-100">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                        Property Leads ({memberOnlyLeads.length})
+                      </h4>
+                      {memberOnlyLeads.length === 0 ? (
+                        <div className="p-5 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-xs text-stone-500">
+                          No leads for {activeMember?.name}&apos;s assigned properties yet.
+                        </div>
+                      ) : (
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {memberOnlyLeads.map((ld) => (
+                            <div key={ld._id} className="p-3 rounded-xl border border-stone-200 bg-stone-50/70 flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs text-stone-900 truncate">{ld.name || 'Buyer Enquiry'}</div>
+                                <div className="text-[11px] text-stone-500 truncate">
+                                  {ld.property?.title || 'Property Enquiry'} · {ld.phone || ld.email || 'No contact'}
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 capitalize shrink-0">
+                                {ld.status?.replace('_', ' ') || 'uncontacted'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {team.length === 0 ? (
                       <div className="text-center py-8 text-stone-400 text-sm">
                         No team members registered yet.
                       </div>
@@ -2603,6 +2779,44 @@ export default function ChannelPartnerDashboard({
                               <span>{prop.area} sq.ft</span>
                               <span>{prop.furnishing || 'Unfurnished'}</span>
                             </div>
+
+                            {/* Exclusive Advisor Assignment */}
+                            <div className="mt-3 pt-3 border-t border-stone-100">
+                              <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
+                                Assigned Advisor
+                              </label>
+                              {prop.assignedTeamMemberId ? (
+                                <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs">
+                                  <span className="font-semibold text-emerald-900 truncate">
+                                    {prop.assignedTeamMemberName || 'Assigned Advisor'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={busyAction === 'assign_prop_' + prop._id}
+                                    onClick={() => handleAssignListingMember(prop._id, prop.assignedTeamMemberId, 'unassign')}
+                                    className="text-[11px] font-bold text-red-700 hover:underline shrink-0 cursor-pointer"
+                                  >
+                                    Unassign
+                                  </button>
+                                </div>
+                              ) : (
+                                <select
+                                  value=""
+                                  disabled={busyAction === 'assign_prop_' + prop._id}
+                                  onChange={(e) => {
+                                    if (e.target.value) handleAssignListingMember(prop._id, e.target.value, 'assign');
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold bg-stone-50 border border-stone-200 rounded-lg text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35] cursor-pointer"
+                                >
+                                  <option value="">Unassigned (Select Advisor)</option>
+                                  {team.map((tm) => (
+                                    <option key={tm._id} value={tm._id}>
+                                      {tm.name} ({tm.role || 'Advisor'})
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -2652,15 +2866,15 @@ export default function ChannelPartnerDashboard({
           )}
 
           {/* =====================================================================
-              TAB 4: SALES TEAM MEMBERS
+              TAB 4: TEAM MEMBERS
              ===================================================================== */}
           {tab === 'team' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-stone-900">Channel Sales Network</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-stone-900">Team Members</h2>
                   <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
-                    Sales managers, luxury specialists, and agents operating under your firm.
+                    Sales advisors, specialists, and agents operating under your firm.
                   </p>
                 </div>
                 <button
@@ -2671,6 +2885,129 @@ export default function ChannelPartnerDashboard({
                   Add Team Member
                 </button>
               </div>
+
+              {/* Advisor Visibility Switcher */}
+              <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-bold text-stone-800">
+                    Assigned Property &amp; Lead Visibility
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    Channel Partner sees all listed properties and leads. Each advisor only sees properties &amp; leads assigned to them.
+                  </p>
+                </div>
+                <select
+                  value={teamViewMemberId}
+                  onChange={(e) => setTeamViewMemberId(e.target.value)}
+                  className="px-3 py-2 text-xs font-semibold bg-stone-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35] cursor-pointer sm:w-64"
+                >
+                  <option value="all">Channel Partner (All Advisors)</option>
+                  {team.map((tm) => (
+                    <option key={tm._id} value={tm._id}>
+                      Advisor View: {tm.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {teamViewMemberId !== 'all' && (() => {
+                const activeMember = team.find((tm) => String(tm._id) === String(teamViewMemberId));
+                const memberOnlyProperties = properties.filter(
+                  (p) => isPropAssignedToMember(p, teamViewMemberId)
+                );
+                const memberPropIds = new Set(memberOnlyProperties.map((p) => String(p._id)));
+                const memberOnlyLeads = leads.filter(
+                  (l) =>
+                    l.assignedTeamMember === activeMember?.name ||
+                    (l.property && memberPropIds.has(String(l.property?._id || l.property)))
+                );
+                return (
+                  <div className="bg-white p-5 rounded-3xl border border-emerald-200 shadow-xs space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-bold text-stone-900">
+                          {activeMember?.name || 'Advisor'} — Assigned Properties ({memberOnlyProperties.length}) &amp; Leads ({memberOnlyLeads.length})
+                        </h3>
+                        <p className="text-xs text-stone-500 mt-0.5">
+                          Scoped view for {activeMember?.name}. Other team members cannot see these properties or leads.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTeamViewMemberId('all')}
+                        className="text-xs font-bold text-[#163e35] hover:underline cursor-pointer self-start sm:self-auto"
+                      >
+                        Back to Team Members
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                        Assigned Properties ({memberOnlyProperties.length})
+                      </h4>
+                      {memberOnlyProperties.length === 0 ? (
+                        <div className="p-5 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-xs text-stone-500">
+                          No properties assigned to {activeMember?.name} yet.
+                        </div>
+                      ) : (
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {memberOnlyProperties.map((prop) => (
+                            <div key={prop._id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50/70 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                  {prop.purpose}
+                                </span>
+                                <span className="text-xs font-extrabold text-[#163e35]">{money(prop.price)}</span>
+                              </div>
+                              <div className="font-bold text-sm text-stone-900 line-clamp-1">{prop.title}</div>
+                              <div className="text-xs text-stone-500 truncate">{prop.locality}, {prop.city}</div>
+                              <div className="pt-2 flex items-center justify-between gap-2 border-t border-stone-200/70 text-xs">
+                                <Link href={'/properties/' + prop._id} className="font-semibold text-[#163e35] hover:underline">
+                                  View Listing
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAssignListingMember(prop._id, teamViewMemberId, 'unassign')}
+                                  className="text-red-700 font-semibold hover:underline cursor-pointer"
+                                >
+                                  Unassign
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3 pt-2 border-t border-stone-100">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                        Property Leads ({memberOnlyLeads.length})
+                      </h4>
+                      {memberOnlyLeads.length === 0 ? (
+                        <div className="p-5 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-xs text-stone-500">
+                          No leads for {activeMember?.name}&apos;s assigned properties yet.
+                        </div>
+                      ) : (
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {memberOnlyLeads.map((ld) => (
+                            <div key={ld._id} className="p-3 rounded-xl border border-stone-200 bg-stone-50/70 flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs text-stone-900 truncate">{ld.name || 'Buyer Enquiry'}</div>
+                                <div className="text-[11px] text-stone-500 truncate">
+                                  {ld.property?.title || 'Property Enquiry'} · {ld.phone || ld.email || 'No contact'}
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 capitalize shrink-0">
+                                {ld.status?.replace('_', ' ') || 'uncontacted'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {team.length === 0 ? (
                 <div className="bg-white p-12 text-center rounded-3xl border border-stone-200">
@@ -2687,11 +3024,15 @@ export default function ChannelPartnerDashboard({
                   </button>
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {team.map((member) => {
                     const assignedLeads = leads.filter(
                       (l) => l.assignedTeamMember === member.name
                     );
+                    const assignedProperties = properties.filter(
+                      (p) => isPropAssignedToMember(p, member._id)
+                    );
+                    const unassignedProperties = properties.filter(isPropUnassigned);
                     const contactedCount = assignedLeads.filter((l) => l.status === 'contacted').length;
                     const interestedCount = assignedLeads.filter((l) => l.status === 'interested' || l.status === 'consultation').length;
                     const convertedCount = assignedLeads.filter((l) => l.status === 'converted' || l.status === 'deal_closed').length;
@@ -2699,141 +3040,143 @@ export default function ChannelPartnerDashboard({
                     return (
                       <div
                         key={member._id}
-                        className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs flex flex-col justify-between hover:border-stone-300 transition-all cursor-pointer group"
+                        className="bg-white rounded-2xl border border-stone-200/90 shadow-xs hover:shadow-md hover:border-[#163e35]/30 transition-all cursor-pointer group flex flex-col justify-between overflow-hidden"
                         onClick={() => setSelectedMember(member)}
                       >
                         <div>
-                          <div className="flex items-start justify-between gap-3 mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#163e35] to-[#255e52] text-white flex items-center justify-center font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
-                                {member.name.slice(0, 2).toUpperCase()}
+                          <div className="h-1 bg-gradient-to-r from-[#163e35] to-[#2d7a68]" />
+                          <div className="p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-9 h-9 rounded-lg bg-[#163e35] text-[#d8edb3] flex items-center justify-center font-bold text-xs shrink-0">
+                                  {member.name.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="font-bold text-stone-900 text-xs sm:text-sm leading-tight truncate group-hover:text-[#163e35] transition-colors">
+                                    {member.name}
+                                  </h4>
+                                  <p className="text-[11px] text-stone-500 truncate">
+                                    {member.role || 'Property Specialist'}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <h4 className="font-bold text-stone-900 text-sm leading-tight group-hover:text-[#163e35] transition-colors">
-                                  {member.name}
-                                </h4>
-                                <p className="text-xs text-stone-500 mt-0.5 font-medium">
-                                  {member.role || 'Property Specialist'}
-                                </p>
-                              </div>
-                            </div>
 
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
-                                member.status === 'active'
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                  : member.status === 'on_leave'
-                                  ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                                  : 'bg-stone-100 text-stone-600'
-                              }`}
-                            >
-                              {member.status?.replace('_', ' ') || 'Active'}
-                            </span>
-                          </div>
-
-                          <div className="space-y-1.5 py-3 border-y border-stone-100 text-xs text-stone-600">
-                            {member.phone && (
-                              <div className="flex items-center gap-2">
-                                <Phone size={13} className="text-stone-400" />
-                                <a
-                                  href={`tel:${member.phone}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="hover:underline"
-                                >
-                                  {member.phone}
-                                </a>
-                              </div>
-                            )}
-                            {member.email && (
-                              <div className="flex items-center gap-2">
-                                <Mail size={13} className="text-stone-400" />
-                                <a
-                                  href={`mailto:${member.email}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="hover:underline truncate"
-                                >
-                                  {member.email}
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Lead Allocation & Status Badges */}
-                          <div className="pt-3 space-y-2">
-                            <div className="flex items-center justify-between text-xs text-stone-500">
-                              <span className="font-semibold">Assigned Leads:</span>
-                              <span className="font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100">
-                                {assignedLeads.length || member.assignedLeadsCount || 0} Total
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize shrink-0 ${
+                                  member.status === 'active'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : member.status === 'on_leave'
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                    : 'bg-stone-100 text-stone-600'
+                                }`}
+                              >
+                                {member.status?.replace('_', ' ') || 'Active'}
                               </span>
                             </div>
 
-                            {/* Status badges: contacted, interested, converted */}
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {contactedCount > 0 && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-sky-500 inline-block" />
-                                  {contactedCount} Contacted
-                                </span>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-500 border-t border-stone-100 pt-2">
+                              {member.phone && (
+                                <a
+                                  href={`tel:${member.phone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 hover:text-[#163e35] hover:underline"
+                                >
+                                  <Phone size={11} className="text-stone-400" />
+                                  {member.phone}
+                                </a>
                               )}
-                              {interestedCount > 0 && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block" />
-                                  {interestedCount} Interested
-                                </span>
-                              )}
-                              {convertedCount > 0 && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                                  {convertedCount} Converted
-                                </span>
+                              {member.email && (
+                                <a
+                                  href={`mailto:${member.email}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 hover:text-[#163e35] hover:underline truncate max-w-[170px]"
+                                >
+                                  <Mail size={11} className="text-stone-400 shrink-0" />
+                                  <span className="truncate">{member.email}</span>
+                                </a>
                               )}
                             </div>
 
-                            {/* Assigned Leads Preview List */}
-                            {assignedLeads.length > 0 && (
-                              <div className="pt-2 border-t border-stone-100 space-y-1">
-                                <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                                  Recent Leads:
-                                </div>
-                                <div className="space-y-1 max-h-32 overflow-y-auto no-scrollbar">
-                                  {assignedLeads.slice(0, 3).map((al) => (
-                                    <div
-                                      key={al._id}
+                            <div className="flex items-center justify-between gap-2 text-[11px] bg-stone-50 rounded-xl px-2.5 py-1.5 border border-stone-200/70">
+                              <span className="font-semibold text-stone-600">
+                                Properties: <strong className="text-[#163e35]">{assignedProperties.length}</strong>
+                              </span>
+                              <span className="text-stone-300">|</span>
+                              <span className="font-semibold text-stone-600">
+                                Leads: <strong className="text-emerald-800">{assignedLeads.length || member.assignedLeadsCount || 0}</strong>
+                              </span>
+                            </div>
+
+                            {assignedProperties.length > 0 && (
+                              <div className="space-y-1">
+                                {assignedProperties.slice(0, 2).map((ap) => (
+                                  <div
+                                    key={ap._id}
+                                    className="text-[11px] bg-emerald-50/50 border border-emerald-200/70 rounded-lg px-2 py-1 flex items-center justify-between gap-2"
+                                  >
+                                    <span className="font-semibold text-stone-800 truncate">{ap.title}</span>
+                                    <button
+                                      type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setSelectedLead(al);
+                                        handleAssignListingMember(ap._id, member._id, 'unassign');
                                       }}
-                                      className="p-1.5 rounded-lg bg-stone-50 hover:bg-stone-100/90 flex items-center justify-between text-xs transition-colors border border-stone-100/80 cursor-pointer"
+                                      className="text-[10px] font-bold text-red-700 hover:underline shrink-0 cursor-pointer"
                                     >
-                                      <div className="truncate mr-2 font-medium text-stone-800">
-                                        {al.name}
-                                      </div>
-                                      <span
-                                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize shrink-0 ${
-                                          al.status === 'contacted'
-                                            ? 'bg-sky-100 text-sky-900 border border-sky-300'
-                                            : al.status === 'interested'
-                                            ? 'bg-indigo-100 text-indigo-900 border border-indigo-300'
-                                            : al.status === 'converted' || al.status === 'deal_closed'
-                                            ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                                            : al.status === 'site_visit_scheduled'
-                                            ? 'bg-purple-100 text-purple-900 border border-purple-300'
-                                            : al.status === 'negotiation'
-                                            ? 'bg-teal-100 text-teal-900 border border-teal-300'
-                                            : 'bg-amber-100 text-amber-900 border border-amber-300'
-                                        }`}
-                                      >
-                                        {al.status?.replace(/_/g, ' ')}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
+                                      Remove
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <select
+                                value=""
+                                disabled={busyAction.startsWith('assign_prop_') || unassignedProperties.length === 0}
+                                onChange={(e) => {
+                                  if (e.target.value) handleAssignListingMember(e.target.value, member._id, 'assign');
+                                }}
+                                className="w-full px-2.5 py-1.5 text-[11px] font-semibold bg-stone-50 border border-stone-200 rounded-lg text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35] cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="">
+                                  {properties.length === 0
+                                    ? 'No properties listed yet'
+                                    : unassignedProperties.length === 0
+                                    ? 'No unassigned properties'
+                                    : '+ Assign property...'}
+                                </option>
+                                {unassignedProperties.map((p) => (
+                                  <option key={p._id} value={p._id}>
+                                    {p.title} ({p.city})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {(contactedCount > 0 || interestedCount > 0 || convertedCount > 0) && (
+                              <div className="flex flex-wrap items-center gap-1">
+                                {contactedCount > 0 && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200">
+                                    {contactedCount} Contacted
+                                  </span>
+                                )}
+                                {interestedCount > 0 && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                    {interestedCount} Interested
+                                  </span>
+                                )}
+                                {convertedCount > 0 && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    {convertedCount} Converted
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 pt-4 mt-4 border-t border-stone-100">
+                        <div className="px-3 py-2 bg-stone-50/80 border-t border-stone-100 flex items-center justify-between gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -3184,11 +3527,11 @@ export default function ChannelPartnerDashboard({
           onClick={() => setSelectedLead(null)}
         >
           <div
-            className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden no-scrollbar my-auto"
+            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden no-scrollbar my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-5 sm:p-6 bg-gradient-to-r from-stone-900 to-[#163e35] text-white flex items-center justify-between">
+            <div className="p-4 bg-gradient-to-r from-stone-900 to-[#163e35] text-white flex items-center justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span
@@ -3227,7 +3570,7 @@ export default function ChannelPartnerDashboard({
                     </span>
                   )}
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold mt-1 text-white">
+                <h3 className="text-base sm:text-lg font-bold mt-1 text-white">
                   {selectedLead.name}
                 </h3>
               </div>
@@ -3241,9 +3584,9 @@ export default function ChannelPartnerDashboard({
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto no-scrollbar">
+            <div className="p-4 space-y-3.5 max-h-[68vh] overflow-y-auto no-scrollbar">
               {/* Client Contact Grid */}
-              <div className="grid sm:grid-cols-2 gap-3.5 bg-stone-50 p-4 rounded-2xl border border-stone-200/80">
+              <div className="grid sm:grid-cols-2 gap-2.5 bg-stone-50 p-3 rounded-xl border border-stone-200/80">
                 <div>
                   <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
                     Phone Number
@@ -3314,16 +3657,16 @@ export default function ChannelPartnerDashboard({
 
               {/* Referenced Property Card */}
               {selectedLead.property && (
-                <div className="p-4 rounded-2xl border border-stone-200 bg-white shadow-xs">
-                  <div className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                <div className="p-3 rounded-xl border border-stone-200 bg-white shadow-xs">
+                  <div className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">
                     Inquired Property
                   </div>
-                  <div className="flex items-center gap-3.5">
+                  <div className="flex items-center gap-3">
                     {selectedLead.property.images?.[0] && (
                       <img
                         src={selectedLead.property.images[0]}
                         alt=""
-                        className="w-16 h-14 object-cover rounded-xl shrink-0"
+                        className="w-12 h-11 object-cover rounded-lg shrink-0"
                       />
                     )}
                     <div className="min-w-0 flex-1">
@@ -3350,7 +3693,7 @@ export default function ChannelPartnerDashboard({
               {(() => {
                 const assignedAdvisor = team.find((m) => m.name === selectedLead.assignedTeamMember);
                 return (
-                  <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/70 space-y-3.5">
+                  <div className="p-3 rounded-xl border border-stone-200 bg-stone-50/70 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
                         <UserCheck size={15} className="text-[#163e35]" />
@@ -3374,10 +3717,10 @@ export default function ChannelPartnerDashboard({
 
                     {/* Display Personal Team Member Details: Name, Role, Email, Phone */}
                     {assignedAdvisor ? (
-                      <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#163e35] to-[#255e52] text-[#d8edb3] flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                      <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-2xs space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#163e35] to-[#255e52] text-[#d8edb3] flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
                               {assignedAdvisor.name.slice(0, 2).toUpperCase()}
                             </div>
                             <div>
@@ -3567,7 +3910,7 @@ export default function ChannelPartnerDashboard({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-stone-50 border-t border-stone-200 flex justify-end">
+            <div className="p-3 bg-stone-50 border-t border-stone-200 flex justify-end">
               <button
                 onClick={() => setSelectedLead(null)}
                 className="px-5 py-2 bg-stone-200 text-stone-800 rounded-xl text-xs font-bold hover:bg-stone-300 transition-colors cursor-pointer"
@@ -3749,6 +4092,48 @@ export default function ChannelPartnerDashboard({
                 </p>
               </div>
 
+              {/* Assigned Sales Advisor (Exclusive 1-to-1) */}
+              <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-200/80 space-y-2">
+                <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <UserCheck size={14} className="text-[#163e35]" />
+                  Assigned Sales Advisor
+                </label>
+                {selectedListing.assignedTeamMemberId ? (
+                  <div className="flex items-center justify-between gap-2 bg-white border border-emerald-200 rounded-xl px-3 py-2 text-xs">
+                    <span className="font-semibold text-[#163e35]">
+                      {selectedListing.assignedTeamMemberName || 'Assigned Advisor'}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={busyAction === 'assign_prop_' + selectedListing._id}
+                      onClick={() => handleAssignListingMember(selectedListing._id, selectedListing.assignedTeamMemberId, 'unassign')}
+                      className="font-bold text-red-700 hover:underline cursor-pointer"
+                    >
+                      Unassign
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    value=""
+                    disabled={busyAction === 'assign_prop_' + selectedListing._id}
+                    onChange={(e) => {
+                      if (e.target.value) handleAssignListingMember(selectedListing._id, e.target.value, 'assign');
+                    }}
+                    className="w-full px-3 py-2 text-xs font-semibold bg-white border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35] cursor-pointer"
+                  >
+                    <option value="">Unassigned (Select Advisor)</option>
+                    {team.map((tm) => (
+                      <option key={tm._id} value={tm._id}>
+                        {tm.name} ({tm.role || 'Advisor'})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-[11px] text-stone-500">
+                  A property can be assigned to one advisor at a time. Only the Channel Partner and that advisor can view it.
+                </p>
+              </div>
+
               {/* Amenities */}
               {selectedListing.amenities?.length > 0 && (
                 <div>
@@ -3910,6 +4295,8 @@ export default function ChannelPartnerDashboard({
          ========================================================================= */}
       {selectedMember && (() => {
         const memberLeads = leads.filter((l) => l.assignedTeamMember === selectedMember.name);
+        const memberProperties = properties.filter((p) => isPropAssignedToMember(p, selectedMember._id));
+        const assignableProperties = properties.filter(isPropUnassigned);
         const memberContacted = memberLeads.filter((l) => l.status === 'contacted').length;
         const memberInterested = memberLeads.filter((l) => l.status === 'interested' || l.status === 'consultation').length;
         const memberConverted = memberLeads.filter((l) => l.status === 'converted' || l.status === 'deal_closed').length;
@@ -4004,6 +4391,69 @@ export default function ChannelPartnerDashboard({
                       <div className="text-[10px] font-bold text-emerald-800 uppercase mt-0.5">Converted</div>
                     </div>
                   </div>
+                </div>
+
+                {/* ASSIGNED LISTING PROPERTIES FOR THIS ADVISOR */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                        <Building2 size={16} className="text-[#163e35]" />
+                        Assigned Listing Properties ({memberProperties.length})
+                      </h4>
+                      <p className="text-xs text-stone-500 mt-0.5">
+                        Only the Channel Partner and {selectedMember.name} can view these assigned properties and leads.
+                      </p>
+                    </div>
+                    {assignableProperties.length > 0 && (
+                      <select
+                        value=""
+                        disabled={busyAction.startsWith('assign_prop_')}
+                        onChange={(e) => {
+                          if (e.target.value) handleAssignListingMember(e.target.value, selectedMember._id, 'assign');
+                        }}
+                        className="px-3 py-1.5 text-xs font-semibold bg-stone-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35] cursor-pointer sm:w-56"
+                      >
+                        <option value="">+ Assign a property...</option>
+                        {assignableProperties.map((ap) => (
+                          <option key={ap._id} value={ap._id}>
+                            {ap.title} ({ap.city})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {memberProperties.length === 0 ? (
+                    <div className="p-5 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-xs text-stone-500">
+                      No listing properties assigned to {selectedMember.name} yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto no-scrollbar pr-1">
+                      {memberProperties.map((mp) => (
+                        <div key={mp._id} className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-bold text-xs text-stone-900 truncate">{mp.title}</div>
+                            <div className="text-[11px] text-stone-500 truncate">
+                              {mp.locality}, {mp.city} · {money(mp.price)}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 text-xs">
+                            <Link href={'/properties/' + mp._id} className="font-semibold text-[#163e35] hover:underline">
+                              View
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => handleAssignListingMember(mp._id, selectedMember._id, 'unassign')}
+                              className="font-semibold text-red-700 hover:underline cursor-pointer"
+                            >
+                              Unassign
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* =================================================================

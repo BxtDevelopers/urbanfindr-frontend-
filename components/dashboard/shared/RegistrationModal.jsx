@@ -1,38 +1,44 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useWorkspace, WORKSPACE_CONFIG } from '../WorkspaceContext';
 import { useApp, api } from '../../providers';
 import {
   X,
   ShieldCheck,
-  House,
-  Briefcase,
-  Building2,
-  Wrench,
-  Sparkles,
-  CheckCircle2
+  Clock,
+  Sparkles
 } from 'lucide-react';
 import { serviceCategories } from '@/lib/serviceCategories';
 
 export default function RegistrationModal() {
-  const { user, setUser, toast } = useApp();
+  const { user, toast } = useApp();
   const {
     registerModalOpen,
     registerModalType,
     closeRegisterModal,
     fetchWorkspaces,
-    switchWorkspace
+    switchWorkspace,
+    memberships = []
   } = useWorkspace();
 
   const [busy, setBusy] = useState(false);
   const [selectedType, setSelectedType] = useState(registerModalType || 'provider');
 
-  if (!registerModalOpen) return null;
+  useEffect(() => {
+    if (registerModalOpen) {
+      setSelectedType(registerModalType || 'provider');
+    }
+  }, [registerModalOpen, registerModalType]);
+
+  if (!registerModalOpen || typeof document === 'undefined') return null;
 
   const currentType = selectedType || registerModalType;
   const config = WORKSPACE_CONFIG[currentType] || WORKSPACE_CONFIG.provider;
   const Icon = config.icon;
+  const existingMembership = memberships.find((m) => m.workspaceType === currentType);
+  const isAlreadyPending = existingMembership?.status === 'pending';
 
   const providerServices = serviceCategories.filter((c) => c.slug !== 'properties');
 
@@ -57,11 +63,12 @@ export default function RegistrationModal() {
         body: data
       });
 
-      toast(res.message || `${config.label} workspace activated!`);
+      toast(res.message || `Registration submitted for Admin review.`);
       await fetchWorkspaces();
       closeRegisterModal();
-      // Instantly switch into new workspace
-      switchWorkspace(currentType);
+      if (res.alreadyActive) {
+        switchWorkspace(currentType);
+      }
     } catch (err) {
       toast(err.message || 'Registration failed. Please verify your details.');
     } finally {
@@ -69,9 +76,17 @@ export default function RegistrationModal() {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 animate-in zoom-in-95 duration-200">
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[99999] overflow-y-auto bg-stone-900/65 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 pt-20 pb-8 sm:pt-24 sm:pb-10 animate-in fade-in duration-200"
+      onClick={closeRegisterModal}
+    >
+      <div
+        className="my-auto bg-white rounded-2xl max-w-xl w-full max-h-[calc(100vh-8rem)] overflow-y-auto shadow-2xl border border-stone-200 animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-6 border-b border-stone-100 flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -282,10 +297,16 @@ export default function RegistrationModal() {
             />
           </div>
 
-          <div className="p-3 bg-stone-50 rounded-xl border border-stone-200/80 text-xs text-stone-600 flex items-start gap-2.5">
-            <ShieldCheck size={16} className="text-emerald-700 shrink-0 mt-0.5" />
+          <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 text-xs text-amber-900 flex items-start gap-2.5">
+            {isAlreadyPending ? (
+              <Clock size={16} className="text-amber-700 shrink-0 mt-0.5" />
+            ) : (
+              <ShieldCheck size={16} className="text-emerald-700 shrink-0 mt-0.5" />
+            )}
             <span>
-              Your account keeps customer and business records strictly segregated. You can switch between your Customer and {config.shortLabel} workspaces seamlessly at any time without logging out.
+              {isAlreadyPending
+                ? `Your ${config.shortLabel} registration is currently under Admin review. Submitting again will update your application details for review.`
+                : `Your ${config.shortLabel} registration will be sent to the UrbanFindr Admin team for approval. Once approved, your business dashboard will unlock automatically while keeping customer and business records separate.`}
             </span>
           </div>
 
@@ -306,19 +327,20 @@ export default function RegistrationModal() {
               {busy ? (
                 <>
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Activating…
+                  Submitting…
                 </>
               ) : (
                 <>
                   <Sparkles size={14} />
-                  Activate {config.shortLabel} Workspace
+                  {isAlreadyPending ? `Update ${config.shortLabel} Application` : `Submit ${config.shortLabel} Request`}
                 </>
               )}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
