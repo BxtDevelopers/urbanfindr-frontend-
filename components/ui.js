@@ -7,9 +7,26 @@ import { money } from '@/lib/format';
 import { isMonthly } from '@/lib/catalog';
 import { resolveImage,photos,propertyImages,projectImages } from '@/lib/media';
 export function Image({src,alt,className=''}){return <img className={className} src={resolveImage(src)} alt={alt} loading="lazy" onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src=photos.hero;}}/>;}
-export function State({loading,error,empty=false}){return loading?<div className="panel py-14 text-center animate-pulse">Finding your next chapter…</div>:error?<div role="alert" className="error whitespace-pre-line">{error}</div>:empty?<div className="panel py-14 text-center"><Home className="mx-auto mb-4 text-stone-400"/><h3>Nothing here yet</h3><p className="muted mt-2">Try another search or add your first item.</p></div>:null;}
-export function Field({label,children,hint}){return <label className="field"><span>{label}</span>{children}{hint&&<small className="muted font-normal">{hint}</small>}</label>;}
-export function Pagination({data,onChange}){if(!data||data.pages<2)return null;return <div className="flex justify-center items-center gap-5 mt-8"><button className="btn-outline" disabled={data.page<=1} onClick={()=>onChange(data.page-1)}>Previous</button><span>{data.page} / {data.pages}</span><button className="btn-outline" disabled={data.page>=data.pages} onClick={()=>onChange(data.page+1)}>Next</button></div>;}
+export function State({loading,error,empty=false}){
+  if (loading) return <div className="panel py-14 text-center animate-pulse">Finding your next chapter…</div>;
+  if (error) {
+    const isAuth = typeof error === 'string' && (error.toLowerCase().includes('log in') || error.toLowerCase().includes('login'));
+    return (
+      <div role="alert" className="error whitespace-pre-line flex flex-col items-start gap-2">
+        <span>{error}</span>
+        {isAuth && (
+          <Link href="/login" className="btn !py-1 !px-3 !text-xs !bg-forest text-white inline-flex items-center gap-1.5 mt-1">
+            Log in to continue <ArrowRight size={13} />
+          </Link>
+        )}
+      </div>
+    );
+  }
+  if (empty) return <div className="panel py-14 text-center"><Home className="mx-auto mb-4 text-stone-400"/><h3>Nothing here yet</h3><p className="muted mt-2">Try another search or add your first item.</p></div>;
+  return null;
+}
+export function Field({label,children,hint,required}){return <label className="field"><span>{label}{required&&<span className="text-red-500 font-bold ml-1" aria-hidden="true">*</span>}</span>{children}{hint&&<small className="muted font-normal">{hint}</small>}</label>;}
+export function Pagination({data,onChange}){if(!data||data.pages<2)return null;return <div className="flex justify-center items-center gap-3 my-4"><button type="button" className="btn-outline !min-h-0 !py-1.5 !px-3.5 !text-xs disabled:opacity-40 disabled:cursor-not-allowed font-semibold" disabled={data.page<=1} onClick={()=>onChange(data.page-1)}>← Previous</button><span className="text-xs font-mono font-semibold px-2 text-stone-700">Page {data.page} of {data.pages}</span><button type="button" className="btn-outline !min-h-0 !py-1.5 !px-3.5 !text-xs disabled:opacity-40 disabled:cursor-not-allowed font-semibold" disabled={data.page>=data.pages} onClick={()=>onChange(data.page+1)}>Next →</button></div>;}
 export function Submit({busy,children='Save changes'}){return <button className="btn" disabled={busy}>{busy?'Please wait…':children}<ArrowRight size={16}/></button>;}
 export function PropertyCard({item,onFavorite}){
   const {user,refresh,toast,compare,toggleCompare}=useApp();

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { pathToFileURL } from 'node:url';
 import { db } from '../lib/db.js';
-import { User, Property, Project, Design, Thread, Message, Visit, Lead, Notification, SavedSearch, ServiceProvider } from '../lib/models.js';
+import { User, Property, Project, Design, Thread, Message, Visit, Lead, Notification, SavedSearch, ServiceProvider, ChannelPartner, SupportTicket } from '../lib/models.js';
 import { initialServiceProviders } from '../lib/serviceProviders.js';
 import { estimateInterior } from '../lib/validation.js';
 import { propertyGallery, projectGallery, designPhoto } from '../lib/media.js';
@@ -22,16 +22,31 @@ export async function seed() {
     ['Aarav Mehta', 'user@urbanfinder.demo', 'user', '9000000001'],
     ['Ananya Rao', 'owner@urbanfinder.demo', 'owner', '9000000002'],
     ['Rohan Kapoor', 'owner2@urbanfinder.demo', 'owner', '9000000003'],
-    ['UrbanFinder Coordinator', 'admin@urbanfinder.demo', 'admin', '9000000004']
+    ['UrbanFinder Coordinator', 'admin@urbanfinder.demo', 'admin', '9000000004'],
+    ['Apex Realty Partners', 'partner@urbanfinder.demo', 'channel_partner', '9000000005']
   ];
 
   const users = [];
   for (const [name, email, role, phone] of accounts) {
     let u = await User.findOne({ email });
-    if (!u) u = await User.create({ name, email, role, phone, password: hash });
+    if (!u) {
+      u = await User.create({
+        name,
+        email,
+        role,
+        phone,
+        password: hash,
+        company: role === 'channel_partner' ? 'Apex Realty Advisory Network' : undefined,
+        reraId: role === 'channel_partner' ? 'KA/RERA/AGENT/2024/00842' : undefined
+      });
+    } else if (role === 'channel_partner' && !u.company) {
+      u.company = 'Apex Realty Advisory Network';
+      u.reraId = 'KA/RERA/AGENT/2024/00842';
+      await u.save();
+    }
     users.push(u);
   }
-  const [buyer, owner, owner2, admin] = users;
+  const [buyer, owner, owner2, admin, partner] = users;
 
   // Clean existing demo properties and projects to ensure exact counts (10 per city)
   await Property.deleteMany({});
@@ -364,13 +379,290 @@ export async function seed() {
     alertEnabled: true
   });
 
+  if (partner) {
+    // Assign 6 properties across Buy, Rent, PG, and Commercial to channel partner
+    const partnerPropertyIndices = [2, 3, 4, 7, 8, 9];
+    for (const pIdx of partnerPropertyIndices) {
+      if (homes[pIdx]) {
+        await Property.updateOne(
+          { _id: homes[pIdx]._id },
+          { $set: { owner: partner._id, ownership: 'channel_partner', status: 'approved' } }
+        );
+      }
+    }
+
+    // Seed ChannelPartner Profile & Team
+    await ChannelPartner.deleteMany({ user: partner._id });
+    await ChannelPartner.create({
+      user: partner._id,
+      company: 'Apex Realty Advisory Network',
+      reraId: 'KA/RERA/AGENT/2024/00842',
+      phone: '9000000005',
+      email: 'partner@urbanfinder.demo',
+      city: 'Bengaluru',
+      tier: 'Platinum',
+      verified: true,
+      bio: 'Leading real estate advisory and channel sales network specializing in Tier-1 residential developments and prime commercial portfolios across Bengaluru and Hyderabad.',
+      team: [
+        { name: 'Rohit Verma', role: 'Senior Sales Director', email: 'rohit@apexrealty.demo', phone: '+91 98765 43210', status: 'active', assignedLeadsCount: 3, createdAt: new Date() },
+        { name: 'Ananya Deshmukh', role: 'Luxury Residential Lead', email: 'ananya@apexrealty.demo', phone: '+91 98765 43211', status: 'active', assignedLeadsCount: 2, createdAt: new Date() },
+        { name: 'Kunal Singhania', role: 'Commercial Real Estate Lead', email: 'kunal@apexrealty.demo', phone: '+91 98765 43212', status: 'active', assignedLeadsCount: 2, createdAt: new Date() },
+        { name: 'Pooja Iyer', role: 'Client Relationship Executive', email: 'pooja@apexrealty.demo', phone: '+91 98765 43213', status: 'active', assignedLeadsCount: 1, createdAt: new Date() },
+        { name: 'Devansh Mathur', role: 'Associate Channel Advisor', email: 'devansh@apexrealty.demo', phone: '+91 98765 43214', status: 'active', assignedLeadsCount: 1, createdAt: new Date() }
+      ]
+    });
+
+    // Seed Channel Partner Leads across all specific pipeline statuses
+    await Lead.deleteMany({ manager: partner._id });
+    await Lead.create([
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[2]?._id,
+        source: 'phone',
+        kind: 'property',
+        name: 'Vikramaditya Rao',
+        phone: '+91 98234 56789',
+        email: 'vikram.rao@gmail.com',
+        city: 'Bengaluru',
+        status: 'uncontacted',
+        assignedTeamMember: 'Rohit Verma',
+        createdAt: new Date(Date.now() - 2 * 3600 * 1000),
+        note: 'Requested an immediate phone callback regarding 3 BHK pricing, floor rising charges and bank loan pre-approvals.',
+        notes: [
+          { author: 'System Inbound', text: 'Callback requested via mobile click-to-call button.', createdAt: new Date(Date.now() - 2 * 3600 * 1000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[3]?._id,
+        source: 'message',
+        kind: 'property',
+        name: 'Siddharth Joshi',
+        phone: '+91 98111 22334',
+        email: 'siddharth.j@outlook.com',
+        city: 'Bengaluru',
+        status: 'uncontacted',
+        assignedTeamMember: 'Devansh Mathur',
+        createdAt: new Date(Date.now() - 5 * 3600 * 1000),
+        note: 'Sent message inquiring about project possession date and clubhouse amenity charges.',
+        notes: [
+          { author: 'System Inbound', text: 'Inquiry received through direct property chat channel.', createdAt: new Date(Date.now() - 5 * 3600 * 1000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[3]?._id,
+        source: 'message',
+        kind: 'property',
+        name: 'Meera Nambiar',
+        phone: '+91 98345 67890',
+        email: 'meera.nambiar@yahoo.com',
+        city: 'Bengaluru',
+        status: 'contacted',
+        assignedTeamMember: 'Ananya Deshmukh',
+        createdAt: new Date(Date.now() - 3 * 86400 * 1000),
+        note: 'Inquired whether the terrace penthouse unit is ready for immediate possession. Shared brochure.',
+        notes: [
+          { author: 'Meera Nambiar', text: 'Hi! Could you share the approved OC copy and latest video walkthrough?', createdAt: new Date(Date.now() - 3 * 86400 * 1000) },
+          { author: 'Ananya Deshmukh', text: 'Responded with occupancy certificate copy and architectural walkthrough link.', createdAt: new Date(Date.now() - 3 * 86400 * 1000 + 3600000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[7]?._id,
+        source: 'phone',
+        kind: 'property',
+        name: 'Rajesh Varma',
+        phone: '+91 98222 33445',
+        email: 'rajesh.varma@fintech.co',
+        city: 'Bengaluru',
+        status: 'contacted',
+        assignedTeamMember: 'Pooja Iyer',
+        createdAt: new Date(Date.now() - 5 * 86400 * 1000),
+        note: 'Initial phone briefing conducted. Shared detailed co-living unit lease terms and food plans.',
+        notes: [
+          { author: 'Pooja Iyer', text: 'Spoke with client for 15 mins. Client looking for 6-month stay starting next month.', createdAt: new Date(Date.now() - 5 * 86400 * 1000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[4]?._id,
+        source: 'enquiry',
+        kind: 'property',
+        name: 'Dr. Sandeep Kulkarni',
+        phone: '+91 98456 78901',
+        email: 'dr.sandeep@apollo.org',
+        city: 'Bengaluru',
+        status: 'interested',
+        assignedTeamMember: 'Rohit Verma',
+        createdAt: new Date(Date.now() - 14 * 86400 * 1000),
+        note: 'Highly interested in high-floor east-facing layout. Requested customized payment milestone sheet.',
+        notes: [
+          { author: 'Rohit Verma', text: 'Sent customized milestone breakdown and floor plan. Client confirmed interest.', createdAt: new Date(Date.now() - 14 * 86400 * 1000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[8]?._id,
+        source: 'enquiry',
+        kind: 'property',
+        name: 'Tanvi Hegde',
+        phone: '+91 98333 44556',
+        email: 'tanvi.hegde@designstudio.in',
+        city: 'Bengaluru',
+        status: 'interested',
+        assignedTeamMember: 'Kunal Singhania',
+        createdAt: new Date(Date.now() - 24 * 86400 * 1000),
+        note: 'Evaluating corporate office lease for 40-seat creative agency. Approved preliminary budget.',
+        notes: [
+          { author: 'Kunal Singhania', text: 'Reviewed fit-out specifications and power backup requirements. Follow-up meeting scheduled.', createdAt: new Date(Date.now() - 24 * 86400 * 1000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[4]?._id,
+        source: 'enquiry',
+        kind: 'property',
+        name: 'Arvind & Shweta Nair',
+        phone: '+91 98444 55667',
+        email: 'arvind.nair@globaltech.com',
+        city: 'Bengaluru',
+        status: 'site_visit_scheduled',
+        assignedTeamMember: 'Rohit Verma',
+        createdAt: new Date(Date.now() - 75 * 86400 * 1000),
+        note: 'Site inspection confirmed for this Saturday at 11:30 AM with premium cab pick-up arranged.',
+        notes: [
+          { author: 'Rohit Verma', text: 'Site visit confirmed with property manager. Chauffeur pickup scheduled from Indiranagar.', createdAt: new Date(Date.now() - 75 * 86400 * 1000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[2]?._id,
+        source: 'phone',
+        kind: 'property',
+        name: 'Rameshwar Reddy',
+        phone: '+91 98555 66778',
+        email: 'rreddy@infraholdings.com',
+        city: 'Bengaluru',
+        status: 'negotiation',
+        assignedTeamMember: 'Ananya Deshmukh',
+        createdAt: new Date(Date.now() - 120 * 86400 * 1000),
+        note: 'Active pricing negotiation on final unit price and inclusion of two covered basement car parking slots.',
+        notes: [
+          { author: 'Ananya Deshmukh', text: 'Submitted price proposal to builder desk for 1.5% special festive waiver approval.', createdAt: new Date(Date.now() - 120 * 86400 * 1000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[2]?._id,
+        source: 'enquiry',
+        kind: 'property',
+        name: 'Sunil & Priya Bansal',
+        phone: '+91 98567 89012',
+        email: 'sunil.bansal@techcorp.in',
+        city: 'Bengaluru',
+        status: 'converted',
+        assignedTeamMember: 'Kunal Singhania',
+        createdAt: new Date(Date.now() - 210 * 86400 * 1000),
+        note: 'Closed 3 BHK luxury apartment purchase. Agreement of sale executed and booking token advance received.',
+        notes: [
+          { author: 'Kunal Singhania', text: 'Booking token credited. Sub-registrar registration appointment confirmed.', createdAt: new Date(Date.now() - 210 * 86400 * 1000) }
+        ]
+      },
+      {
+        user: buyer._id,
+        manager: partner._id,
+        property: homes[9]?._id,
+        source: 'enquiry',
+        kind: 'property',
+        name: 'Farhan Akhtar',
+        phone: '+91 98666 77889',
+        email: 'farhan.retail@brandworks.in',
+        city: 'Bengaluru',
+        status: 'dropped',
+        assignedTeamMember: 'Kunal Singhania',
+        createdAt: new Date(Date.now() - 320 * 86400 * 1000),
+        note: 'Client decided to postpone retail storefront expansion until next fiscal quarter due to budget reallocation.',
+        notes: [
+          { author: 'Kunal Singhania', text: 'Lead dropped due to budget constraints. Marked for re-engagement in Q3.', createdAt: new Date(Date.now() - 320 * 86400 * 1000) }
+        ]
+      }
+    ]);
+
+    // Seed Channel Partner Support Tickets
+    await SupportTicket.deleteMany({ user: partner._id });
+    await SupportTicket.create([
+      {
+        user: partner._id,
+        ticketNumber: 'CP-104821',
+        category: 'Listing Review',
+        priority: 'high',
+        subject: 'Expedite verification badge for Prestige Sunrise 3 BHK listing',
+        message: 'We have submitted the municipal title clearance and sanctioned floor plan. Kindly verify and approve the featured badge.',
+        status: 'in_progress',
+        responses: [
+          {
+            sender: admin._id,
+            senderName: 'Admin Team',
+            role: 'admin',
+            message: 'Our documentation team has received your NOC documents and is finalizing verification.',
+            createdAt: new Date(Date.now() - 1800000)
+          }
+        ]
+      },
+      {
+        user: partner._id,
+        ticketNumber: 'CP-104895',
+        category: 'Billing & RERA',
+        priority: 'medium',
+        subject: 'Updated RERA renewal registration certificate attached',
+        message: 'Our Karnataka RERA agency license renewal for 2026-2029 is now active. Please update on public profile.',
+        status: 'resolved',
+        responses: [
+          {
+            sender: admin._id,
+            senderName: 'Admin Team',
+            role: 'admin',
+            message: 'License verified against K-RERA portal. Your Platinum Channel Partner badge is renewed.',
+            createdAt: new Date(Date.now() - 86400000)
+          }
+        ]
+      }
+    ]);
+
+    // Seed Notification for Channel Partner
+    await Notification.create([
+      {
+        user: partner._id,
+        title: 'New Phone Callback Lead',
+        body: 'Vikramaditya Rao requested an immediate callback regarding 3 BHK pricing.',
+        link: '/dashboard/leads'
+      },
+      {
+        user: partner._id,
+        title: 'Support Ticket In Progress',
+        body: 'Admin team has responded to ticket CP-104821.',
+        link: '/dashboard/support'
+      }
+    ]);
+  }
+
   await ServiceProvider.deleteMany({});
   const seededProviders = await ServiceProvider.insertMany(initialServiceProviders.map(p => {
     const { _id, ...rest } = p;
     return rest;
   }));
 
-  for (const Model of [User, Property, Project, Design, Thread, Message, Visit, Lead, Notification, SavedSearch, ServiceProvider]) {
+  for (const Model of [User, Property, Project, Design, Thread, Message, Visit, Lead, Notification, SavedSearch, ServiceProvider, ChannelPartner, SupportTicket]) {
     await Model.init();
   }
 

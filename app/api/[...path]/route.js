@@ -13,18 +13,45 @@ async function dispatch(req, context) {
     return originalHandle(req, context);
   }
 
+  let body = undefined;
+
   try {
     const params = await context?.params;
     const pathSegments = params?.path || [];
     const pathname = pathSegments.join('/');
     const search = new URL(req.url).search;
+
+    // Directly handle native Next.js API features (Auth, Admin, Dashboard, Properties, Projects, Leads, Support, etc.)
+    if (
+      pathname.startsWith('auth') ||
+      pathname.startsWith('admin') ||
+      pathname.startsWith('dashboard') ||
+      pathname.startsWith('channel-partner') ||
+      pathname.startsWith('support-tickets') ||
+      pathname.startsWith('leads') ||
+      pathname.startsWith('contact') ||
+      pathname.startsWith('service-requests') ||
+      pathname.startsWith('interior-project') ||
+      pathname.startsWith('properties') ||
+      pathname.startsWith('projects') ||
+      pathname.startsWith('designs') ||
+      pathname.startsWith('visits') ||
+      pathname.startsWith('messages') ||
+      pathname.startsWith('notifications') ||
+      pathname.startsWith('saved-searches') ||
+      pathname.startsWith('become-owner') ||
+      pathname.startsWith('profile') ||
+      pathname.startsWith('uploads')
+    ) {
+      return originalHandle(req, context);
+    }
+
     const targetUrl = `${expressUrl}/api/${pathname}${search}`;
 
     const headers = new Headers(req.headers);
     headers.delete('host');
     headers.delete('connection');
 
-    let body = undefined;
     if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
       const contentType = req.headers.get('content-type') || '';
       const contentLength = req.headers.get('content-length');
@@ -59,6 +86,12 @@ async function dispatch(req, context) {
       }
     }
 
+    // If Express backend does not recognize the endpoint (404) or rejects auth due to session token mismatch (401/403), fall back to native Next.js API
+    if (expressResponse.status === 404 || expressResponse.status === 401 || expressResponse.status === 403) {
+      const fallbackReq = body ? new Request(req.url, { method: req.method, headers: req.headers, body, duplex: 'half' }) : req;
+      return originalHandle(fallbackReq, context);
+    }
+
     const data = await expressResponse.arrayBuffer();
     return new NextResponse(data, {
       status: expressResponse.status,
@@ -67,7 +100,8 @@ async function dispatch(req, context) {
     });
   } catch (error) {
     console.warn(`[Proxy Notice] Express backend unreachable (${error.message}). Falling back to Next.js API...`);
-    return originalHandle(req, context);
+    const fallbackReq = body ? new Request(req.url, { method: req.method, headers: req.headers, body, duplex: 'half' }) : req;
+    return originalHandle(fallbackReq, context);
   }
 }
 

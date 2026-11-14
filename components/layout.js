@@ -1,505 +1,28 @@
-// 'use client';
-// import Link from 'next/link';
-// import { usePathname,useRouter } from 'next/navigation';
-// import { useState } from 'react';
-// import { Menu,X,ArrowUpRight,House,GitCompareArrows,Bell } from 'lucide-react';
-// import { api,useApp } from './providers';
-// import { cityGuides } from '@/lib/catalog';
-
-// function CityPickerModal({ onClose }) {
-//   const router = useRouter();
-//   function handleCityClick(city) {
-//     onClose();
-//     router.push(`/projects?city=${encodeURIComponent(city.name)}`);
-//   }
-//   return (
-//     <div className="city-picker-overlay" onClick={onClose}>
-//       <div className="city-picker-modal" onClick={e => e.stopPropagation()}>
-//         <button className="city-picker-close" onClick={onClose} aria-label="Close"><X size={22}/></button>
-//         <div className="city-picker-header">
-//           <h2 className="city-picker-title">Choose Your Dream City</h2>
-//           <p className="city-picker-subtitle">Select the location of your dream home</p>
-//         </div>
-//         <div className="city-picker-grid">
-//           {cityGuides.map(city => (
-//             <button key={city.slug} className="city-picker-item" onClick={() => handleCityClick(city)}>
-//               <div className="city-picker-img-wrap">
-//                 <img src={city.image} alt={city.name} className="city-picker-img" />
-//               </div>
-//               <span className="city-picker-name">{city.name}</span>
-//             </button>
-//           ))}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export function Header(){const {user,setUser,compare,toast}=useApp();const [open,setOpen]=useState(false);
-//   const [showProjectsModal, setShowProjectsModal] = useState(false);const pathname=usePathname();const router=useRouter();
-//   const links=[['Buy','/buy'],['Rent','/rent'],['PG / Co-living','/pg'],['Commercial','/commercial'],['Home interiors','/interiors']];
-//   return <><header className="header"><Link href="/" className="brand"><span className="brand-icon"><House size={22}/></span>urbanfinder<span className="brand-dot">.</span></Link><nav className="desktop-nav">{links.map(([label,href])=><Link key={label} href={href} className={pathname===href.split('?')[0]?'nav-active':''}>{label}</Link>)}<button className={`${pathname==='/projects'?'nav-active':''}`} style={{fontSize:'inherit',background:'none',border:'none',cursor:'pointer',padding:0,font:'inherit',color:'inherit'}} onClick={()=>setShowProjectsModal(true)}>Builder projects</button></nav><div className="flex gap-3 items-center"><Link href="/compare" className="hidden sm:flex items-center gap-1 text-sm" aria-label={`Compare ${compare.length} properties`}><GitCompareArrows size={18}/>{compare.length||''}</Link>{user?<><Link href="/dashboard/notifications" aria-label="Notifications"><Bell size={19}/></Link><Link className="account-btn" href="/dashboard">{user.name.split(' ')[0]}</Link></>:<Link href="/login" className="text-sm font-medium hidden sm:block">Log in</Link>}<Link className="btn post-btn" href="/post-property">Post property <span className="text-xs bg-lime text-forest rounded px-1.5 py-0.5">FREE</span></Link><button className="mobile-menu" aria-label="Toggle navigation" onClick={()=>setOpen(!open)}>{open?<X/>:<Menu/>}</button></div></header>{open&&<nav className="mobile-nav">{links.map(([label,href])=><Link key={label} href={href} onClick={()=>setOpen(false)}>{label}</Link>)}<button style={{textAlign:'left',background:'none',border:'none',cursor:'pointer',font:'inherit',padding:0,fontSize:16}} onClick={()=>{setOpen(false);setShowProjectsModal(true);}}>Builder projects</button><Link href="/properties" onClick={()=>setOpen(false)}>All properties</Link><Link href="/cities" onClick={()=>setOpen(false)}>Explore by city</Link><Link href="/post-property" onClick={()=>setOpen(false)}>Post property — Free</Link><Link href={user?'/dashboard':'/login'} onClick={()=>setOpen(false)}>{user?'My dashboard':'Log in / Register'}</Link></nav>}<nav className="discovery-nav" aria-label="More ways to explore"><Link href="/properties">All properties</Link><Link href="/cities">Explore by city</Link><Link href="/#featured-properties">Featured properties</Link><Link href="/#latest-listings">Latest listings</Link><span>List directly. Find your next match.</span><Link href="/post-property" className="text-forest font-semibold">Post property — Free<ArrowUpRight size={13}/></Link></nav>{showProjectsModal&&<CityPickerModal onClose={()=>setShowProjectsModal(false)}/>}</>;}
-// export function Footer(){
-//   return (
-//     <footer className="bg-forest text-white">
-//       <div className="wrap max-w-7xl mx-auto grid md:grid-cols-4 gap-12 py-12">
-//         <div className="md:col-span-2">
-//           <Link href="/" className="brand !text-white flex items-center gap-2 mb-4">
-//             <House size={24} />
-//             urbanfinder.
-//           </Link>
-//           <p className="max-w-sm text-sm text-white/70 mt-4 leading-7">
-//             A place for every next chapter. Find a home, meet its owner, and make it yours.
-//           </p>
-//           <p className="mt-6 text-xs text-white/50">
-//             Independent demo platform. Sample listings are fictional; stock photos are illustrative.
-//           </p>
-//         </div>
-//         <div>
-//           <h4 className="text-lg font-semibold mb-3">Find your place</h4>
-//           <div className="footer-links space-y-2">
-//             <Link href="/buy" className="block hover:text-lime">Buy a home</Link>
-//             <Link href="/rent" className="block hover:text-lime">Rent a home</Link>
-//             <Link href="/pg" className="block hover:text-lime">PG / Co‑living</Link>
-//             <Link href="/commercial" className="block hover:text-lime">Commercial</Link>
-//             <Link href="/cities" className="block hover:text-lime">Explore by city</Link>
-//             <Link href="/projects" className="block hover:text-lime">Builder projects</Link>
-//             <Link href="/interiors" className="block hover:text-lime">Home interiors</Link>
-//           </div>
-//         </div>
-//         <div>
-//           <h4 className="text-lg font-semibold mb-3">Make it happen</h4>
-//           <div className="footer-links space-y-2">
-//             <Link href="/post-property" className="block hover:text-lime">List your property</Link>
-//             <Link href="/dashboard" className="block hover:text-lime">Your dashboard</Link>
-//             <Link href="/compare" className="block hover:text-lime">Compare homes</Link>
-//             <Link href="/about" className="block hover:text-lime">About &amp; privacy</Link>
-//             <Link href="/PHOTO-SOURCES.md" className="block hover:text-lime">Photo sources</Link>
-//           </div>
-//         </div>
-//       </div>
-//       <div className="wrap border-t border-white/20 py-4 text-xs text-white/40 flex flex-col sm:flex-row justify-between items-center max-w-7xl mx-auto">
-//         <span>© {new Date().getFullYear()} UrbanFinder. Built for better living.</span>
-//         <span className="flex items-center">
-//           Made for your next move <ArrowUpRight className="inline ml-1" size={13} />
-//         </span>
-//       </div>
-//     </footer>
-//   );
-// }
-// export function Guard({children,roles}){const {user,ready}=useApp();if(!ready)return <div className="wrap py-20">Checking your account…</div>;if(!user)return <div className="wrap py-20"><div className="panel max-w-xl mx-auto p-10 text-center"><h2>Your next chapter starts here</h2><p className="muted my-5">Log in to manage your homes, conversations and appointments.</p><Link className="btn" href="/login">Log in</Link></div></div>;if(roles&&!roles.includes(user.role))return <div className="wrap py-20"><h2>This area requires additional access.</h2><p className="muted my-5">Property posting requires an owner account; administration requires an admin account. Ask an administrator to update your access.</p><Link href="/dashboard" className="btn">Your dashboard</Link></div>;return children;}
-
-// 'use client';
-
-// import Link from 'next/link';
-// import { usePathname, useRouter } from 'next/navigation';
-// import { useState } from 'react';
-// import {
-//   Menu,
-//   X,
-//   ArrowUpRight,
-//   House,
-//   GitCompareArrows,
-//   Bell,
-// } from 'lucide-react';
-
-// import { useApp } from './providers';
-// import { cityGuides } from '@/lib/catalog';
-
-// function CityPickerModal({ onClose }) {
-//   const router = useRouter();
-
-//   function handleCityClick(city) {
-//     onClose();
-//     router.push(`/projects?city=${encodeURIComponent(city.name)}`);
-//   }
-
-//   return (
-//     <div className="city-picker-overlay" onClick={onClose}>
-//       <div
-//         className="city-picker-modal"
-//         onClick={(e) => e.stopPropagation()}
-//       >
-//         <button
-//           className="city-picker-close"
-//           onClick={onClose}
-//           aria-label="Close"
-//         >
-//           <X size={22} />
-//         </button>
-
-//         <div className="city-picker-header">
-//           <h2 className="city-picker-title">Choose Your Dream City</h2>
-//           <p className="city-picker-subtitle">
-//             Select the location of your dream home
-//           </p>
-//         </div>
-
-//         <div className="city-picker-grid">
-//           {cityGuides.map((city) => (
-//             <button
-//               key={city.slug}
-//               className="city-picker-item"
-//               onClick={() => handleCityClick(city)}
-//             >
-//               <div className="city-picker-img-wrap">
-//                 <img
-//                   src={city.image}
-//                   alt={city.name}
-//                   className="city-picker-img"
-//                 />
-//               </div>
-//               <span className="city-picker-name">{city.name}</span>
-//             </button>
-//           ))}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export function Header() {
-//   const { user, compare } = useApp();
-
-//   const [open, setOpen] = useState(false);
-//   const [showProjectsModal, setShowProjectsModal] = useState(false);
-
-//   const pathname = usePathname();
-//   const router = useRouter();
-
-//   // Buy, Rent, PG and Commercial are removed from the main navbar.
-//   // Home Interiors and Builder Projects remain on the right.
-//   const links = [
-//     ['Home interiors', '/interiors'],
-//   ];
-
-//   function handleProjectsClick() {
-//     setOpen(false);
-//     setShowProjectsModal(true);
-//   }
-
-//   return (
-//     <>
-//       <header className="header">
-//         <Link href="/" className="brand">
-//           <span className="brand-icon">
-//             <House size={22} />
-//           </span>
-//           urbanfinder<span className="brand-dot">.</span>
-//         </Link>
-
-//         {/* Main navigation: aligned to the right */}
-//         <nav className="desktop-nav">
-//           <div className="flex items-center gap-5">
-//             {links.map(([label, href]) => (
-//               <Link
-//                 key={label}
-//                 href={href}
-//                 className={
-//                   pathname === href.split('?')[0] ? 'nav-active' : ''
-//                 }
-//               >
-//                 {label}
-//               </Link>
-//             ))}
-
-//             <button
-//               className={pathname.startsWith('/projects') ? 'nav-active' : ''}
-//               style={{
-//                 fontSize: 'inherit',
-//                 background: 'none',
-//                 border: 'none',
-//                 cursor: 'pointer',
-//                 padding: 0,
-//                 font: 'inherit',
-//                 color: 'inherit',
-//               }}
-//               onClick={handleProjectsClick}
-//             >
-//               Builder projects
-//             </button>
-//           </div>
-//         </nav>
-
-//         <div className="flex gap-3 items-center">
-//           <Link
-//             href="/compare"
-//             className="hidden sm:flex items-center gap-1 text-sm"
-//             aria-label={`Compare ${compare.length} properties`}
-//           >
-//             <GitCompareArrows size={18} />
-//             {compare.length || ''}
-//           </Link>
-
-//           {user ? (
-//             <>
-//               <Link
-//                 href="/dashboard/notifications"
-//                 aria-label="Notifications"
-//               >
-//                 <Bell size={19} />
-//               </Link>
-
-//               <Link className="account-btn" href="/dashboard">
-//                 {user.name.split(' ')[0]}
-//               </Link>
-//             </>
-//           ) : (
-//             <Link
-//               href="/login"
-//               className="text-sm font-medium hidden sm:block"
-//             >
-//               Log in
-//             </Link>
-//           )}
-
-//           <Link className="btn post-btn" href="/post-property">
-//             Post property{' '}
-//             <span className="text-xs bg-lime text-forest rounded px-1.5 py-0.5">
-//               FREE
-//             </span>
-//           </Link>
-
-//           <button
-//             className="mobile-menu"
-//             aria-label="Toggle navigation"
-//             aria-expanded={open}
-//             onClick={() => setOpen(!open)}
-//           >
-//             {open ? <X /> : <Menu />}
-//           </button>
-//         </div>
-//       </header>
-
-//       {/* Mobile navigation */}
-//       {open && (
-//         <nav className="mobile-nav">
-//           {links.map(([label, href]) => (
-//             <Link
-//               key={label}
-//               href={href}
-//               onClick={() => setOpen(false)}
-//             >
-//               {label}
-//             </Link>
-//           ))}
-
-//           <button
-//             style={{
-//               textAlign: 'left',
-//               background: 'none',
-//               border: 'none',
-//               cursor: 'pointer',
-//               font: 'inherit',
-//               padding: 0,
-//               fontSize: 16,
-//             }}
-//             onClick={handleProjectsClick}
-//           >
-//             Builder projects
-//           </button>
-
-//           <Link
-//             href="/properties"
-//             onClick={() => setOpen(false)}
-//           >
-//             All properties
-//           </Link>
-
-//           <Link
-//             href="/cities"
-//             onClick={() => setOpen(false)}
-//           >
-//             Explore by city
-//           </Link>
-
-//           <Link
-//             href="/post-property"
-//             onClick={() => setOpen(false)}
-//           >
-//             Post property — Free
-//           </Link>
-
-//           <Link
-//             href={user ? '/dashboard' : '/login'}
-//             onClick={() => setOpen(false)}
-//           >
-//             {user ? 'My dashboard' : 'Log in / Register'}
-//           </Link>
-//         </nav>
-//       )}
-
-//       {/* Existing discovery navbar — unchanged */}
-//       <nav
-//         className="discovery-nav"
-//         aria-label="More ways to explore"
-//       >
-//         <Link href="/properties">All properties</Link>
-//         <Link href="/cities">Explore by city</Link>
-//         <Link href="/#featured-properties">Featured properties</Link>
-//         <Link href="/#latest-listings">Latest listings</Link>
-
-//         <span>List directly. Find your next match.</span>
-
-//         <Link
-//           href="/post-property"
-//           className="text-forest font-semibold"
-//         >
-//           Post property <ArrowUpRight size={13} />
-//         </Link>
-//       </nav>
-
-//       {showProjectsModal && (
-//         <CityPickerModal
-//           onClose={() => setShowProjectsModal(false)}
-//         />
-//       )}
-//     </>
-//   );
-// }
-
-// export function Footer() {
-//   return (
-//     <footer className="bg-forest text-white">
-//       <div className="wrap max-w-7xl mx-auto grid md:grid-cols-4 gap-12 py-12">
-//         <div className="md:col-span-2">
-//           <Link
-//             href="/"
-//             className="brand !text-white flex items-center gap-2 mb-4"
-//           >
-//             <House size={24} />
-//             urbanfinder.
-//           </Link>
-
-//           <p className="max-w-sm text-sm text-white/70 mt-4 leading-7">
-//             A place for every next chapter. Find a home, meet its owner,
-//             and make it yours.
-//           </p>
-
-//           <p className="mt-6 text-xs text-white/50">
-//             Independent demo platform. Sample listings are fictional;
-//             stock photos are illustrative.
-//           </p>
-//         </div>
-
-//         <div>
-//           <h4 className="text-lg font-semibold mb-3">Find your place</h4>
-//           <div className="footer-links space-y-2">
-//             <Link href="/buy" className="block hover:text-lime">
-//               Buy a home
-//             </Link>
-//             <Link href="/rent" className="block hover:text-lime">
-//               Rent a home
-//             </Link>
-//             <Link href="/pg" className="block hover:text-lime">
-//               PG / Co-living
-//             </Link>
-//             <Link href="/commercial" className="block hover:text-lime">
-//               Commercial
-//             </Link>
-//             <Link href="/cities" className="block hover:text-lime">
-//               Explore by city
-//             </Link>
-//             <Link href="/projects" className="block hover:text-lime">
-//               Builder projects
-//             </Link>
-//             <Link href="/interiors" className="block hover:text-lime">
-//               Home interiors
-//             </Link>
-//           </div>
-//         </div>
-
-//         <div>
-//           <h4 className="text-lg font-semibold mb-3">Make it happen</h4>
-//           <div className="footer-links space-y-2">
-//             <Link href="/post-property" className="block hover:text-lime">
-//               List your property
-//             </Link>
-//             <Link href="/dashboard" className="block hover:text-lime">
-//               Your dashboard
-//             </Link>
-//             <Link href="/compare" className="block hover:text-lime">
-//               Compare homes
-//             </Link>
-//             <Link href="/about" className="block hover:text-lime">
-//               About &amp; privacy
-//             </Link>
-//             <Link href="/PHOTO-SOURCES.md" className="block hover:text-lime">
-//               Photo sources
-//             </Link>
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="wrap border-t border-white/20 py-4 text-xs text-white/40 flex flex-col sm:flex-row justify-between items-center max-w-7xl mx-auto">
-//         <span>
-//           © {new Date().getFullYear()} UrbanFinder. Built for better living.
-//         </span>
-
-//         <span className="flex items-center">
-//           Made for your next move
-//           <ArrowUpRight className="inline ml-1" size={13} />
-//         </span>
-//       </div>
-//     </footer>
-//   );
-// }
-
-// export function Guard({ children, roles }) {
-//   const { user, ready } = useApp();
-
-//   if (!ready) {
-//     return <div className="wrap py-20">Checking your account…</div>;
-//   }
-
-//   if (!user) {
-//     return (
-//       <div className="wrap py-20">
-//         <div className="panel max-w-xl mx-auto p-10 text-center">
-//           <h2>Your next chapter starts here</h2>
-//           <p className="muted my-5">
-//             Log in to manage your homes, conversations and appointments.
-//           </p>
-//           <Link className="btn" href="/login">
-//             Log in
-//           </Link>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   if (roles && !roles.includes(user.role)) {
-//     return (
-//       <div className="wrap py-20">
-//         <h2>This area requires additional access.</h2>
-//         <p className="muted my-5">
-//           Property posting requires an owner account; administration
-//           requires an admin account. Ask an administrator to update
-//           your access.
-//         </p>
-//         <Link href="/dashboard" className="btn">
-//           Your dashboard
-//         </Link>
-//       </div>
-//     );
-//   }
-
-//   return children;
-// }
-
 'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useState, Fragment } from 'react';
+import {  useState, useEffect, useRef, Fragment, useMemo  } from 'react';
 import {
   Menu,
   X,
   ArrowUpRight,
   House,
+  Search,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  LayoutDashboard,
+  LogOut,
+  User,
+  Wrench,
+  Bell,
+  Briefcase,
 } from 'lucide-react';
+import CategoryIcon from './CategoryIcon';
+import NotificationPanel from './dashboard/shared/NotificationPanel';
 
-import { useApp } from './providers';
+import { useApp, useData } from './providers';
 import { cityGuides } from '@/lib/catalog';
 import { serviceCategories } from '@/lib/serviceCategories';
 
@@ -560,12 +83,173 @@ function CityPickerModal({ onClose }) {
 }
 
 export function Header() {
-  const { user } = useApp();
+  const { user, roleMeta, logout, toast } = useApp();
+  const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const pathname = usePathname();
+
+  const isServiceProvider = user?.role === 'service_provider' || user?.role === 'service-provider';
+  const isCustomer = user && !isServiceProvider && user.role !== 'admin';
+
+  // Track active account mode: 'provider' (Business Account), 'customer' (User Account), or dedicated business roles
+  const [activeAccountMode, setActiveAccountMode] = useState(() => {
+    if (user?.role === 'broker') return 'broker';
+    if (user?.role === 'owner') return 'owner';
+    if (user?.role === 'builder') return 'builder';
+    if (pathname.startsWith('/dashboard/provider')) return 'provider';
+    if (pathname.startsWith('/dashboard/broker')) return 'broker';
+    if (pathname.startsWith('/dashboard/owner')) return 'owner';
+    if (pathname.startsWith('/dashboard/customer')) return 'customer';
+    if (user?.role === 'service_provider' || user?.role === 'service-provider') return 'provider';
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('havenest_active_account_mode');
+        if (stored === 'provider' || stored === 'customer') return stored;
+      } catch (e) {}
+    }
+    return 'customer';
+  });
+
+  useEffect(() => {
+    if (user?.role === 'broker') {
+      setActiveAccountMode('broker');
+      try { localStorage.setItem('havenest_active_account_mode', 'broker'); } catch (e) {}
+    } else if (user?.role === 'owner') {
+      setActiveAccountMode('owner');
+      try { localStorage.setItem('havenest_active_account_mode', 'owner'); } catch (e) {}
+    } else if (user?.role === 'builder') {
+      setActiveAccountMode('builder');
+      try { localStorage.setItem('havenest_active_account_mode', 'builder'); } catch (e) {}
+    } else if (pathname.startsWith('/dashboard/provider')) {
+      setActiveAccountMode('provider');
+      try { localStorage.setItem('havenest_active_account_mode', 'provider'); } catch (e) {}
+    } else if (pathname.startsWith('/dashboard/customer')) {
+      setActiveAccountMode('customer');
+      try { localStorage.setItem('havenest_active_account_mode', 'customer'); } catch (e) {}
+    } else if (user?.role === 'service_provider' || user?.role === 'service-provider') {
+      try {
+        const stored = localStorage.getItem('havenest_active_account_mode');
+        if (stored === 'customer' || stored === 'provider') {
+          setActiveAccountMode(stored);
+        }
+      } catch (e) {}
+    }
+  }, [pathname, user]);
+
+  const isServiceProviderDashboard =
+    isServiceProvider &&
+    (pathname.startsWith('/dashboard/provider') ||
+      (pathname === '/dashboard' && activeAccountMode === 'provider'));
+
+  const providerCategoryParam = isServiceProvider && user?.serviceCategory ? '&category=' + user.serviceCategory : '';
+  const { data: requestData } = useData(user ? 'service-requests?limit=50' + providerCategoryParam : null);
+
+  const newLeadsCount = useMemo(() => {
+    if (!requestData?.items || !isServiceProvider || !user) return 0;
+    const uId = String(user._id || user.id || '');
+    const uName = String(user.name || '').toLowerCase().trim();
+    const uCompany = String(user.company || '').toLowerCase().trim();
+    const uEmail = String(user.email || '').toLowerCase().trim();
+
+    return requestData.items.filter((i) => {
+      if (!['submitted', 'requested', 'pending', 'new', 'quotation'].includes(i.status)) return false;
+      if (uId && i.assignedSpecialistId && String(i.assignedSpecialistId) === uId) return true;
+      if (i.assignedSpecialist) {
+        const spec = String(i.assignedSpecialist).toLowerCase().trim();
+        if (uName && (spec === uName || spec.includes(uName) || uName.includes(spec))) return true;
+        if (uCompany && (spec === uCompany || spec.includes(uCompany) || uCompany.includes(spec))) return true;
+        if (uEmail && spec.includes(uEmail)) return true;
+      }
+      if (i.technician?.name) {
+        const techName = String(i.technician.name).toLowerCase().trim();
+        if (uName && (techName === uName || techName.includes(uName))) return true;
+      }
+      return false;
+    }).length;
+  }, [requestData?.items, isServiceProvider, user]);
+
+  const customerRequestsCount = useMemo(() => {
+    if (!requestData?.items || !isCustomer || !user) return 0;
+    const uId = String(user._id || user.id || '');
+    const uEmail = String(user.email || '').toLowerCase().trim();
+    return requestData.items.filter((item) => {
+      const itemUserId = item.user?._id ? String(item.user._id) : item.user ? String(item.user) : '';
+      const itemEmail = String(item.email || '').toLowerCase().trim();
+      return (uId && itemUserId === uId) || (uEmail && itemEmail === uEmail);
+    }).length;
+  }, [requestData?.items, isCustomer, user]);
+
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const { data: notifData, reload: reloadNotifs } = useData(user ? 'notifications?limit=5' : null);
+  const unreadNotifCount = notifData?.unread || 0;
+
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => reloadNotifs(), 15000);
+    const onFocus = () => reloadNotifs();
+    const onNotifSync = () => reloadNotifs();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('urbanfindr:notifications-updated', onNotifSync);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('urbanfindr:notifications-updated', onNotifSync);
+    };
+  }, [user, reloadNotifs]);
+
+  useEffect(() => {
+    setUserMenuOpen(false);
+    setNotificationOpen(false);
+  }, [pathname]);
+
+  const [servicesLauncherOpen, setServicesLauncherOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const launcherTimeoutRef = useRef(null);
+
+  function handleLauncherMouseEnter() {
+    if (launcherTimeoutRef.current) {
+      clearTimeout(launcherTimeoutRef.current);
+      launcherTimeoutRef.current = null;
+    }
+  }
+
+  function handleLauncherMouseLeave() {
+    launcherTimeoutRef.current = setTimeout(() => {
+      setServicesLauncherOpen(false);
+    }, 250);
+  }
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (!e.target.closest?.('.services-launcher-wrap')) {
+        setServicesLauncherOpen(false);
+      }
+      if (!e.target.closest?.('.user-menu-wrap')) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      if (launcherTimeoutRef.current) clearTimeout(launcherTimeoutRef.current);
+    };
+  }, []);
+
+  const filteredLauncherCategories = serviceCategories.filter((cat) => {
+    if (!categorySearch.trim()) return true;
+    const q = categorySearch.toLowerCase().trim();
+    return (
+      cat.label.toLowerCase().includes(q) ||
+      cat.shortTitle?.toLowerCase().includes(q) ||
+      cat.tagline?.toLowerCase().includes(q) ||
+      cat.description?.toLowerCase().includes(q)
+    );
+  });
 
   // Main navbar links
   const links = [
@@ -581,11 +265,18 @@ export function Header() {
     <>
       {/* Main navbar */}
       <header className="header">
-        <Link href="/" className="brand">
-          <span className="brand-icon">
+        <Link href="/" className="brand flex items-center gap-2.5 group">
+          <span className="brand-icon shrink-0">
             <House size={22} />
           </span>
-          <span className="brand-text">urban<span className="brand-finder">finder</span><span className="brand-dot">.</span></span>
+          <div className="flex flex-col justify-center">
+            <span className="brand-text leading-none">
+              urban<span className="brand-finder">findr</span><span className="brand-dot">.</span>
+            </span>
+            <span className="text-[10px] sm:text-[11px] font-medium tracking-normal text-stone-500 leading-none mt-1">
+              Find. Connect. Build Your Life.
+            </span>
+          </div>
         </Link>
 
         <nav className="desktop-nav">
@@ -626,12 +317,150 @@ export function Header() {
           </div>
         </nav>
 
-        {/* Right-side actions: Compare and Notifications removed */}
+        {/* Right-side actions: User Avatar Initial & Dropdown */}
         <div className="flex gap-3 items-center">
           {user ? (
-            <Link className="account-btn" href="/dashboard">
-              {user.name.split(' ')[0]}
-            </Link>
+            <div className="relative user-menu-wrap" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((prev) => !prev)}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-forest text-white font-bold text-sm sm:text-base flex items-center justify-center shadow-sm hover:shadow hover:bg-[#1f4a3f] ring-2 ring-forest/15 hover:ring-lime/50 transition-all cursor-pointer select-none"
+                aria-label="User account menu"
+                aria-expanded={userMenuOpen}
+                title={user.name || 'Account'}
+              >
+                {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+              </button>
+
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in">
+                  {/* User Profile Header */}
+                  <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-2.5 mb-1">
+                    <div className="w-8 h-8 rounded-full bg-forest/10 text-forest font-bold text-sm flex items-center justify-center shrink-0">
+                      {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-stone-900 truncate">
+                        {user.name || 'User'}
+                      </p>
+                      <p className="text-[11px] text-stone-500 truncate capitalize">
+                        {user.role === 'broker'
+                          ? 'Broker'
+                          : user.role === 'owner'
+                          ? 'Property Owner'
+                          : user.role === 'builder'
+                          ? 'Builder'
+                          : user.role === 'channel_partner'
+                          ? 'Channel Partner'
+                          : user.role === 'service_provider' || user.role === 'service-provider' || activeAccountMode === 'provider'
+                          ? 'Service Provider'
+                          : user.role === 'admin'
+                          ? 'Administrator'
+                          : 'Customer Account'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Dropdown Options */}
+                  <div className="space-y-0.5 pt-1">
+                    <Link
+                      href={
+                        user.role === 'admin'
+                          ? '/admin'
+                          : user.role === 'broker'
+                          ? '/dashboard/broker'
+                          : user.role === 'owner'
+                          ? '/dashboard/owner'
+                          : user.role === 'builder'
+                          ? '/dashboard/builder'
+                          : user.role === 'service_provider' || user.role === 'service-provider'
+                          ? '/dashboard/provider'
+                          : activeAccountMode === 'provider'
+                          ? '/dashboard/provider'
+                          : '/dashboard/customer'
+                      }
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
+                    >
+                      <LayoutDashboard size={15} className="text-stone-500" />
+                      <span>Dashboard</span>
+                    </Link>
+
+                    {/* Switch User Account / Business Account option */}
+                    {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
+                      activeAccountMode === 'provider' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            try {
+                              localStorage.setItem('havenest_active_account_mode', 'customer');
+                            } catch (e) {}
+                            setActiveAccountMode('customer');
+                            router.push('/dashboard/customer');
+                            if (toast) toast('Switched to User Account');
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <User size={15} className="text-stone-500" />
+                            <span>Switch to User Account</span>
+                          </div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                            User
+                          </span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            try {
+                              localStorage.setItem('havenest_active_account_mode', 'provider');
+                            } catch (e) {}
+                            setActiveAccountMode('provider');
+                            router.push('/dashboard/provider');
+                            if (toast) toast('Switched to Business Account');
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Briefcase size={15} className="text-stone-500" />
+                            <span>Switch to Business Account</span>
+                          </div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            Business
+                          </span>
+                        </button>
+                      )
+                    )}
+
+                    {user.role === 'admin' && (
+                      <Link
+                        href="/dashboard?view=user"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
+                      >
+                        <User size={15} className="text-stone-500" />
+                        <span>User Portal View</span>
+                      </Link>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all text-left cursor-pointer"
+                    >
+                      <LogOut size={15} className="text-red-500" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href="/login"
@@ -641,12 +470,175 @@ export function Header() {
             </Link>
           )}
 
+          {/* Universal Notification Bell for Logged-In Users */}
+          {user && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setNotificationOpen(!notificationOpen)}
+                className="relative p-2 text-emerald-900 hover:text-[#163e35] transition-colors flex items-center justify-center cursor-pointer"
+                title="Notifications"
+                aria-label="Notifications"
+              >
+                <Bell size={21} className="text-emerald-900" />
+                {unreadNotifCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                )}
+              </button>
+              <NotificationPanel
+                isOpen={notificationOpen}
+                onClose={() => setNotificationOpen(false)}
+                onUpdated={reloadNotifs}
+              />
+            </div>
+          )}
+
+
+
+          {/* Google-style 9-Dots Services / Category App Launcher */}
+          <div
+            className="relative services-launcher-wrap flex items-center"
+            onMouseEnter={handleLauncherMouseEnter}
+            onMouseLeave={handleLauncherMouseLeave}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setServicesLauncherOpen((prev) => !prev);
+                setCategorySearch('');
+              }}
+              aria-label="UrbanFindr Categories & Services"
+              aria-expanded={servicesLauncherOpen}
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                servicesLauncherOpen
+                  ? 'bg-stone-200 text-forest shadow-inner'
+                  : 'text-stone-600 hover:text-forest hover:bg-stone-100'
+              }`}
+              title="Explore by Category"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <circle cx="5" cy="5" r="2.2" />
+                <circle cx="12" cy="5" r="2.2" />
+                <circle cx="19" cy="5" r="2.2" />
+                <circle cx="5" cy="12" r="2.2" />
+                <circle cx="12" cy="12" r="2.2" />
+                <circle cx="19" cy="12" r="2.2" />
+                <circle cx="5" cy="19" r="2.2" />
+                <circle cx="12" cy="19" r="2.2" />
+                <circle cx="19" cy="19" r="2.2" />
+              </svg>
+            </button>
+
+            {/* Services Popup with Instant Search & Category Grid */}
+            {servicesLauncherOpen && (
+              <div
+                className="absolute right-0 top-full mt-2 w-[320px] sm:w-[360px] bg-white rounded-3xl shadow-2xl border border-stone-200/90 z-50 p-3 sm:p-4 transition-all duration-150 animate-in fade-in"
+                onMouseEnter={handleLauncherMouseEnter}
+                onMouseLeave={handleLauncherMouseLeave}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-2 pt-1 pb-2 mb-2 border-b border-stone-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-stone-900 tracking-tight">
+                      Explore by Category
+                    </span>
+                    <span className="text-[10px] font-bold text-forest bg-forest/10 px-1.5 py-0.5 rounded-full">
+                      {serviceCategories.length}
+                    </span>
+                  </div>
+                  <Link
+                    href="/categories"
+                    onClick={() => setServicesLauncherOpen(false)}
+                    className="text-xs font-semibold text-forest hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>All categories</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+
+                {/* Instant Search Bar inside Dotted Box Popup */}
+                <div className="relative mb-3 px-1">
+                  <Search size={14} className="absolute left-3.5 top-2.5 text-stone-400" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    placeholder="Search category or service..."
+                    className="w-full pl-8 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-forest focus:bg-white transition-all"
+                  />
+                  {categorySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCategorySearch('')}
+                      className="absolute right-3.5 top-2 text-stone-400 hover:text-stone-600 text-xs px-1"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {/* 3-Column Categories Grid */}
+                {filteredLauncherCategories.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-stone-400">
+                    No categories found for &quot;{categorySearch}&quot;
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2 max-h-[340px] overflow-y-auto p-1 pr-1.5">
+                    {filteredLauncherCategories.map((cat) => (
+                      <Link
+                        key={cat.slug}
+                        href={cat.href}
+                        onClick={() => setServicesLauncherOpen(false)}
+                        className="flex flex-col items-center p-2 rounded-2xl hover:bg-stone-50 transition-all duration-150 group text-center"
+                      >
+                        <div
+                          className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-xs group-hover:scale-105 group-hover:shadow transition-transform"
+                          style={{
+                            backgroundColor: cat.bgTint || '#f5f5f5',
+                            borderColor: cat.borderTint || '#e5e5e5',
+                            borderWidth: '1px',
+                            color: cat.accentColor || '#163e35',
+                          }}
+                        >
+                          <CategoryIcon name={cat.iconName} size={22} />
+                        </div>
+                        <span className="text-[11px] font-medium text-stone-700 group-hover:text-forest mt-1.5 leading-tight line-clamp-1 w-full">
+                          {cat.shortTitle || cat.label}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                {/* Bottom Promo Callout */}
+                <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-forest/5 via-lime/10 to-transparent border border-forest/10 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-stone-700">
+                    <Sparkles size={15} className="text-forest shrink-0" />
+                    <span className="font-medium text-[11px] leading-tight">
+                      Explore 13+ verified categories
+                    </span>
+                  </div>
+                  <Link
+                    href="/categories"
+                    onClick={() => setServicesLauncherOpen(false)}
+                    className="font-bold text-forest text-xs hover:underline whitespace-nowrap ml-2"
+                  >
+                    View →
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
           <Link className="btn post-btn" href="/post-property">
             Post property{' '}
             <span className="text-xs bg-lime text-forest rounded px-1.5 py-0.5">
               FREE
             </span>
           </Link>
+
+
 
           <button
             className="mobile-menu"
@@ -708,47 +700,181 @@ export function Header() {
             Post property — Free
           </Link>
 
-          <Link
-            href={user ? '/dashboard' : '/login'}
-            onClick={() => setOpen(false)}
-          >
-            {user ? 'My dashboard' : 'Log in / Register'}
-          </Link>
+          {user ? (
+            user.role === 'admin' ? (
+              <>
+                <Link
+                  href="/admin"
+                  onClick={() => setOpen(false)}
+                  className="font-bold text-forest flex items-center gap-1.5"
+                >
+                  <ShieldCheck size={16} /> Admin Command Center
+                </Link>
+                <Link
+                  href="/dashboard?view=user"
+                  onClick={() => setOpen(false)}
+                  className="muted text-sm"
+                >
+                  User Portal View
+                </Link>
+                <button
+                  style={{
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    padding: 0,
+                    fontSize: 16,
+                    color: '#991b1b',
+                  }}
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                >Logout</button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={
+                    user.role === 'admin'
+                      ? '/admin'
+                      : user.role === 'broker'
+                      ? '/dashboard/broker'
+                      : user.role === 'owner'
+                      ? '/dashboard/owner'
+                      : user.role === 'builder'
+                      ? '/dashboard/builder'
+                      : user.role === 'service_provider' || user.role === 'service-provider'
+                      ? '/dashboard/provider'
+                      : activeAccountMode === 'provider'
+                      ? '/dashboard/provider'
+                      : '/dashboard/customer'
+                  }
+                  onClick={() => setOpen(false)}
+                >
+                  {`My dashboard (${
+                    user.role === 'broker'
+                      ? 'Broker'
+                      : user.role === 'owner'
+                      ? 'Owner'
+                      : user.role === 'builder'
+                      ? 'Builder'
+                      : user.role === 'service_provider' || user.role === 'service-provider'
+                      ? 'Service Provider'
+                      : activeAccountMode === 'provider'
+                      ? 'Service Provider'
+                      : 'Customer'
+                  })`}
+                </Link>
+
+                {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
+                  activeAccountMode === 'provider' ? (
+                    <button
+                      style={{
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        padding: 0,
+                        fontSize: 16,
+                        color: '#163e35',
+                        fontWeight: 600,
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        try {
+                          localStorage.setItem('havenest_active_account_mode', 'customer');
+                        } catch (e) {}
+                        setActiveAccountMode('customer');
+                        router.push('/dashboard/customer');
+                        if (toast) toast('Switched to User Account');
+                      }}
+                    >
+                      Switch to User Account
+                    </button>
+                  ) : (
+                    <button
+                      style={{
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        padding: 0,
+                        fontSize: 16,
+                        color: '#163e35',
+                        fontWeight: 600,
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        try {
+                          localStorage.setItem('havenest_active_account_mode', 'provider');
+                        } catch (e) {}
+                        setActiveAccountMode('provider');
+                        router.push('/dashboard/provider');
+                        if (toast) toast('Switched to Business Account');
+                      }}
+                    >
+                      Switch to Business Account
+                    </button>
+                  )
+                )}
+
+                <button
+                  style={{
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    padding: 0,
+                    fontSize: 16,
+                    color: '#991b1b',
+                  }}
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                >Logout</button>
+              </>
+            )
+          ) : (
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+            >
+              Log in / Register
+            </Link>
+          )}
         </nav>
       )}
 
       {/* Discovery navbar */}
-      <nav
-        className="discovery-nav"
-        aria-label="More ways to explore"
-      >
-        <Link href="/properties">
-          All properties
-        </Link>
-
-        <Link href="/cities">
-          Explore by city
-        </Link>
-
-        <Link href="/#featured-properties">
-          Featured properties
-        </Link>
-
-        <Link href="/#latest-listings">
-          Latest listings
-        </Link>
-
-        <span>
-          List directly. Find your next match.
-        </span>
-
-        <Link
-          href="/post-property"
-          className="text-forest font-semibold"
+      {!pathname?.startsWith('/dashboard') && (
+        <nav
+          className="discovery-nav"
+          aria-label="More ways to explore"
         >
-          Post property <ArrowUpRight size={13} />
-        </Link>
-      </nav>
+          <Link href="/properties">
+            All properties
+          </Link>
+
+          <Link href="/cities">
+            Explore by city
+          </Link>
+
+          <Link href="/#featured-properties">
+            Featured properties
+          </Link>
+
+          <Link href="/#latest-listings">
+            Latest listings
+          </Link>
+        </nav>
+      )}
 
       {/* Builder projects city picker */}
       {showProjectsModal && (
@@ -762,15 +888,15 @@ export function Header() {
 
 export function Footer() {
   return (
-    <footer className="bg-forest text-white">
-      <div className="wrap mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 py-12">
+    <footer className="bg-forest text-white" suppressHydrationWarning>
+      <div className="wrap mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 py-12" suppressHydrationWarning>
         <div className="col-span-2">
           <Link
             href="/"
             className="brand !text-white flex items-center gap-2 mb-4"
           >
             <House size={24} />
-            <span className="brand-text">urban<span className="brand-finder">finder</span><span className="brand-dot">.</span></span>
+            <span className="brand-text">urban<span className="brand-finder">findr</span><span className="brand-dot">.</span></span>
           </Link>
 
           <p className="max-w-sm text-sm text-white/70 mt-4 leading-7">
@@ -812,6 +938,9 @@ export function Footer() {
             </Link>
             <Link href="/interiors" className="block hover:text-lime">
               Home interiors
+            </Link>
+            <Link href="/build-your-home" className="block hover:text-lime">
+              Build your home
             </Link>
             <Link href="/categories" className="block hover:text-lime">
               All categories & services
@@ -896,6 +1025,8 @@ export function Footer() {
           <span className="text-white/30">•</span>
           <Link href="/interiors" className="hover:text-lime">Home Interiors</Link>
           <span className="text-white/30">•</span>
+          <Link href="/build-your-home" className="hover:text-lime">Build Your Home</Link>
+          <span className="text-white/30">•</span>
           <Link href="/categories/landscapers" className="hover:text-lime">Landscapers</Link>
           <span className="text-white/30">•</span>
           <Link href="/categories/lawyers" className="hover:text-lime">Lawyers &amp; Legal</Link>
@@ -922,7 +1053,7 @@ export function Footer() {
 
       <div className="wrap border-t border-white/20 py-4 text-xs text-white/40 flex flex-col sm:flex-row justify-between items-center mx-auto">
         <span>
-          © {new Date().getFullYear()} UrbanFinder. Built for better living.
+          © {new Date().getFullYear()} UrbanFindr. Built for better living.
         </span>
 
         <span className="flex items-center">
@@ -935,7 +1066,7 @@ export function Footer() {
 }
 
 export function Guard({ children, roles }) {
-  const { user, ready } = useApp();
+  const { user, ready, hasRole } = useApp();
 
   if (!ready) {
     return (
@@ -963,20 +1094,23 @@ export function Guard({ children, roles }) {
     );
   }
 
-  if (roles && !roles.includes(user.role)) {
+  if (roles && !hasRole(roles)) {
     return (
       <div className="wrap py-20">
         <h2>This area requires additional access.</h2>
 
         <p className="muted my-5">
-          Property posting requires an owner account; administration
-          requires an admin account. Ask an administrator to update
-          your access.
+          This feature requires an account with {Array.isArray(roles) ? roles.join(' or ') : roles} access. Your current account role is &ldquo;{user.role}&rdquo;.
         </p>
 
-        <Link href="/dashboard" className="btn">
-          Your dashboard
-        </Link>
+        <div className="flex gap-4 items-center">
+          <Link href="/dashboard" className="btn">
+            Your dashboard
+          </Link>
+          <Link href="/dashboard/profile" className="btn-outline">
+            Account settings &amp; roles
+          </Link>
+        </div>
       </div>
     );
   }
