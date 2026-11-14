@@ -812,10 +812,17 @@ function BuilderSiteVisitsSection() {
     setBusy(id);
     try {
       await api(`visits/${id}`, { method: 'PATCH', body: { status } });
-      toast(`Site visit marked as ${status}.`);
+      const label =
+        status === 'contacted' ? 'Contacted' :
+        status === 'negotiation' ? 'Negotiation' :
+        status === 'closed' ? 'Closed' :
+        status === 'confirmed' ? 'Confirmed' :
+        status === 'completed' ? 'Completed' :
+        status === 'cancelled' ? 'Cancelled' : status;
+      toast(`Site visit status updated to ${label}.`);
       reload();
     } catch (e) {
-      toast(e.message);
+      toast(e.message || 'Failed to update site visit status.');
     } finally {
       setBusy('');
     }
@@ -848,31 +855,31 @@ function BuilderSiteVisitsSection() {
       render: (row) => <StatusBadge status={row.status} />
     },
     {
-      header: 'Site Office Actions',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          {row.status === 'requested' && (
-            <button
-              type="button"
-              disabled={busy === row._id}
-              onClick={() => updateVisit(row._id, 'confirmed')}
-              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold"
+      header: 'Site Office Action',
+      render: (row) => {
+        const isBusy = busy === row._id;
+        const currentStatus = row.status || 'requested';
+
+        return (
+          <div className="flex items-center gap-2">
+            <select
+              value={currentStatus}
+              disabled={isBusy}
+              onChange={(e) => updateVisit(row._id, e.target.value)}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white text-stone-800 hover:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
             >
-              Confirm Tour
-            </button>
-          )}
-          {row.status === 'confirmed' && (
-            <button
-              type="button"
-              disabled={busy === row._id}
-              onClick={() => updateVisit(row._id, 'completed')}
-              className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white rounded text-xs font-bold"
-            >
-              Mark Visited
-            </button>
-          )}
-        </div>
-      )
+              <option value="requested">Requested</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="contacted">Contacted</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="completed">Completed</option>
+              <option value="closed">Closed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            {isBusy && <span className="text-[10px] text-stone-400 animate-pulse">Updating…</span>}
+          </div>
+        );
+      }
     }
   ];
 

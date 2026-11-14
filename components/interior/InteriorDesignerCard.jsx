@@ -25,94 +25,90 @@ export default function InteriorDesignerCard({ onBookConsultation }) {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {interiorDesigners.map((designer) => (
             <div
               key={designer.id}
-              className="group bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-xl hover:border-emerald-500/50 transition-all duration-300 flex flex-col overflow-hidden"
+              className="group bg-white rounded-xl border border-stone-200/90 shadow-xs hover:shadow-md hover:border-emerald-500/50 transition-all duration-200 flex flex-col justify-between p-3.5 sm:p-4"
             >
-              {/* Designer Card Header */}
-              <div className="p-5 pb-4 border-b border-stone-100 flex items-start gap-4">
-                <div className="relative">
-                  <img
-                    src={designer.avatar}
-                    alt={designer.name}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md group-hover:scale-105 transition-transform"
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] border border-white">
-                    ✓
+              {/* Compact Header & Info */}
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="relative shrink-0">
+                    <img
+                      src={designer.avatar}
+                      alt={designer.name}
+                      className="w-12 h-12 rounded-full object-cover border border-stone-200 shadow-xs group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[9px] border border-white">
+                      ✓
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                        {designer.badge}
+                      </span>
+                      <span className="text-amber-500 text-xs font-bold shrink-0 flex items-center gap-0.5">
+                        ★ {designer.rating}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-bold text-stone-900 truncate mt-0.5">
+                      {designer.name}
+                    </h3>
+                    <p className="text-[11px] text-stone-500 truncate">{designer.studio}</p>
                   </div>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    {designer.badge}
-                  </span>
-                  <h3 className="text-base font-bold text-stone-900 truncate mt-1">
-                    {designer.name}
-                  </h3>
-                  <p className="text-xs text-stone-500 truncate">{designer.studio}</p>
+                {/* Compact Stats Row */}
+                <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-stone-50 rounded-lg text-[11px] text-stone-600 border border-stone-100 my-2.5">
+                  <div className="truncate">
+                    <span className="text-stone-400">Exp: </span>
+                    <span className="font-semibold text-stone-800">{designer.experience}</span>
+                  </div>
+                  <div className="text-right truncate">
+                    <span className="text-stone-400">Homes: </span>
+                    <span className="font-semibold text-stone-800">{designer.completedProjects}+</span>
+                  </div>
+                </div>
 
-                  <div className="flex items-center gap-1.5 mt-1 text-xs">
-                    <span className="flex items-center text-amber-500 font-bold">
-                      ★ {designer.rating}
+                {/* Top Specialties Pills */}
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {designer.specialties.slice(0, 2).map((spec, sIdx) => (
+                    <span
+                      key={sIdx}
+                      className="text-[10px] font-medium bg-stone-100 text-stone-700 px-2 py-0.5 rounded truncate max-w-full"
+                    >
+                      {spec}
                     </span>
-                    <span className="text-stone-400">({designer.reviewsCount} reviews)</span>
-                  </div>
+                  ))}
                 </div>
+
+                {/* Coverage Locality */}
+                <p className="text-[11px] text-stone-500 flex items-center gap-1 truncate mb-3">
+                  <MapPin size={11} className="text-stone-400 shrink-0" />
+                  <span className="truncate">{designer.locality}</span>
+                </p>
               </div>
 
-              {/* Body */}
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div className="space-y-3">
-                  <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
-                    {designer.bio}
-                  </p>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    {designer.specialties.slice(0, 3).map((spec, sIdx) => (
-                      <span
-                        key={sIdx}
-                        className="text-[11px] font-medium bg-stone-100 text-stone-700 px-2.5 py-0.5 rounded-full"
-                      >
-                        {spec}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="text-xs text-stone-500 space-y-1 pt-1 border-t border-stone-100">
-                    <div className="flex justify-between">
-                      <span className="text-stone-400">Experience:</span>
-                      <span className="font-semibold text-stone-800">{designer.experience}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-stone-400">Completed Homes:</span>
-                      <span className="font-semibold text-stone-800">{designer.completedProjects} Projects</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-stone-400">Coverage:</span>
-                      <span className="font-semibold text-stone-800 truncate max-w-[140px]">{designer.locality}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-stone-100 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => onBookConsultation && onBookConsultation(designer)}
-                    className="w-full btn btn-primary text-xs py-2 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Sparkles size={13} /> Book Consultation
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDesigner(designer)}
-                    className="w-full text-center text-xs font-semibold text-stone-600 hover:text-emerald-700 py-1 transition-colors cursor-pointer"
-                  >
-                    View Full Profile &amp; Awards →
-                  </button>
-                </div>
+              {/* Compact Action Buttons */}
+              <div className="pt-2.5 border-t border-stone-100 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onBookConsultation && onBookConsultation(designer)}
+                  className="flex-1 btn btn-primary text-xs py-1.5 flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                >
+                  <Sparkles size={12} /> Book
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDesigner(designer)}
+                  className="px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:text-emerald-700 hover:bg-stone-50 rounded-lg transition-colors cursor-pointer border border-stone-200/80"
+                  title="View Full Profile & Awards"
+                >
+                  Profile →
+                </button>
               </div>
             </div>
           ))}

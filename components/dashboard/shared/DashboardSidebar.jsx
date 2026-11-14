@@ -81,6 +81,7 @@ export default function DashboardSidebar({
       { id: 'properties', label: 'My Properties', icon: House },
       { id: 'add-property', label: 'Add Property', icon: PlusCircle, isAction: true },
       { id: 'enquiries', label: 'Property Enquiries', icon: ClipboardList },
+      { id: 'services', label: 'Booked Services', icon: Wrench },
       { id: 'visits', label: 'Property Visits', icon: Calendar },
       { id: 'performance', label: 'Listing Performance', icon: BarChart3 },
       { id: 'messages', label: 'Messages', icon: MessageCircle },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import MessageCenter from '../shared/MessageCenter';
 import NotificationsCenter from '../shared/NotificationsCenter';
 import Link from 'next/link';
@@ -44,7 +44,9 @@ import {
   Bath,
   Maximize,
   RotateCcw,
-  XCircle
+  XCircle,
+  Wrench,
+  ArrowRight
 } from 'lucide-react';
 
 export default function OwnerWorkspace({ section = 'overview', onSelectSection }) {
@@ -68,6 +70,9 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
     }
     if (section === 'enquiries' || section === 'leads') {
       return <OwnerEnquiriesSection />;
+    }
+    if (section === 'services' || section === 'requests' || section === 'service-requests') {
+      return <OwnerServicesSection onSelectSection={onSelectSection} />;
     }
     if (section === 'visits') {
       return <OwnerVisitsSection />;
@@ -119,6 +124,14 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
             className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20"
           >
             Manage Listings ({stats.properties})
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectSection('services')}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20 inline-flex items-center gap-1.5"
+          >
+            <Wrench size={13} />
+            <span>Booked Services</span>
           </button>
         </div>
       </div>
@@ -190,6 +203,28 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
         </div>
 
         <OwnerRecentPropertiesList />
+      </div>
+
+      {/* Active Booked Services Quick Preview */}
+      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-stone-900 text-base flex items-center gap-2">
+              <Wrench size={16} className="text-[#163e35]" />
+              Recent Home Service Bookings
+            </h3>
+            <p className="text-xs text-stone-500">Doorstep services booked for your properties</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelectSection('services')}
+            className="text-xs font-bold text-[#163e35] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>View All Services</span>
+            <ArrowUpRight size={13} />
+          </button>
+        </div>
+        <OwnerRecentServicesList onSelectSection={onSelectSection} />
       </div>
     </div>
     );
@@ -265,11 +300,66 @@ function OwnerRecentPropertiesList({ onPromote }) {
   );
 }
 
+// Sub-component: Owner Recent Services List
+function OwnerRecentServicesList({ onSelectSection }) {
+  const { data, loading } = useData('service-requests?limit=3&as=customer');
+  const items = data?.items || [];
+
+  if (loading) {
+    return <div className="p-6 text-center text-xs text-stone-400">Loading service requests…</div>;
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="p-6 text-center space-y-2 border border-dashed border-stone-200 rounded-lg">
+        <Wrench size={22} className="mx-auto text-stone-300" />
+        <p className="text-xs text-stone-500">No active service bookings for your properties.</p>
+        <Link href="/categories" className="inline-block text-xs font-bold text-[#163e35] hover:underline">
+          Book trusted electricians, plumbers, or cleaners →
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid sm:grid-cols-3 gap-3.5">
+      {items.map((item) => (
+        <div key={item._id} className="p-3.5 border border-stone-200 rounded-xl bg-stone-50/50 flex flex-col justify-between space-y-2">
+          <div>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#163e35] bg-[#ecf2e4] px-2 py-0.5 rounded">
+                {item.category || 'Service'}
+              </span>
+              <span className="text-[10px] font-mono text-stone-400">{item.requestId}</span>
+            </div>
+            <h4 className="font-bold text-xs text-stone-900 truncate mt-1.5">{item.serviceType}</h4>
+            <p className="text-[11px] text-stone-500 truncate flex items-center gap-1 mt-0.5">
+              <MapPin size={11} className="shrink-0" /> {item.city}
+            </p>
+          </div>
+          <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
+              {item.status}
+            </span>
+            <button
+              type="button"
+              onClick={() => onSelectSection('services')}
+              className="text-[11px] font-bold text-[#163e35] hover:underline cursor-pointer"
+            >
+              Details →
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Section: My Properties
 function OwnerPropertiesSection({ onPromote }) {
   const { toast } = useApp();
   const { data, loading, reload } = useData('properties?mine=true&limit=100');
-  const { data: leadsData, reload: reloadLeads } = useData('leads?page=1&limit=100');
+  const { data: leadsData, reload: reloadLeads } = useData('leads?page=1&limit=100&for=owner');
   const { data: visitsData, reload: reloadVisits } = useData('visits?limit=100');
   const items = data?.items || [];
   const [busy, setBusy] = useState('');
@@ -292,7 +382,9 @@ function OwnerPropertiesSection({ onPromote }) {
         scheduledAt: v.scheduledAt,
         createdAt: v.createdAt || v.scheduledAt
       })),
-      ...(leadsData?.items || []).map((l) => ({
+      ...(leadsData?.items || [])
+        .filter((l) => !l.service && l.kind !== 'general' && (!l.note || !l.note.startsWith('[SR-')))
+        .map((l) => ({
         _id: l._id,
         isVisit: false,
         propertyId: String(l.property?._id || l.property || ''),
@@ -593,8 +685,13 @@ function OwnerPropertiesSection({ onPromote }) {
 // Section: Owner Enquiries
 function OwnerEnquiriesSection() {
   const { toast } = useApp();
-  const { data, loading, reload } = useData('leads?page=1&limit=50');
-  const items = data?.items || [];
+  const { data, loading, reload } = useData('leads?page=1&limit=50&for=owner');
+  const allItems = data?.items || [];
+  // Exclude personal service requests or non-property leads from property inquiries
+  const items = allItems.filter((row) => {
+    if (row.service || row.kind === 'general' || (row.note && row.note.startsWith('[SR-'))) return false;
+    return true;
+  });
   const [busyId, setBusyId] = useState('');
 
   async function handleAcceptLead(id) {
@@ -712,6 +809,319 @@ function OwnerEnquiriesSection() {
         emptyTitle="No enquiries received yet"
         emptySubtitle="When prospective tenants contact you about your properties, they will appear here."
       />
+    </div>
+  );
+}
+
+// Section: Owner Booked Home Services
+function OwnerServicesSection({ onSelectSection }) {
+  const { toast } = useApp();
+  const { data, loading, reload } = useData('service-requests?limit=50&as=customer');
+  const [statusTab, setStatusTab] = useState('all');
+  const [actingId, setActingId] = useState(null);
+
+  const allItems = data?.items || [];
+
+  const items = useMemo(() => {
+    if (statusTab === 'all') return allItems;
+    if (statusTab === 'active') {
+      return allItems.filter((i) =>
+        ['submitted', 'requested', 'pending', 'assigned', 'scheduled', 'in_progress', 'quoted', 'quotation', 'accepted'].includes(i.status)
+      );
+    }
+    if (statusTab === 'completed') {
+      return allItems.filter((i) => ['completed', 'closed'].includes(i.status));
+    }
+    if (statusTab === 'cancelled') {
+      return allItems.filter((i) => ['cancelled', 'rejected', 'disputed'].includes(i.status));
+    }
+    return allItems;
+  }, [allItems, statusTab]);
+
+  async function handleCancel(item) {
+    if (!window.confirm('Are you sure you want to cancel this service request?')) return;
+    setActingId(item._id);
+    try {
+      await api(`service-requests/${item._id || item.requestId}`, {
+        method: 'PATCH',
+        body: { action: 'cancel', status: 'cancelled' }
+      });
+      toast('Service booking cancelled.');
+      reload();
+    } catch (e) {
+      toast(e.message || 'Failed to cancel service.');
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  const getServiceStatusLabel = (status) => {
+    switch (status) {
+      case 'submitted':
+      case 'requested':
+      case 'pending':
+        return { label: 'Booking Requested', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' };
+      case 'accepted':
+      case 'assigned':
+        return { label: 'Technician Assigned', badgeClass: 'bg-blue-50 text-blue-800 border-blue-200' };
+      case 'scheduled':
+        return { label: 'Appointment Confirmed', badgeClass: 'bg-indigo-50 text-indigo-800 border-indigo-200' };
+      case 'in_progress':
+        return { label: 'Service In Progress', badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+      case 'completed':
+      case 'closed':
+        return { label: 'Service Completed', badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300' };
+      case 'cancelled':
+      case 'rejected':
+        return { label: 'Cancelled', badgeClass: 'bg-rose-50 text-rose-800 border-rose-200' };
+      default:
+        return { label: status || 'Pending', badgeClass: 'bg-stone-100 text-stone-700 border-stone-200' };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header and Booking CTA */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
+            <Wrench size={20} className="text-[#163e35]" />
+            My Booked Home Services
+          </h2>
+          <p className="text-xs text-stone-500 mt-0.5">
+            Track doorstep service bookings, technician dispatch, schedule dates, and job status for your properties.
+          </p>
+        </div>
+
+        <Link
+          href="/categories"
+          className="px-4 py-2 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs transition-all inline-flex items-center gap-1.5 self-start"
+        >
+          <Plus size={14} />
+          <span>Book Doorstep Service</span>
+        </Link>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-stone-200 pb-2 overflow-x-auto">
+        {[
+          { id: 'all', label: 'All Bookings', count: allItems.length },
+          {
+            id: 'active',
+            label: 'Active & Scheduled',
+            count: allItems.filter((i) => ['submitted', 'requested', 'pending', 'assigned', 'scheduled', 'in_progress', 'quoted', 'quotation', 'accepted'].includes(i.status)).length
+          },
+          {
+            id: 'completed',
+            label: 'Completed',
+            count: allItems.filter((i) => ['completed', 'closed'].includes(i.status)).length
+          },
+          {
+            id: 'cancelled',
+            label: 'Cancelled',
+            count: allItems.filter((i) => ['cancelled', 'rejected', 'disputed'].includes(i.status)).length
+          }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setStatusTab(tab.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              statusTab === tab.id
+                ? 'bg-[#163e35] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+            }`}
+          >
+            {tab.label} ({tab.count})
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="p-12 text-center text-xs text-stone-400">Loading your booked services…</div>
+      ) : items.length === 0 ? (
+        <div className="p-10 text-center bg-white border border-stone-200 rounded-2xl space-y-4">
+          <div className="w-12 h-12 rounded-full bg-[#ecf2e4] text-[#163e35] mx-auto flex items-center justify-center">
+            <Wrench size={24} />
+          </div>
+          <div>
+            <h3 className="font-bold text-stone-900 text-sm">No booked services found</h3>
+            <p className="text-xs text-stone-500 max-w-sm mx-auto mt-1">
+              Need verified electricians, plumbers, painters, or deep cleaners for your properties? Book reliable doorstep services with transparent rates.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 pt-2">
+            {[
+              { label: 'Electrician', path: '/categories/electrician' },
+              { label: 'Plumbing', path: '/categories/plumbing' },
+              { label: 'Deep Cleaning', path: '/categories/deep-cleaning' },
+              { label: 'Home Painting', path: '/categories/home-painting' },
+              { label: 'Home Interiors', path: '/interiors' }
+            ].map((cat) => (
+              <Link
+                key={cat.label}
+                href={cat.path}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-[#ecf2e4] hover:text-[#163e35] text-stone-700 text-xs font-semibold rounded-lg transition-colors border border-stone-200"
+              >
+                {cat.label} →
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {items.map((item) => {
+            const statusInfo = getServiceStatusLabel(item.status);
+            const providerPhone = item.offer?.providerPhone || item.assignedProvider?.phone || item.phone || '';
+            const cleanPhone = String(providerPhone).replace(/\D/g, '');
+            const technicianName = item.assignedSpecialist || item.assignedProvider?.name || item.technician?.name || null;
+            const canCancel = ['submitted', 'requested', 'pending', 'assigned', 'scheduled'].includes(item.status);
+
+            return (
+              <div
+                key={item._id}
+                className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-xs space-y-4 hover:border-emerald-600/30 transition-all"
+              >
+                {/* Card Top: Category, Reference, Status & Date */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#ecf2e4] text-[#163e35] border border-[#d8edb3]">
+                        {item.category || 'Home Service'}
+                      </span>
+                      <span className="text-xs font-mono font-semibold text-stone-400">
+                        {item.requestId}
+                      </span>
+                    </div>
+                    <h3 className="font-extrabold text-base text-stone-900 mt-1">
+                      {item.serviceType}
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${statusInfo.badgeClass}`}>
+                      {statusInfo.label}
+                    </span>
+                    <span className="text-xs text-stone-400 whitespace-nowrap">
+                      {date(item.createdAt)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Scope & Requirement description */}
+                {(item.customerMessage || item.description) && (
+                  <div className="space-y-1 text-xs">
+                    <span className="text-stone-400 font-semibold block">Service Scope &amp; Notes:</span>
+                    <p className="text-stone-700 bg-stone-50 p-2.5 rounded-xl border border-stone-100 leading-relaxed">
+                      {item.customerMessage || item.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Key Service Metadata Grid */}
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 py-2 text-xs">
+                  {/* Service Address */}
+                  <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-100 space-y-1">
+                    <span className="text-stone-400 block font-semibold flex items-center gap-1">
+                      <MapPin size={12} className="text-emerald-700" /> Service Location
+                    </span>
+                    <p className="font-bold text-stone-800 truncate">
+                      {item.address || item.locality ? `${item.address || item.locality}, ` : ''}{item.city}
+                    </p>
+                  </div>
+
+                  {/* Appointment Schedule */}
+                  <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-100 space-y-1">
+                    <span className="text-stone-400 block font-semibold flex items-center gap-1">
+                      <Calendar size={12} className="text-emerald-700" /> Scheduled Appointment
+                    </span>
+                    <p className="font-bold text-stone-800 truncate">
+                      {item.preferredDate ? date(item.preferredDate) : 'Flexible Schedule'}
+                    </p>
+                    {item.preferredTime && (
+                      <p className="text-[11px] text-stone-500 truncate flex items-center gap-1">
+                        <Clock size={10} /> {item.preferredTime}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Assigned Technician */}
+                  <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-100 space-y-1">
+                    <span className="text-stone-400 block font-semibold flex items-center gap-1">
+                      <User size={12} className="text-emerald-700" /> Assigned Professional
+                    </span>
+                    {technicianName ? (
+                      <div>
+                        <p className="font-bold text-stone-800 truncate">{technicianName}</p>
+                        <p className="text-[11px] text-amber-600 font-semibold">★ {item.assignedSpecialistRating || 4.9} Verified Pro</p>
+                      </div>
+                    ) : (
+                      <p className="text-stone-500 italic">Dispatching technician…</p>
+                    )}
+                  </div>
+
+                  {/* Service Charges */}
+                  <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-100 space-y-1">
+                    <span className="text-stone-400 block font-semibold">Estimated Charges</span>
+                    <p className="font-black text-stone-900 text-sm">
+                      {item.predefinedPrice ? money(item.predefinedPrice) : (item.quotation?.amount ? money(item.quotation.amount) : 'Inspection Quote')}
+                    </p>
+                    <p className="text-[10px] text-stone-400">Zero hidden markups</p>
+                  </div>
+                </div>
+
+                {/* Footer Action Bar */}
+                <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    {cleanPhone && (
+                      <>
+                        <a
+                          href={`tel:${cleanPhone}`}
+                          className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <Phone size={12} />
+                          <span>Call Technician</span>
+                        </a>
+
+                        <a
+                          href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello, regarding my booked service ${item.serviceType} [${item.requestId}].`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-[#749546] hover:bg-[#5f7b38] text-white rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <MessageCircle size={12} />
+                          <span>WhatsApp Pro</span>
+                        </a>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {canCancel && (
+                      <button
+                        type="button"
+                        disabled={actingId === item._id}
+                        onClick={() => handleCancel(item)}
+                        className="px-3 py-1.5 text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        {actingId === item._id ? 'Cancelling…' : 'Cancel Booking'}
+                      </button>
+                    )}
+
+                    <Link
+                      href="/categories"
+                      className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1"
+                    >
+                      <span>Book Another Service</span>
+                      <ArrowRight size={12} />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

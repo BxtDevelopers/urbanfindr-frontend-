@@ -334,7 +334,7 @@ export default function CityDiscovery({ slug }) {
           {/* Centered Heading & Tagline */}
           <div className="text-center max-w-2xl mx-auto mb-2">
             <h1 className="!my-0 !text-3xl md:!text-4xl text-white font-bold">
-              Explore {city.name}
+              Explore Properties in {city.name}
             </h1>
             <p className="city-hero-fullscreen-tagline !mb-0 !mt-1 text-white/85 text-sm">
               {city.tagline}
