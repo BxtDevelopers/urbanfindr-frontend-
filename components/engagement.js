@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MessageCircle, CalendarDays, ArrowRight } from 'lucide-react';
+import { MessageCircle, CalendarDays, ArrowRight, Send, X, CheckCircle2 } from 'lucide-react';
 import CalendarTimePicker from './CalendarTimePicker';
 import { useApp, api } from './providers';
 import { Field, Submit } from './ui';
@@ -12,7 +12,42 @@ export function ConnectPanel({ item, project = false }) {
   const { user, toast } = useApp();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [showMessageBox, setShowMessageBox] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [lastSentThreadId, setLastSentThreadId] = useState(null);
   const ref = project ? { project: item._id } : { property: item._id };
+
+  async function handleSendMessage(e) {
+    if (e) e.preventDefault();
+    const text = messageText.trim();
+    if (!text) {
+      toast('Please enter a message for the host.');
+      return;
+    }
+    setSendingMessage(true);
+    try {
+      // 1. Create or get existing thread with the owner/manager
+      const thread = await api('threads', { method: 'POST', body: ref });
+      // 2. Post the actual message to the thread
+      await api(`threads/${thread._id}/messages`, {
+        method: 'POST',
+        body: { text }
+      });
+      setMessageText('');
+      setShowMessageBox(false);
+      setLastSentThreadId(thread._id);
+      toast({
+        message: `Message sent to ${item.owner?.name || (project ? 'coordinator' : 'owner')}! Click to view chat →`,
+        href: `/dashboard/messages?thread=${thread._id}`,
+        onClick: () => router.push(`/dashboard/messages?thread=${thread._id}`)
+      });
+    } catch (err) {
+      toast(err.message || 'Could not send message.');
+    } finally {
+      setSendingMessage(false);
+    }
+  }
 
   async function chat() {
     setBusy(true);
@@ -114,20 +149,103 @@ export function ConnectPanel({ item, project = false }) {
             </form>
           </div>
 
-          <button
-            type="button"
-            className="btn-outline w-full text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-stone-100 transition-colors cursor-pointer"
-            disabled={busy}
-            onClick={chat}
-          >
-            <MessageCircle size={15} />
-            <span>Message {project ? 'Coordinator' : 'Owner'}</span>
-          </button>
+          {/* Message Delivered Confirmation Badge */}
+          {lastSentThreadId && (
+            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between gap-2">
+              <span className="font-semibold flex items-center gap-1.5 truncate">
+                <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                Message sent to {project ? 'coordinator' : 'owner'}!
+              </span>
+              <button
+                type="button"
+                onClick={() => router.push(`/dashboard/messages?thread=${lastSentThreadId}`)}
+                className="font-bold underline text-emerald-900 shrink-0 hover:text-emerald-700 cursor-pointer"
+              >
+                View Chat →
+              </button>
+            </div>
+          )}
+
+          {/* Interactive Message Box */}
+          {showMessageBox ? (
+            <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 space-y-3 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-stone-800">
+                  <MessageCircle size={14} className="text-[#163e35]" />
+                  <span>Message {project ? 'Coordinator' : (item.owner?.name ? `${item.owner.name} (Owner)` : 'Owner')}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMessageBox(false);
+                    setMessageText('');
+                  }}
+                  className="text-stone-400 hover:text-stone-700 text-xs font-bold cursor-pointer p-0.5"
+                  title="Close message box"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSendMessage} className="space-y-2.5">
+                <textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  maxLength={1000}
+                  rows={3}
+                  placeholder={`Write your message to ${item.owner?.name || (project ? 'the coordinator' : 'the owner')} regarding pricing, questions or visit details…`}
+                  className="w-full text-xs bg-white border border-stone-200 rounded-lg p-2.5 focus:outline-none focus:border-[#163e35] focus:ring-1 focus:ring-[#163e35]"
+                  autoFocus
+                  disabled={sendingMessage}
+                />
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={sendingMessage || !messageText.trim()}
+                    className="btn flex-1 bg-[#163e35] hover:bg-[#24564a] text-white text-xs font-bold py-2 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Send size={13} />
+                    <span>{sendingMessage ? 'Sending…' : `Message ${project ? 'Coordinator' : 'Owner'}`}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={sendingMessage}
+                    onClick={() => {
+                      setShowMessageBox(false);
+                      setMessageText('');
+                    }}
+                    className="btn-outline text-xs py-2 px-3 rounded-xl cursor-pointer hover:bg-stone-100"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn-outline w-full text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-stone-100 transition-colors cursor-pointer"
+              disabled={busy || sendingMessage}
+              onClick={() => setShowMessageBox(true)}
+            >
+              <MessageCircle size={15} />
+              <span>Message {project ? 'Coordinator' : 'Owner'}</span>
+            </button>
+          )}
         </div>
       ) : (
-        <Link className="btn w-full text-xs py-2.5 rounded-xl" href={`/login?next=${project ? '/projects/' : '/properties/'}${item._id}`}>
-          Log in to schedule visit<ArrowRight size={15} />
-        </Link>
+        <div className="space-y-2">
+          <Link className="btn w-full text-xs py-2.5 rounded-xl flex items-center justify-center gap-2" href={`/login?next=${project ? '/projects/' : '/properties/'}${item._id}`}>
+            <span>Log in to schedule visit</span>
+            <ArrowRight size={15} />
+          </Link>
+          <Link className="btn-outline w-full text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-stone-100 transition-colors" href={`/login?next=${project ? '/projects/' : '/properties/'}${item._id}`}>
+            <MessageCircle size={15} />
+            <span>Log in to message {project ? 'coordinator' : 'owner'}</span>
+          </Link>
+        </div>
       )}
 
       <p className="text-xs text-stone-400 mt-4 leading-5 text-center">

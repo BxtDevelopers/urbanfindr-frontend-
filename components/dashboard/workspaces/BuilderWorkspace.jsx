@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import MessageCenter from '../shared/MessageCenter';
+import NotificationsCenter from '../shared/NotificationsCenter';
 import Link from 'next/link';
 import { useApp, useData, api } from '../../providers';
 import { date, money } from '@/lib/format';
@@ -86,6 +88,9 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
     }
     if (section === 'messages') {
       return <BuilderMessagesSection />;
+    }
+    if (section === 'notifications') {
+      return <NotificationsCenter onSelectSection={onSelectSection} />;
     }
     if (section === 'profile') {
       return <BuilderSettingsSection />;
@@ -995,40 +1000,22 @@ function BuilderPromotionsSection({ onPromote }) {
 
 // Section: Messages
 function BuilderMessagesSection() {
-  const { data } = useData('threads?limit=20');
-  const items = data?.items || [];
+  const [initialThreadId, setInitialThreadId] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tid = params.get('thread');
+      if (tid) setInitialThreadId(tid);
+    }
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-stone-900">Buyer &amp; Channel Inquiries</h2>
-        <p className="text-xs text-stone-500">Direct message threads regarding pricing, units, and site visits</p>
-      </div>
-
-      {items.length === 0 ? (
-        <div className="p-12 text-center bg-white border border-stone-200 rounded-xl space-y-2">
-          <MessageCircle size={32} className="mx-auto text-stone-300" />
-          <h3 className="font-bold text-stone-800 text-sm">No discussions yet</h3>
-          <p className="text-xs text-stone-400 max-w-sm mx-auto">
-            Discussions initiated by prospective buyers will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {items.map((t) => (
-            <div key={t._id} className="bg-white border border-stone-200 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-stone-900 text-sm">{t.subject || 'Township Discussion'}</h4>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Buyer: {t.participants?.map((p) => p.name).join(', ')}
-                </p>
-              </div>
-              <span className="text-[11px] text-stone-400">{date(t.createdAt)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <MessageCenter
+      initialThreadId={initialThreadId}
+      title="Buyer & Channel Inquiries"
+      subtitle="Direct message threads regarding project units, site visits, and pricing discussions"
+    />
   );
 }
 

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import MessageCenter from '../shared/MessageCenter';
+import NotificationsCenter from '../shared/NotificationsCenter';
 import Link from 'next/link';
 import { useApp, useData, api } from '../../providers';
 import { date, money } from '@/lib/format';
@@ -77,7 +79,7 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
     return <CustomerMessagesSection />;
   }
   if (section === 'notifications') {
-    return <CustomerNotificationsSection />;
+    return <NotificationsCenter onSelectSection={onSelectSection} />;
   }
   if (section === 'profile') {
     return <CustomerProfileSection />;
@@ -1387,45 +1389,22 @@ function SavedSearchesSection() {
 
 // Section: Messages
 function CustomerMessagesSection() {
-  const { user, toast } = useApp();
-  const { data: threadData } = useData('threads?limit=20');
-  const items = threadData?.items || [];
+  const [initialThreadId, setInitialThreadId] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tid = params.get('thread');
+      if (tid) setInitialThreadId(tid);
+    }
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-stone-900">Conversations</h2>
-        <p className="text-xs text-stone-500">Direct message threads with property owners, brokers, and consultants</p>
-      </div>
-
-      {items.length === 0 ? (
-        <div className="p-12 text-center bg-white border border-stone-200 rounded-xl space-y-2">
-          <MessageCircle size={32} className="mx-auto text-stone-300" />
-          <h3 className="font-bold text-stone-800 text-sm">No active conversations</h3>
-          <p className="text-xs text-stone-400 max-w-sm mx-auto">
-            When you send a message from any property page or builder project, the discussion will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {items.map((thread) => (
-            <Link
-              key={thread._id}
-              href={`/dashboard/customer?section=messages&thread=${thread._id}`}
-              className="block bg-white border border-stone-200 hover:border-stone-300 rounded-xl p-4 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-stone-900 text-sm">{thread.subject || 'Property Discussion'}</h4>
-                <span className="text-[11px] text-stone-400">{date(thread.updatedAt || thread.createdAt)}</span>
-              </div>
-              <p className="text-xs text-stone-500 mt-1">
-                Participants: {thread.participants?.map((p) => p.name).join(', ')}
-              </p>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+    <MessageCenter
+      initialThreadId={initialThreadId}
+      title="Direct Conversations"
+      subtitle="Direct message inquiries with property owners, channel partners, and building managers"
+    />
   );
 }
 

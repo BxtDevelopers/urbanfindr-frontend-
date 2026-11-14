@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import MessageCenter from '../shared/MessageCenter';
+import NotificationsCenter from '../shared/NotificationsCenter';
 import Link from 'next/link';
 import { useApp, useData, api } from '../../providers';
 import { date, money } from '@/lib/format';
@@ -78,6 +80,9 @@ export default function OwnerWorkspace({ section = 'overview', onSelectSection }
     }
     if (section === 'messages') {
       return <OwnerMessagesSection />;
+    }
+    if (section === 'notifications') {
+      return <NotificationsCenter onSelectSection={onSelectSection} />;
     }
     if (section === 'profile') {
       return <OwnerProfileSection />;
@@ -994,40 +999,22 @@ function OwnerPromotionsSection({ onPromote }) {
 
 // Section: Owner Messages
 function OwnerMessagesSection() {
-  const { data } = useData('threads?limit=20');
-  const items = data?.items || [];
+  const [initialThreadId, setInitialThreadId] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tid = params.get('thread');
+      if (tid) setInitialThreadId(tid);
+    }
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-stone-900">Tenant Messages</h2>
-        <p className="text-xs text-stone-500">Direct inquiries from renters and buyers</p>
-      </div>
-
-      {items.length === 0 ? (
-        <div className="p-12 text-center bg-white border border-stone-200 rounded-xl space-y-2">
-          <MessageCircle size={32} className="mx-auto text-stone-300" />
-          <h3 className="font-bold text-stone-800 text-sm">No messages yet</h3>
-          <p className="text-xs text-stone-400 max-w-sm mx-auto">
-            Tenant inquiries will appear here as soon as visitors message your listings.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {items.map((t) => (
-            <div key={t._id} className="bg-white border border-stone-200 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-stone-900 text-sm">{t.subject || 'Property Inquiry'}</h4>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Tenant: {t.participants?.map((p) => p.name).join(', ')}
-                </p>
-              </div>
-              <span className="text-[11px] text-stone-400">{date(t.createdAt)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <MessageCenter
+      initialThreadId={initialThreadId}
+      title="Tenant & Buyer Inquiries"
+      subtitle="Direct messages and questions received on your rental and resale property listings"
+    />
   );
 }
 

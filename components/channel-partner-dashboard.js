@@ -75,6 +75,7 @@ import { api, useApp, useData } from './providers';
 import { money, date } from '@/lib/format';
 import { propertyImages } from '@/lib/media';
 import { Image, State } from './ui';
+import MessageCenter from './dashboard/shared/MessageCenter';
 
 export const TIME_RANGE_OPTIONS = [
   { id: 'all', label: 'All Time' },
@@ -570,6 +571,20 @@ export default function ChannelPartnerDashboard({
   const { data: leadsData, reload: reloadLeads, loading: loadingLeads } = useData('leads?limit=100');
   const { data: ticketsData, reload: reloadTickets, loading: loadingTickets } = useData('support-tickets?limit=50');
   const { data: notificationsData, reload: reloadNotifications, loading: loadingNotifications } = useData('notifications?limit=50');
+  const { data: threadsData, reload: reloadThreads, loading: loadingThreads } = useData('threads?limit=50');
+  const threads = threadsData?.items || [];
+  const [selectedMessageThreadId, setSelectedMessageThreadId] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tid = params.get('thread');
+      if (tid) {
+        setSelectedMessageThreadId(tid);
+        setTab('messages');
+      }
+    }
+  }, []);
 
   const partner = partnerData?.partner || {};
   const stats = partnerData?.stats || {};
@@ -883,10 +898,11 @@ export default function ChannelPartnerDashboard({
   function getAssignedMembersForProp(prop) {
     if (!prop) return [];
     if (Array.isArray(prop.assignedTeamMembers) && prop.assignedTeamMembers.length > 0) {
-      return prop.assignedTeamMembers;
+      const valid = prop.assignedTeamMembers.filter((m) => m && m.memberId && String(m.memberId).trim() && String(m.memberId) !== 'null');
+      if (valid.length > 0) return valid;
     }
-    if (prop.assignedTeamMemberId && prop.assignedTeamMemberName) {
-      return [{ memberId: prop.assignedTeamMemberId, name: prop.assignedTeamMemberName }];
+    if (prop.assignedTeamMemberId && String(prop.assignedTeamMemberId).trim() && String(prop.assignedTeamMemberId) !== 'null') {
+      return [{ memberId: prop.assignedTeamMemberId, name: prop.assignedTeamMemberName || 'Advisor' }];
     }
     return [];
   }
@@ -1152,6 +1168,13 @@ export default function ChannelPartnerDashboard({
       icon: Building2,
       badge: properties.length,
       badgeColor: 'bg-stone-100 text-stone-700'
+    },
+    {
+      id: 'messages',
+      label: 'Direct Messages',
+      icon: MessageSquare,
+      badge: threads.length,
+      badgeColor: 'bg-emerald-100 text-emerald-800'
     },
     {
       id: 'team',
@@ -3133,18 +3156,18 @@ export default function ChannelPartnerDashboard({
                             <div onClick={(e) => e.stopPropagation()}>
                               <select
                                 value=""
-                                disabled={busyAction.startsWith('assign_prop_') || unassignedProperties.length === 0}
+                                disabled={busyAction.startsWith('assign_prop_') || properties.length === 0}
                                 onChange={(e) => {
                                   if (e.target.value) handleAssignListingMember(e.target.value, member._id, 'assign');
                                 }}
-                                className="w-full px-2.5 py-1.5 text-[11px] font-semibold bg-stone-50 border border-stone-200 rounded-lg text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35] cursor-pointer disabled:opacity-50"
+                                className="w-full px-2.5 py-1.5 text-[11px] font-semibold bg-stone-50 border border-stone-200 rounded-lg text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#163e35] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                               >
-                                <option value="">
+                                <option value="" disabled={unassignedProperties.length === 0}>
                                   {properties.length === 0
                                     ? 'No properties listed yet'
                                     : unassignedProperties.length === 0
-                                    ? 'No unassigned properties'
-                                    : '+ Assign property...'}
+                                    ? 'No unassigned properties (all assigned)'
+                                    : `+ Assign property (${unassignedProperties.length} available)...`}
                                 </option>
                                 {unassignedProperties.map((p) => (
                                   <option key={p._id} value={p._id}>
@@ -3427,19 +3450,63 @@ export default function ChannelPartnerDashboard({
                           </span>
                         </div>
                         <p className="text-xs text-stone-600 mt-1 leading-relaxed">{notif.body}</p>
-                        {notif.link && (
-                          <Link
-                            href={notif.link}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-[#163e35] hover:underline mt-2"
+                        <div className="flex items-center gap-2 mt-2">
+                          {(notif.link?.includes('thread=') || notif.title?.toLowerCase().includes('message') || notif.title?.toLowerCase().includes('enquiry')) ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const threadMatch = notif.link?.match(/thread=([a-f0-9]+)/i);
+                                if (threadMatch) setSelectedMessageThreadId(threadMatch[1]);
+                                setTab('messages');
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#163e35] text-white hover:bg-[#12332c] rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                            >
+                              <MessageSquare size={13} className="text-[#d8edb3]" />
+                              <span>Chat &amp; Reply</span>
+                            </button>
+                          ) : notif.link ? (
+                            <Link
+                              href={notif.link}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-[#163e35] hover:underline"
+                            >
+                              Open item <ExternalLink size={12} />
+                            </Link>
+                          ) : null}
+                          <button
+                            type="button"
+                            title="Delete notification"
+                            onClick={async () => {
+                              try {
+                                await api(`notifications/${notif._id}`, { method: 'DELETE' });
+                                reloadNotifications();
+                                toast('Notification removed.');
+                              } catch (err) {
+                                toast(err.message || 'Failed to delete');
+                              }
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                           >
-                            Open item <ExternalLink size={12} />
-                          </Link>
-                        )}
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* =====================================================================
+              TAB 7: DIRECT MESSAGES SCREEN
+             ===================================================================== */}
+          {tab === 'messages' && (
+            <div className="space-y-6">
+              <MessageCenter
+                initialThreadId={selectedMessageThreadId}
+                title="Direct Messages & Inquiries"
+                subtitle="Direct real-time conversations with customers inquiring about your properties"
+              />
             </div>
           )}
         </main>
@@ -3910,7 +3977,32 @@ export default function ChannelPartnerDashboard({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3 bg-stone-50 border-t border-stone-200 flex justify-end">
+            <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center justify-between">
+              {(() => {
+                const leadPropId = selectedLead.property?._id || selectedLead.property;
+                const leadUserId = selectedLead.user?._id || selectedLead.user;
+                const matchingThread = threads.find(
+                  (t) =>
+                    (leadPropId && String(t.property?._id || t.property) === String(leadPropId)) ||
+                    (leadUserId && t.participants?.some((p) => String(p._id || p) === String(leadUserId)))
+                );
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (matchingThread) {
+                        setSelectedMessageThreadId(matchingThread._id);
+                      }
+                      setSelectedLead(null);
+                      setTab('messages');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#163e35] text-white hover:bg-[#12332c] rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <MessageSquare size={14} />
+                    <span>Open Direct Messages</span>
+                  </button>
+                );
+              })()}
               <button
                 onClick={() => setSelectedLead(null)}
                 className="px-5 py-2 bg-stone-200 text-stone-800 rounded-xl text-xs font-bold hover:bg-stone-300 transition-colors cursor-pointer"

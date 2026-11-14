@@ -14,6 +14,8 @@ import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
 import PropertyDashboardCard from '../shared/PropertyDashboardCard';
 import PropertyRequestsModal from '../shared/PropertyRequestsModal';
+import MessageCenter from '../shared/MessageCenter';
+import NotificationsCenter from '../shared/NotificationsCenter';
 import { InvoiceAndDetailsModal } from '../../bookings-tracker';
 import {
   Wrench,
@@ -247,6 +249,17 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
   }
   if (section === 'reviews') {
     return <ProviderReviewsSection rating={stats.rating} />;
+  }
+  if (section === 'messages') {
+    return (
+      <MessageCenter
+        title="Client Discussions & Messages"
+        subtitle="Direct communication with clients regarding service requests and property projects"
+      />
+    );
+  }
+  if (section === 'notifications') {
+    return <NotificationsCenter onSelectSection={onSelectSection} />;
   }
   if (section === 'profile') {
     return <ProviderSettingsSection />;

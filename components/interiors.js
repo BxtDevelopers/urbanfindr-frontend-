@@ -8,7 +8,6 @@ import {
   ArrowRight, 
   Check, 
   Calculator, 
-  Activity, 
   ShieldCheck, 
   Layers, 
   Clock, 
@@ -77,8 +76,8 @@ export default function Interiors({ id }) {
     if (typeof window === 'undefined') return;
     const elem = document.getElementById(elementId);
     if (elem) {
-      // 86px (main header) + 48px (quick jump bar) + 20px padding = 154px
-      const navOffset = 154;
+      // 86px (main header) + 20px padding = 106px
+      const navOffset = 106;
       const elementPosition = elem.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navOffset;
       window.scrollTo({
@@ -145,55 +144,6 @@ export default function Interiors({ id }) {
 
       {/* Trust & Quality Highlight Strip */}
       <InteriorRatingsStrip />
-
-      {/* Quick Interactive Jump Navigation Bar - Positioned cleanly below 86px header */}
-      <nav aria-label="Interiors quick jump" className="sticky top-[86px] z-40 bg-white/95 backdrop-blur-md border-y border-stone-200/80 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between overflow-x-auto gap-2 no-scrollbar text-xs">
-          <div className="flex items-center gap-2 shrink-0">
-            {[
-              { id: 'categories', label: 'Categories' },
-              { id: 'portfolio', label: 'Portfolio' },
-              { id: 'process', label: 'How It Works' },
-              { id: 'packages', label: 'Packages' },
-              { id: 'estimator', label: 'Get Quote' },
-              { id: 'designers', label: 'Designers' },
-              { id: 'reviews', label: 'Reviews' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => scrollToSection(tab.id)}
-                className="px-3.5 py-1.5 rounded-full font-semibold text-stone-700 hover:text-emerald-800 hover:bg-stone-100 transition-colors whitespace-nowrap cursor-pointer"
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/dashboard?section=interiors"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors"
-            >
-              <Activity size={13} />
-              <span>Project Hub</span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedPackage(null);
-                setSelectedDesigner(null);
-                setShowConsultModal(true);
-              }}
-              className="btn btn-primary !py-1.5 !px-4 !text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles size={13} />
-              <span>Book Consultation</span>
-            </button>
-          </div>
-        </div>
-      </nav>
 
       {/* FEATURE 2: INTERIOR DESIGN CATEGORIES */}
       <InteriorCategoriesSection

@@ -73,6 +73,7 @@ export default function DashboardSidebar({
       { id: 'saved-searches', label: 'Saved Searches', icon: Search },
       { id: 'requests', label: 'My Service Requests', icon: Wrench },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
+      { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'profile', label: 'My Profile & Settings', icon: Settings }
     ],
     owner: [
@@ -83,6 +84,7 @@ export default function DashboardSidebar({
       { id: 'visits', label: 'Property Visits', icon: Calendar },
       { id: 'performance', label: 'Listing Performance', icon: BarChart3 },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
+      { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'profile', label: 'Profile Settings', icon: Settings }
     ],
     broker: [
@@ -93,6 +95,7 @@ export default function DashboardSidebar({
       { id: 'clients', label: 'Clients', icon: Users },
       { id: 'analytics', label: 'Performance Analytics', icon: BarChart3 },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
+      { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'profile', label: 'Profile Settings', icon: Settings }
     ],
     builder: [
@@ -104,6 +107,7 @@ export default function DashboardSidebar({
       { id: 'clients', label: 'Clients & Buyers', icon: Users },
       { id: 'performance', label: 'Track Project Performance', icon: BarChart3 },
       { id: 'messages', label: 'Messages', icon: MessageCircle },
+      { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'profile', label: 'Settings', icon: Settings }
     ],
     provider: [
@@ -115,6 +119,8 @@ export default function DashboardSidebar({
       { id: 'requests', label: 'Client Requests & Offers', icon: ClipboardList },
       { id: 'services', label: 'My Services', icon: Wrench },
       { id: 'reviews', label: 'Reviews', icon: Star },
+      { id: 'messages', label: 'Messages', icon: MessageCircle },
+      { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'profile', label: 'Settings', icon: Settings }
     ]
   };
@@ -189,6 +195,8 @@ export default function DashboardSidebar({
             const Icon = item.icon;
             const isSelected = activeSection === item.id || (item.id === 'requests' && activeSection === 'bookings');
             const showMessageGreenDot = item.id === 'messages' && unreadMessagesCount > 0;
+            const unreadNotifCount = notifSummary?.unread || 0;
+            const showNotifBadge = item.id === 'notifications' && unreadNotifCount > 0;
             return (
               <button
                 key={item.id}
@@ -211,6 +219,11 @@ export default function DashboardSidebar({
                     className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"
                     aria-label="New message"
                   />
+                )}
+                {showNotifBadge && !collapsed && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white shrink-0">
+                    {unreadNotifCount}
+                  </span>
                 )}
               </button>
             );
