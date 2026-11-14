@@ -18,6 +18,14 @@ import {
   Wrench,
   Bell,
   Briefcase,
+  Building2,
+  MapPin,
+  ChevronRight,
+  Zap,
+  Scale,
+  Boxes,
+  Send,
+  Grid,
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
 import NotificationPanel from './dashboard/shared/NotificationPanel';
@@ -87,6 +95,7 @@ export function Header() {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
+  const [menuView, setMenuView] = useState('main');
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
@@ -205,7 +214,21 @@ export function Header() {
   useEffect(() => {
     setUserMenuOpen(false);
     setNotificationOpen(false);
+    setOpen(false);
+    setMenuView('main');
   }, [pathname]);
+
+  // Prevent background scrolling when mobile menu drawer is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open]);
 
   const [servicesLauncherOpen, setServicesLauncherOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
@@ -265,590 +288,773 @@ export function Header() {
     <>
       {/* Main navbar */}
       <header className="header">
-        <Link href="/" className="brand flex items-center gap-2.5 group">
-          <span className="brand-icon shrink-0">
-            <House size={22} />
+        <Link href="/" className="brand flex items-center gap-2 sm:gap-2.5 shrink-0 group min-w-0">
+          <span className="brand-icon w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-forest text-lime flex items-center justify-center shrink-0 shadow-2xs p-0">
+            <House size={20} />
           </span>
-          <div className="flex flex-col justify-center">
-            <span className="brand-text leading-none">
+          <div className="flex flex-col justify-center min-w-0">
+            <span className="brand-text text-xl sm:text-[23px] font-bold tracking-tight leading-none truncate">
               urban<span className="brand-finder">findr</span><span className="brand-dot">.</span>
             </span>
-            <span className="text-[10px] sm:text-[11px] font-medium tracking-normal text-stone-500 leading-none mt-1">
+            <span className="text-[8px] min-[360px]:text-[8.5px] sm:text-[10px] font-medium tracking-tight text-stone-500 leading-none mt-1 whitespace-nowrap">
               Find. Connect. Build Your Life.
             </span>
           </div>
         </Link>
 
-        <nav className="desktop-nav">
-          <div className="flex items-center gap-5">
-            {links.map(([label, href]) => (
-              <Link
-                key={label}
-                href={href}
-                className={
-                  pathname === href.split('?')[0]
-                    ? 'nav-active'
-                    : ''
-                }
-              >
-                {label}
-              </Link>
-            ))}
-
-            <button
-              className={
-                pathname.startsWith('/projects')
-                  ? 'nav-active'
-                  : ''
-              }
-              style={{
-                fontSize: 'inherit',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
-                font: 'inherit',
-                color: 'inherit',
-              }}
-              onClick={handleProjectsClick}
-            >
-              Builder projects
-            </button>
-          </div>
-        </nav>
-
-        {/* Right-side actions: User Avatar Initial & Dropdown */}
-        <div className="flex gap-3 items-center">
-          {user ? (
-            <div className="relative user-menu-wrap" ref={userMenuRef}>
-              <button
-                type="button"
-                onClick={() => setUserMenuOpen((prev) => !prev)}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-forest text-white font-bold text-sm sm:text-base flex items-center justify-center shadow-sm hover:shadow hover:bg-[#1f4a3f] ring-2 ring-forest/15 hover:ring-lime/50 transition-all cursor-pointer select-none"
-                aria-label="User account menu"
-                aria-expanded={userMenuOpen}
-                title={user.name || 'Account'}
-              >
-                {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
-              </button>
-
-              {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in">
-                  {/* User Profile Header */}
-                  <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-2.5 mb-1">
-                    <div className="w-8 h-8 rounded-full bg-forest/10 text-forest font-bold text-sm flex items-center justify-center shrink-0">
-                      {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-stone-900 truncate">
-                        {user.name || 'User'}
-                      </p>
-                      <p className="text-[11px] text-stone-500 truncate capitalize">
-                        {user.role === 'broker'
-                          ? 'Broker'
-                          : user.role === 'owner'
-                          ? 'Property Owner'
-                          : user.role === 'builder'
-                          ? 'Builder'
-                          : user.role === 'channel_partner'
-                          ? 'Channel Partner'
-                          : user.role === 'service_provider' || user.role === 'service-provider' || activeAccountMode === 'provider'
-                          ? 'Service Provider'
-                          : user.role === 'admin'
-                          ? 'Administrator'
-                          : 'Customer Account'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Dropdown Options */}
-                  <div className="space-y-0.5 pt-1">
-                    <Link
-                      href={
-                        user.role === 'admin'
-                          ? '/admin'
-                          : user.role === 'broker'
-                          ? '/dashboard/broker'
-                          : user.role === 'owner'
-                          ? '/dashboard/owner'
-                          : user.role === 'builder'
-                          ? '/dashboard/builder'
-                          : user.role === 'service_provider' || user.role === 'service-provider'
-                          ? '/dashboard/provider'
-                          : activeAccountMode === 'provider'
-                          ? '/dashboard/provider'
-                          : '/dashboard/customer'
-                      }
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
-                    >
-                      <LayoutDashboard size={15} className="text-stone-500" />
-                      <span>Dashboard</span>
-                    </Link>
-
-                    {/* Switch User Account / Business Account option */}
-                    {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
-                      activeAccountMode === 'provider' ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            try {
-                              localStorage.setItem('havenest_active_account_mode', 'customer');
-                            } catch (e) {}
-                            setActiveAccountMode('customer');
-                            router.push('/dashboard/customer');
-                            if (toast) toast('Switched to User Account');
-                          }}
-                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <User size={15} className="text-stone-500" />
-                            <span>Switch to User Account</span>
-                          </div>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
-                            User
-                          </span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            try {
-                              localStorage.setItem('havenest_active_account_mode', 'provider');
-                            } catch (e) {}
-                            setActiveAccountMode('provider');
-                            router.push('/dashboard/provider');
-                            if (toast) toast('Switched to Business Account');
-                          }}
-                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Briefcase size={15} className="text-stone-500" />
-                            <span>Switch to Business Account</span>
-                          </div>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            Business
-                          </span>
-                        </button>
-                      )
-                    )}
-
-                    {user.role === 'admin' && (
-                      <Link
-                        href="/dashboard?view=user"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
-                      >
-                        <User size={15} className="text-stone-500" />
-                        <span>User Portal View</span>
-                      </Link>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        logout();
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all text-left cursor-pointer"
-                    >
-                      <LogOut size={15} className="text-red-500" />
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Link
-              href="/login"
-              className="text-sm font-medium hidden sm:block"
-            >
-              Log in
-            </Link>
-          )}
-
-          {/* Universal Notification Bell for Logged-In Users */}
-          {user && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setNotificationOpen(!notificationOpen)}
-                className="relative p-2 text-emerald-900 hover:text-[#163e35] transition-colors flex items-center justify-center cursor-pointer"
-                title="Notifications"
-                aria-label="Notifications"
-              >
-                <Bell size={21} className="text-emerald-900" />
-                {unreadNotifCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-                )}
-              </button>
-              <NotificationPanel
-                isOpen={notificationOpen}
-                onClose={() => setNotificationOpen(false)}
-                onUpdated={reloadNotifs}
-              />
-            </div>
-          )}
-
-
-
-          {/* Google-style 9-Dots Services / Category App Launcher */}
-          <div
-            className="relative services-launcher-wrap flex items-center"
-            onMouseEnter={handleLauncherMouseEnter}
-            onMouseLeave={handleLauncherMouseLeave}
+        {/* Right-side actions: Matching laptop reference image with tightened spacing */}
+        <div className="hidden lg:flex items-center gap-4 xl:gap-5 shrink-0">
+          <Link
+            href="/interiors"
+            className="text-[14px] font-medium text-[#252d27] hover:text-[#163e35] transition-colors whitespace-nowrap"
           >
-            <button
-              type="button"
-              onClick={() => {
-                setServicesLauncherOpen((prev) => !prev);
-                setCategorySearch('');
-              }}
-              aria-label="UrbanFindr Categories & Services"
-              aria-expanded={servicesLauncherOpen}
-              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                servicesLauncherOpen
-                  ? 'bg-stone-200 text-forest shadow-inner'
-                  : 'text-stone-600 hover:text-forest hover:bg-stone-100'
-              }`}
-              title="Explore by Category"
-            >
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                <circle cx="5" cy="5" r="2.2" />
-                <circle cx="12" cy="5" r="2.2" />
-                <circle cx="19" cy="5" r="2.2" />
-                <circle cx="5" cy="12" r="2.2" />
-                <circle cx="12" cy="12" r="2.2" />
-                <circle cx="19" cy="12" r="2.2" />
-                <circle cx="5" cy="19" r="2.2" />
-                <circle cx="12" cy="19" r="2.2" />
-                <circle cx="19" cy="19" r="2.2" />
-              </svg>
-            </button>
-
-            {/* Services Popup with Instant Search & Category Grid */}
-            {servicesLauncherOpen && (
-              <div
-                className="absolute right-0 top-full mt-2 w-[320px] sm:w-[360px] bg-white rounded-3xl shadow-2xl border border-stone-200/90 z-50 p-3 sm:p-4 transition-all duration-150 animate-in fade-in"
-                onMouseEnter={handleLauncherMouseEnter}
-                onMouseLeave={handleLauncherMouseLeave}
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between px-2 pt-1 pb-2 mb-2 border-b border-stone-100">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-stone-900 tracking-tight">
-                      Explore by Category
-                    </span>
-                    <span className="text-[10px] font-bold text-forest bg-forest/10 px-1.5 py-0.5 rounded-full">
-                      {serviceCategories.length}
-                    </span>
-                  </div>
-                  <Link
-                    href="/categories"
-                    onClick={() => setServicesLauncherOpen(false)}
-                    className="text-xs font-semibold text-forest hover:underline inline-flex items-center gap-1"
-                  >
-                    <span>All categories</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-
-                {/* Instant Search Bar inside Dotted Box Popup */}
-                <div className="relative mb-3 px-1">
-                  <Search size={14} className="absolute left-3.5 top-2.5 text-stone-400" />
-                  <input
-                    type="text"
-                    autoFocus
-                    value={categorySearch}
-                    onChange={(e) => setCategorySearch(e.target.value)}
-                    placeholder="Search category or service..."
-                    className="w-full pl-8 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-forest focus:bg-white transition-all"
-                  />
-                  {categorySearch && (
-                    <button
-                      type="button"
-                      onClick={() => setCategorySearch('')}
-                      className="absolute right-3.5 top-2 text-stone-400 hover:text-stone-600 text-xs px-1"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-
-                {/* 3-Column Categories Grid */}
-                {filteredLauncherCategories.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-stone-400">
-                    No categories found for &quot;{categorySearch}&quot;
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2 max-h-[340px] overflow-y-auto p-1 pr-1.5">
-                    {filteredLauncherCategories.map((cat) => (
-                      <Link
-                        key={cat.slug}
-                        href={cat.href}
-                        onClick={() => setServicesLauncherOpen(false)}
-                        className="flex flex-col items-center p-2 rounded-2xl hover:bg-stone-50 transition-all duration-150 group text-center"
-                      >
-                        <div
-                          className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-xs group-hover:scale-105 group-hover:shadow transition-transform"
-                          style={{
-                            backgroundColor: cat.bgTint || '#f5f5f5',
-                            borderColor: cat.borderTint || '#e5e5e5',
-                            borderWidth: '1px',
-                            color: cat.accentColor || '#163e35',
-                          }}
-                        >
-                          <CategoryIcon name={cat.iconName} size={22} />
-                        </div>
-                        <span className="text-[11px] font-medium text-stone-700 group-hover:text-forest mt-1.5 leading-tight line-clamp-1 w-full">
-                          {cat.shortTitle || cat.label}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-
-                {/* Bottom Promo Callout */}
-                <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-forest/5 via-lime/10 to-transparent border border-forest/10 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-stone-700">
-                    <Sparkles size={15} className="text-forest shrink-0" />
-                    <span className="font-medium text-[11px] leading-tight">
-                      Explore 13+ verified categories
-                    </span>
-                  </div>
-                  <Link
-                    href="/categories"
-                    onClick={() => setServicesLauncherOpen(false)}
-                    className="font-bold text-forest text-xs hover:underline whitespace-nowrap ml-2"
-                  >
-                    View →
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <Link className="btn post-btn" href="/post-property">
-            Post property{' '}
-            <span className="text-xs bg-lime text-forest rounded px-1.5 py-0.5">
-              FREE
-            </span>
+            Home interiors
           </Link>
 
-
-
           <button
-            className="mobile-menu"
-            aria-label="Toggle navigation"
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-          >
-            {open ? <X /> : <Menu />}
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile navigation */}
-      {open && (
-        <nav className="mobile-nav">
-          {links.map(([label, href]) => (
-            <Link
-              key={label}
-              href={href}
-              onClick={() => setOpen(false)}
-            >
-              {label}
-            </Link>
-          ))}
-
-          <button
-            style={{
-              textAlign: 'left',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              font: 'inherit',
-              padding: 0,
-              fontSize: 16,
-            }}
             onClick={handleProjectsClick}
+            className="text-[14px] font-medium text-[#252d27] hover:text-[#163e35] transition-colors cursor-pointer bg-transparent border-0 p-0 whitespace-nowrap"
           >
             Builder projects
           </button>
 
-          <Link
-            href="/properties"
-            onClick={() => setOpen(false)}
-          >
-            All properties
-          </Link>
-
-          <Link
-            href="/cities"
-            onClick={() => setOpen(false)}
-          >
-            Explore by city
-          </Link>
-
-          <Link
-            href="/post-property"
-            onClick={() => setOpen(false)}
-          >
-            Post property — Free
-          </Link>
-
           {user ? (
-            user.role === 'admin' ? (
-              <>
-                <Link
-                  href="/admin"
-                  onClick={() => setOpen(false)}
-                  className="font-bold text-forest flex items-center gap-1.5"
-                >
-                  <ShieldCheck size={16} /> Admin Command Center
-                </Link>
-                <Link
-                  href="/dashboard?view=user"
-                  onClick={() => setOpen(false)}
-                  className="muted text-sm"
-                >
-                  User Portal View
-                </Link>
+            <div className="relative user-menu-wrap" ref={userMenuRef}>
                 <button
-                  style={{
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    padding: 0,
-                    fontSize: 16,
-                    color: '#991b1b',
-                  }}
-                  onClick={() => {
-                    setOpen(false);
-                    logout();
-                  }}
-                >Logout</button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href={
-                    user.role === 'admin'
-                      ? '/admin'
-                      : user.role === 'broker'
-                      ? '/dashboard/broker'
-                      : user.role === 'owner'
-                      ? '/dashboard/owner'
-                      : user.role === 'builder'
-                      ? '/dashboard/builder'
-                      : user.role === 'service_provider' || user.role === 'service-provider'
-                      ? '/dashboard/provider'
-                      : activeAccountMode === 'provider'
-                      ? '/dashboard/provider'
-                      : '/dashboard/customer'
-                  }
-                  onClick={() => setOpen(false)}
+                  type="button"
+                  onClick={() => setUserMenuOpen((prev) => !prev)}
+                  className="w-10 h-10 rounded-full bg-forest text-white font-bold text-base flex items-center justify-center shadow-sm hover:shadow hover:bg-[#1f4a3f] ring-2 ring-forest/15 hover:ring-lime/50 transition-all cursor-pointer select-none"
+                  aria-label="User account menu"
+                  aria-expanded={userMenuOpen}
+                  title={user.name || 'Account'}
                 >
-                  {`My dashboard (${
-                    user.role === 'broker'
-                      ? 'Broker'
-                      : user.role === 'owner'
-                      ? 'Owner'
-                      : user.role === 'builder'
-                      ? 'Builder'
-                      : user.role === 'service_provider' || user.role === 'service-provider'
-                      ? 'Service Provider'
-                      : activeAccountMode === 'provider'
-                      ? 'Service Provider'
-                      : 'Customer'
-                  })`}
-                </Link>
+                  {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+                </button>
 
-                {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
-                  activeAccountMode === 'provider' ? (
-                    <button
-                      style={{
-                        textAlign: 'left',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        padding: 0,
-                        fontSize: 16,
-                        color: '#163e35',
-                        fontWeight: 600,
-                      }}
-                      onClick={() => {
-                        setOpen(false);
-                        try {
-                          localStorage.setItem('havenest_active_account_mode', 'customer');
-                        } catch (e) {}
-                        setActiveAccountMode('customer');
-                        router.push('/dashboard/customer');
-                        if (toast) toast('Switched to User Account');
-                      }}
-                    >
-                      Switch to User Account
-                    </button>
-                  ) : (
-                    <button
-                      style={{
-                        textAlign: 'left',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        padding: 0,
-                        fontSize: 16,
-                        color: '#163e35',
-                        fontWeight: 600,
-                      }}
-                      onClick={() => {
-                        setOpen(false);
-                        try {
-                          localStorage.setItem('havenest_active_account_mode', 'provider');
-                        } catch (e) {}
-                        setActiveAccountMode('provider');
-                        router.push('/dashboard/provider');
-                        if (toast) toast('Switched to Business Account');
-                      }}
-                    >
-                      Switch to Business Account
-                    </button>
-                  )
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in">
+                    {/* User Profile Header */}
+                    <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-2.5 mb-1">
+                      <div className="w-8 h-8 rounded-full bg-forest/10 text-forest font-bold text-sm flex items-center justify-center shrink-0">
+                        {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-stone-900 truncate">
+                          {user.name || 'User'}
+                        </p>
+                        <p className="text-[11px] text-stone-500 truncate capitalize">
+                          {user.role === 'broker'
+                            ? 'Broker'
+                            : user.role === 'owner'
+                            ? 'Property Owner'
+                            : user.role === 'builder'
+                            ? 'Builder'
+                            : user.role === 'channel_partner'
+                            ? 'Channel Partner'
+                            : user.role === 'service_provider' || user.role === 'service-provider' || activeAccountMode === 'provider'
+                            ? 'Service Provider'
+                            : user.role === 'admin'
+                            ? 'Administrator'
+                            : 'Customer Account'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Dropdown Options */}
+                    <div className="space-y-0.5 pt-1">
+                      <Link
+                        href={
+                          user.role === 'admin'
+                            ? '/admin'
+                            : user.role === 'broker'
+                            ? '/dashboard/broker'
+                            : user.role === 'owner'
+                            ? '/dashboard/owner'
+                            : user.role === 'builder'
+                            ? '/dashboard/builder'
+                            : user.role === 'service_provider' || user.role === 'service-provider'
+                            ? '/dashboard/provider'
+                            : activeAccountMode === 'provider'
+                            ? '/dashboard/provider'
+                            : '/dashboard/customer'
+                        }
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
+                      >
+                        <LayoutDashboard size={15} className="text-stone-500" />
+                        <span>Dashboard</span>
+                      </Link>
+
+                      {/* Switch User Account / Business Account option */}
+                      {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
+                        activeAccountMode === 'provider' ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserMenuOpen(false);
+                              try {
+                                localStorage.setItem('havenest_active_account_mode', 'customer');
+                              } catch (e) {}
+                              setActiveAccountMode('customer');
+                              router.push('/dashboard/customer');
+                              if (toast) toast('Switched to User Account');
+                            }}
+                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <User size={15} className="text-stone-500" />
+                              <span>Switch to User Account</span>
+                            </div>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                              User
+                            </span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserMenuOpen(false);
+                              try {
+                                localStorage.setItem('havenest_active_account_mode', 'provider');
+                              } catch (e) {}
+                              setActiveAccountMode('provider');
+                              router.push('/dashboard/provider');
+                              if (toast) toast('Switched to Business Account');
+                            }}
+                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Briefcase size={15} className="text-stone-500" />
+                              <span>Switch to Business Account</span>
+                            </div>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              Business
+                            </span>
+                          </button>
+                        )
+                      )}
+
+                      {user.role === 'admin' && (
+                        <Link
+                          href="/dashboard?view=user"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
+                        >
+                          <User size={15} className="text-stone-500" />
+                          <span>User Portal View</span>
+                        </Link>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          logout();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all text-left cursor-pointer"
+                      >
+                        <LogOut size={15} className="text-red-500" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="text-[14px] font-medium text-[#252d27] hover:text-[#163e35] transition-colors whitespace-nowrap"
+              >
+                Log in
+              </Link>
+            )}
 
+            {/* Universal Notification Bell for Logged-In Users */}
+            {user && (
+              <div className="relative shrink-0">
                 <button
-                  style={{
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    padding: 0,
-                    fontSize: 16,
-                    color: '#991b1b',
-                  }}
-                  onClick={() => {
-                    setOpen(false);
-                    logout();
-                  }}
-                >Logout</button>
-              </>
-            )
-          ) : (
+                  type="button"
+                  onClick={() => setNotificationOpen(!notificationOpen)}
+                  className="relative p-2 text-emerald-900 hover:text-[#163e35] transition-colors flex items-center justify-center cursor-pointer"
+                  title="Notifications"
+                  aria-label="Notifications"
+                >
+                  <Bell size={21} className="text-emerald-900" />
+                  {unreadNotifCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                  )}
+                </button>
+                <NotificationPanel
+                  isOpen={notificationOpen}
+                  onClose={() => setNotificationOpen(false)}
+                  onUpdated={reloadNotifs}
+                />
+              </div>
+            )}
+
+            {/* Google-style 9-Dots Services / Category App Launcher */}
+            <div
+              className="relative services-launcher-wrap flex items-center shrink-0"
+              onMouseEnter={handleLauncherMouseEnter}
+              onMouseLeave={handleLauncherMouseLeave}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setServicesLauncherOpen((prev) => !prev);
+                  setCategorySearch('');
+                }}
+                aria-label="UrbanFindr Categories & Services"
+                aria-expanded={servicesLauncherOpen}
+                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                  servicesLauncherOpen
+                    ? 'bg-stone-200 text-forest shadow-inner'
+                    : 'text-[#252d27] hover:text-forest hover:bg-stone-100'
+                }`}
+                title="Explore by Category"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <circle cx="5" cy="5" r="2.2" />
+                  <circle cx="12" cy="5" r="2.2" />
+                  <circle cx="19" cy="5" r="2.2" />
+                  <circle cx="5" cy="12" r="2.2" />
+                  <circle cx="12" cy="12" r="2.2" />
+                  <circle cx="19" cy="12" r="2.2" />
+                  <circle cx="5" cy="19" r="2.2" />
+                  <circle cx="12" cy="19" r="2.2" />
+                  <circle cx="19" cy="19" r="2.2" />
+                </svg>
+              </button>
+
+              {/* Services Popup with Instant Search & Category Grid */}
+              {servicesLauncherOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-[360px] bg-white rounded-3xl shadow-2xl border border-stone-200/90 z-50 p-4 transition-all duration-150 animate-in fade-in"
+                  onMouseEnter={handleLauncherMouseEnter}
+                  onMouseLeave={handleLauncherMouseLeave}
+                >
+                  <div className="flex items-center justify-between px-2 pt-1 pb-2 mb-2 border-b border-stone-100">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-stone-900 tracking-tight">
+                        Explore by Category
+                      </span>
+                      <span className="text-[10px] font-bold text-forest bg-forest/10 px-1.5 py-0.5 rounded-full">
+                        {serviceCategories.length}
+                      </span>
+                    </div>
+                    <Link
+                      href="/categories"
+                      onClick={() => setServicesLauncherOpen(false)}
+                      className="text-xs font-semibold text-forest hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>All categories</span>
+                      <ArrowRight size={13} />
+                    </Link>
+                  </div>
+
+                  <div className="relative mb-3 px-1">
+                    <Search size={14} className="absolute left-3.5 top-2.5 text-stone-400" />
+                    <input
+                      type="text"
+                      autoFocus
+                      value={categorySearch}
+                      onChange={(e) => setCategorySearch(e.target.value)}
+                      placeholder="Search category or service..."
+                      className="w-full pl-8 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-forest focus:bg-white transition-all"
+                    />
+                    {categorySearch && (
+                      <button
+                        type="button"
+                        onClick={() => setCategorySearch('')}
+                        className="absolute right-3.5 top-2 text-stone-400 hover:text-stone-600 text-xs px-1"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+
+                  {filteredLauncherCategories.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-stone-400">
+                      No categories found for &quot;{categorySearch}&quot;
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 max-h-[340px] overflow-y-auto p-1 pr-1.5">
+                      {filteredLauncherCategories.map((cat) => (
+                        <Link
+                          key={cat.slug}
+                          href={cat.href}
+                          onClick={() => setServicesLauncherOpen(false)}
+                          className="flex flex-col items-center p-2 rounded-2xl hover:bg-stone-50 transition-all duration-150 group text-center"
+                        >
+                          <div
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs group-hover:scale-105 group-hover:shadow transition-transform"
+                            style={{
+                              backgroundColor: cat.bgTint || '#f5f5f5',
+                              borderColor: cat.borderTint || '#e5e5e5',
+                              borderWidth: '1px',
+                              color: cat.accentColor || '#163e35',
+                            }}
+                          >
+                            <CategoryIcon name={cat.iconName} size={22} />
+                          </div>
+                          <span className="text-[11px] font-medium text-stone-700 group-hover:text-forest mt-1.5 leading-tight line-clamp-1 w-full">
+                            {cat.shortTitle || cat.label}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-forest/5 via-lime/10 to-transparent border border-forest/10 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-stone-700">
+                      <Sparkles size={15} className="text-forest shrink-0" />
+                      <span className="font-medium text-[11px] leading-tight">
+                        Explore 13+ verified categories
+                      </span>
+                    </div>
+                    <Link
+                      href="/categories"
+                      onClick={() => setServicesLauncherOpen(false)}
+                      className="font-bold text-forest text-xs hover:underline whitespace-nowrap ml-2"
+                    >
+                      View →
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Link
+              href="/post-property"
+              className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-[#163e35] hover:bg-[#204e43] text-white font-medium text-[13.5px] transition-colors whitespace-nowrap shadow-xs shrink-0"
+            >
+              <span>Post property</span>{' '}
+              <span className="bg-[#d8edb3] text-[#163e35] text-[10.5px] font-black px-1.5 py-0.5 rounded leading-none">
+                FREE
+              </span>
+            </Link>
+          </div>
+
+        {/* Right side on mobile (< lg): Log in + Hamburger Menu Button */}
+        <div className="flex lg:hidden items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {!user ? (
             <Link
               href="/login"
-              onClick={() => setOpen(false)}
+              className="text-[13px] sm:text-[14px] font-semibold text-[#252d27] hover:text-[#163e35] transition-colors px-1.5 sm:px-2 py-1"
             >
-              Log in / Register
+              Log in
             </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((prev) => !prev)}
+              className="w-8 h-8 rounded-full bg-forest text-white font-bold text-xs flex items-center justify-center shadow-xs"
+              aria-label="User account menu"
+            >
+              {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+            </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setOpen((prev) => !prev)}
+            className="p-1.5 sm:p-2 rounded-xl text-stone-800 hover:text-forest hover:bg-stone-100 transition-colors flex items-center justify-center cursor-pointer shrink-0"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-expanded={open}
+          >
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Backdrop Overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[1040] lg:hidden"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile navigation drawer matching Screens 2, 3, 4 */}
+      {open && (
+        <nav
+          className="fixed inset-y-0 right-0 w-[88%] max-w-[360px] bg-white z-[1050] shadow-2xl flex flex-col overflow-y-auto lg:hidden animate-in slide-in-from-right duration-300"
+          aria-label="Mobile navigation"
+        >
+          {/* Header with logo & close button */}
+          <div className="bg-gradient-to-b from-[#eaf4ed] to-white px-5 pt-5 pb-4 border-b border-stone-100 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="brand-icon shrink-0 p-1.5 rounded-lg bg-forest text-lime">
+                <House size={18} />
+              </span>
+              <div className="flex flex-col justify-center">
+                <span className="brand-text text-xl font-bold tracking-tight leading-none">
+                  urban<span className="brand-finder">findr</span><span className="brand-dot">.</span>
+                </span>
+                <span className="text-[9.5px] font-medium text-stone-500 leading-none mt-1">
+                  Find. Connect. Build Your Life.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center cursor-pointer transition-colors"
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* View Switcher: Main Menu (Screen 2) vs Categories (Screen 3 & 4) */}
+          <div className="flex items-center gap-1.5 px-4 pt-3 pb-2 shrink-0 border-b border-stone-100">
+            <button
+              type="button"
+              onClick={() => setMenuView('main')}
+              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                menuView === 'main'
+                  ? 'bg-forest text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              Main Menu
+            </button>
+            <button
+              type="button"
+              onClick={() => setMenuView('categories')}
+              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                menuView === 'categories'
+                  ? 'bg-forest text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              Menu Options
+            </button>
+          </div>
+
+          {/* Drawer Body Content */}
+          <div className="p-4 flex-1 space-y-4">
+            {menuView === 'main' ? (
+              /* Screen 2: Main Menu */
+              <div className="space-y-1">
+                <Link
+                  href="/"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <House size={17} className="text-forest shrink-0" />
+                  <span>Home</span>
+                </Link>
+
+                <Link
+                  href="/properties"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <Building2 size={17} className="text-forest shrink-0" />
+                  <span>Properties</span>
+                </Link>
+
+                <Link
+                  href="/categories"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <Sparkles size={17} className="text-forest shrink-0" />
+                  <span>Home Services</span>
+                </Link>
+
+                <Link
+                  href="/categories/lawyers"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <Scale size={17} className="text-forest shrink-0" />
+                  <span>Lawyers &amp; Maintenance</span>
+                </Link>
+
+                <Link
+                  href="/categories/ac-technicians"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <Wrench size={17} className="text-forest shrink-0" />
+                  <span>AC Technicians</span>
+                </Link>
+
+                <Link
+                  href="/categories/electricians"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <Zap size={17} className="text-forest shrink-0" />
+                  <span>Electricians</span>
+                </Link>
+
+                <Link
+                  href="/categories/pest-control"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <ShieldCheck size={17} className="text-forest shrink-0" />
+                  <span>Pest Control</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setMenuView('categories')}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <Grid size={17} className="text-forest shrink-0" />
+                    <span>More Services</span>
+                  </div>
+                  <ChevronRight size={15} className="text-stone-400" />
+                </button>
+
+                <div className="my-2 border-t border-stone-100" />
+
+                <button
+                  type="button"
+                  onClick={handleProjectsClick}
+                  className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors text-left cursor-pointer"
+                >
+                  <Boxes size={17} className="text-forest shrink-0" />
+                  <span>Builder Projects</span>
+                </button>
+              </div>
+            ) : (
+              /* Screens 3 & 4: Menu Options & Categories */
+              <div className="space-y-4">
+                {/* Real Estate */}
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eef5ee] text-forest text-xs font-bold mb-1.5">
+                    <Building2 size={13} />
+                    <span>Real Estate</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <Link
+                      href="/properties"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Properties</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/interiors"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Home Interior</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Home Services */}
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eef5ee] text-forest text-xs font-bold mb-1.5">
+                    <Wrench size={13} />
+                    <span>Home Services</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <Link
+                      href="/categories/electricians"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Electricians</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/categories/ac-technicians"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>AC Technicians</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/categories/pest-control"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Pest Control</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/categories/pool-cleaning"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Pool Cleaning</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/categories/tank-cleaning"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Tank Cleaning</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/categories/inverter-maintenance"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Inverter Maintenance</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Professional */}
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eef5ee] text-forest text-xs font-bold mb-1.5">
+                    <Briefcase size={13} />
+                    <span>Professional</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <Link
+                      href="/categories/lawyers"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Lawyers</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/categories/landscapers"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Landscape</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Business */}
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eef5ee] text-forest text-xs font-bold mb-1.5">
+                    <Building2 size={13} />
+                    <span>Business</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <Link
+                      href="/categories/lift-maintenance"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Lift Maintenance</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/categories/office-supplies"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Office Supply</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                    <Link
+                      href="/categories/facility-management"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-forest transition-colors"
+                    >
+                      <span>Facility Management</span>
+                      <ChevronRight size={15} className="text-stone-400" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Promo Box (Screen 4) */}
+            <div className="p-3.5 rounded-2xl bg-[#f0f7f2] border border-[#d2e7d7] flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-9 h-9 rounded-xl bg-forest/10 text-forest flex items-center justify-center shrink-0">
+                  <House size={18} />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-xs font-extrabold text-stone-900 leading-tight">Find Your Perfect Property</div>
+                  <div className="text-[10px] text-stone-500 mt-0.5">Direct owner connections</div>
+                </div>
+              </div>
+              <Link
+                href="/properties"
+                onClick={() => setOpen(false)}
+                className="px-2.5 py-1.5 bg-forest text-white text-[11px] font-bold rounded-xl shadow-xs hover:bg-[#1f4a3f] whitespace-nowrap transition-colors shrink-0"
+              >
+                Search Now →
+              </Link>
+            </div>
+          </div>
+
+          {/* Action Footer (Screens 2 & 4) */}
+          <div className="p-4 pt-2 border-t border-stone-100 space-y-2.5 mt-auto shrink-0 bg-white">
+            {user ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-3 py-2 bg-stone-50 rounded-xl border border-stone-100">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-forest text-white font-bold text-xs flex items-center justify-center shrink-0">
+                      {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-stone-900 truncate">{user.name || 'User'}</div>
+                      <div className="text-[10px] text-stone-500 capitalize">{user.role || 'Member'}</div>
+                    </div>
+                  </div>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setOpen(false)}
+                    className="text-xs font-bold text-forest hover:underline"
+                  >
+                    Dashboard
+                  </Link>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-stone-300 font-bold text-stone-800 bg-white hover:bg-stone-50 shadow-2xs transition-all text-sm"
+              >
+                <User size={16} className="text-stone-600" />
+                <span>Log In</span>
+              </Link>
+            )}
+
+            <Link
+              href="/post-property"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-forest text-white font-bold text-sm shadow-md hover:bg-[#1f4a3f] transition-all"
+            >
+              <Send size={15} />
+              <span>Post Property</span>
+              <span className="bg-[#d8edb3] text-[#163e35] text-[10px] font-black px-1.5 py-0.5 rounded ml-1">
+                FREE
+              </span>
+            </Link>
+
+            <p className="text-[11px] text-stone-400 text-center pt-1 font-medium">
+              &copy; 2026 UrbanFindr. All rights reserved.
+            </p>
+          </div>
         </nav>
       )}
 
@@ -870,7 +1076,7 @@ export function Header() {
             Featured properties
           </Link>
 
-          <Link href="/#latest-listings">
+          <Link href="/#latest-listings" className="hidden sm:inline-flex">
             Latest listings
           </Link>
         </nav>
@@ -889,8 +1095,8 @@ export function Header() {
 export function Footer() {
   return (
     <footer className="bg-forest text-white" suppressHydrationWarning>
-      <div className="wrap mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 py-12" suppressHydrationWarning>
-        <div className="col-span-2">
+      <div className="wrap mx-auto grid grid-cols-2 md:grid-cols-5 gap-x-6 sm:gap-x-8 gap-y-10 py-12" suppressHydrationWarning>
+        <div className="col-span-2 md:col-span-2">
           <Link
             href="/"
             className="brand !text-white flex items-center gap-2 mb-4"
@@ -910,8 +1116,8 @@ export function Footer() {
             <span className="bg-white/10 px-2.5 py-1 rounded">Instant Site Visits</span>
           </div>
 
-          <p className="mt-6 text-xs text-white/50">
-            Independent demonstration real estate platform.
+          <p className="mt-6 text-xs text-white/60 font-medium">
+            India&apos;s verified direct-owner property and trusted home services network.
           </p>
         </div>
 
@@ -943,7 +1149,7 @@ export function Footer() {
               Build your home
             </Link>
             <Link href="/categories" className="block hover:text-lime">
-              All categories & services
+              All categories &amp; services
             </Link>
           </div>
         </div>
@@ -978,7 +1184,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div>
+        <div className="col-span-2 sm:col-span-1 md:col-span-1">
           <h4 className="text-base font-semibold mb-3">
             Trust &amp; Legal
           </h4>
@@ -1001,9 +1207,6 @@ export function Footer() {
             </Link>
             <Link href="/dashboard" className="block hover:text-lime">
               Your dashboard
-            </Link>
-            <Link href="/PHOTO-SOURCES.md" className="block hover:text-lime">
-              Photo sources
             </Link>
           </div>
         </div>

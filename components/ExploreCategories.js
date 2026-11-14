@@ -15,7 +15,7 @@ export default function ExploreCategories() {
     : serviceCategories.slice(0, 6);
 
   return (
-    <section className="wrap pt-44 sm:pt-28 pb-4" aria-label="Explore by Category">
+    <section className="wrap pt-12 sm:pt-16 lg:pt-28 pb-4" aria-label="Explore by Category">
       {/* Section Header */}
       <div className="flex items-end justify-between gap-4 mb-3 sm:mb-4">
         <div>
@@ -37,22 +37,14 @@ export default function ExploreCategories() {
         </Link>
       </div>
 
-      {/* Desktop Layout: Exactly 13 Columns matching the laptop mockup in user photo */}
-      <div className="hidden lg:grid lg:grid-cols-[repeat(13,minmax(0,1fr))] gap-2 xl:gap-2.5 items-stretch">
+      {/* Desktop Layout: Exactly 13 Columns on wide screens */}
+      <div className="hidden xl:grid xl:grid-cols-[repeat(13,minmax(0,1fr))] gap-2 xl:gap-2.5 items-stretch">
         {serviceCategories.map((cat) => (
           <Link
             key={cat.slug}
             href={cat.href}
             className="group relative flex flex-col items-center justify-center min-h-[86px] xl:min-h-[90px] py-2.5 px-1 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50/70 hover:border-forest/50 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-center w-full"
           >
-            {/* Live Indicator Dot for active categories */}
-            {cat.isLive && (
-              <span
-                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"
-                title="Active now"
-              />
-            )}
-
             {/* Vibrant Colored Icon */}
             <div className="w-8 h-8 flex items-center justify-center shrink-0 mb-1.5 group-hover:scale-110 transition-transform duration-200">
               <CategoryIcon name={cat.iconName} size={25} />
@@ -73,21 +65,14 @@ export default function ExploreCategories() {
         ))}
       </div>
 
-      {/* Tablet Layout (6-7 Columns) */}
-      <div className="hidden sm:grid lg:hidden sm:grid-cols-4 md:grid-cols-6 gap-2.5 items-stretch">
+      {/* Tablet & Small Laptop Layout (4-7 Columns) */}
+      <div className="hidden sm:grid xl:hidden sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2.5 items-stretch">
         {serviceCategories.map((cat) => (
           <Link
             key={cat.slug}
             href={cat.href}
             className="group relative flex flex-col items-center justify-center min-h-[86px] py-2.5 px-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50/70 hover:border-forest/50 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-center w-full"
           >
-            {cat.isLive && (
-              <span
-                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"
-                title="Active now"
-              />
-            )}
-
             <div className="w-8 h-8 flex items-center justify-center shrink-0 mb-1.5 group-hover:scale-110 transition-transform duration-200">
               <CategoryIcon name={cat.iconName} size={24} />
             </div>
@@ -115,10 +100,6 @@ export default function ExploreCategories() {
               href={cat.href}
               className="group relative flex flex-col items-center justify-center min-h-[82px] py-2.5 px-1.5 rounded-xl border border-stone-200/90 bg-white active:scale-95 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all text-center"
             >
-              {cat.isLive && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-1 ring-white" />
-              )}
-
               <div className="w-8 h-8 flex items-center justify-center shrink-0 mb-1">
                 <CategoryIcon name={cat.iconName} size={23} />
               </div>
