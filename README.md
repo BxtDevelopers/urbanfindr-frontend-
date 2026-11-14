@@ -269,24 +269,6 @@ Dedicated category, city and posting App Router pages and the remaining catch-al
 - Notifications are in-app; messaging polls every 10 seconds. No external communications or payments are sent.
 - For hosting beyond your computer, configure database authentication/network access, HTTPS, backups, persistent uploads and your own support/privacy process. This is source code for an independently operated application.
 
-## Troubleshooting
-
-| Issue | Resolution |
-| --- | --- |
-| MongoDB unavailable / ECONNREFUSED | Start MongoDB; check port 27017 and MONGODB_URI |
-| Compass shows no database | Run seed against the same URI, then refresh |
-| Cross-origin request blocked | Match browser host/port to APP_URL exactly and restart |
-| JWT secret error | Generate and paste a random secret of at least 32 characters |
-| Too many requests | Wait for the action limit window to reset |
-| Edited listing disappeared publicly | Admin must review owner edits again |
-| Cannot publish property | Open Post property and explicitly enable owner tools, or use an owner/admin account |
-| Port already occupied | Stop the other process, or use `npm run dev -- --port 3001` and update APP_URL |
-| Seed password changed but login fails | Seed preserves users; use the original password or a fresh demo database |
-| Integration MongoDB cannot start | Use a supported local OS and permit MongoDB binary downloads/process startup |
-| Uploaded images missing after moving | Copy storage/uploads with the project and back up the database |
-
-The ZIP includes all source files; dependencies are installed with `npm ci`, rather than bundled as node_modules. No unfinished placeholder pages or pseudocode are included. Original city illustrations and floor plans can be regenerated with `node scripts/generate-assets.js`. Stock photographs are bundled separately; their source links are in PHOTO-SOURCES.md.
-
 ## Updating from the earlier project
 
 Extract this complete folder separately and keep your existing `.env.local` values and `storage/uploads` if you want to retain your earlier setup. Reuse the same local MongoDB URI to retain accounts, messages, listings and enquiries. There is no database wipe or mandatory destructive migration. Existing records get safe schema defaults for new fields, and admins can mark approved listings as featured. On a disposable demo database, rerunning the seed fills the new discovery metadata on earlier seed listings without clearing the database or resetting passwords.
