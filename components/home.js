@@ -17,7 +17,9 @@ import {
   ChevronRight,
   Check,
   BadgeCheck,
-  IndianRupee
+  IndianRupee,
+  Scale,
+  Sparkles,
 } from 'lucide-react';
 import { useData } from './providers';
 import { PropertyCard, ProjectCard, SectionTitle, State, Image } from './ui';
@@ -451,11 +453,11 @@ export default function HomePage() {
           </div>
 
           {/* Headline */}
-          <h1 className="!text-[34px] sm:!text-[46px] lg:!text-[52px] !font-extrabold !leading-[1.12] !tracking-[-0.03em] text-[#1f2923]">
-            Find Your Dream Home
-            <br />
-            <span className="text-[#1f2923]">&amp; </span>
-            <span className="text-[#163e35]">Trusted Services</span>
+          <h1 className="!text-[24px] min-[360px]:!text-[26px] min-[390px]:!text-[29px] min-[430px]:!text-[33px] sm:!text-[46px] lg:!text-[52px] !font-extrabold !leading-[1.15] !tracking-[-0.03em] text-[#1f2923]">
+            <span className="block whitespace-nowrap">Find Your Dream Home</span>
+            <span className="block text-[#1f2923] mt-0.5 sm:mt-1">
+              &amp; <span className="text-[#163e35]">Trusted Services</span>
+            </span>
           </h1>
 
           {/* Subtitle */}
@@ -463,16 +465,16 @@ export default function HomePage() {
             Buy, Rent or Explore a wide range of home services — all in one place with UrbanFindr.
           </p>
 
-          {/* Quick Category Strip (matching reference duotone icon row in website colors) */}
-          <div className="mt-7 grid grid-cols-3 sm:grid-cols-6 items-center gap-y-3 sm:gap-y-0">
+          {/* Quick Category Strip (3 columns on mobile, 6 on desktop - matching reference image) */}
+          <div className="my-5 grid grid-cols-3 sm:grid-cols-6 items-center gap-y-4 sm:gap-y-0 gap-x-2">
             {heroQuickCategories.map((cat, idx) => (
               <Link
                 key={cat.label}
                 href={cat.href}
                 className={`group relative flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 transition-all text-center ${
                   cat.isMore
-                    ? 'rounded-2xl bg-white/80 backdrop-blur-xs border border-[#dce3d6] shadow-[0_4px_14px_rgba(22,62,53,0.06)] hover:bg-white hover:border-[#163e35]/40'
-                    : 'rounded-xl hover:bg-white/60'
+                    ? 'rounded-2xl bg-white border border-[#dce3d6] shadow-[0_4px_14px_rgba(22,62,53,0.06)] hover:bg-white hover:border-[#163e35]/40 active:scale-95'
+                    : 'rounded-xl hover:bg-white/60 active:scale-95'
                 }`}
               >
                 {!cat.isMore && idx < heroQuickCategories.length - 1 && (
@@ -500,18 +502,22 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Mobile/Tablet Hero Image Card */}
-        <div className="lg:hidden mt-6 rounded-2xl overflow-hidden border border-[#e6e8e1] shadow-sm bg-white pointer-events-auto">
+        {/* Mobile Hero Image Directly Below the Services Grid (Matching Reference Image) */}
+        <div className="lg:hidden mt-2 relative rounded-2xl overflow-hidden border border-[#e6e8e1] shadow-sm bg-white pointer-events-auto">
           <img
             src="/images/hero.png"
             alt="Family looking at their dream home"
             className="w-full h-56 sm:h-72 object-cover object-[60%_20%]"
           />
+          {/* Corner Badge N */}
+          <div className="absolute bottom-2.5 left-2.5 w-7 h-7 rounded-full bg-black/75 text-white flex items-center justify-center text-[10px] font-bold backdrop-blur-xs">
+            N
+          </div>
         </div>
       </div>
 
-      {/* Bottom Search Bar: ~35% Inside Hero (upper), ~65% Outside Below (bottom) */}
-      <div className="wrap relative z-40 -mb-40 sm:-mb-[72px] pointer-events-auto">
+      {/* Bottom Search Bar */}
+      <div className="wrap relative z-40 mt-3 mb-4 sm:mb-6 lg:mt-0 lg:-mb-[72px] pointer-events-auto">
         <form
           ref={searchBarRef}
           onSubmit={search}
@@ -828,7 +834,7 @@ export default function HomePage() {
     <ExploreCategories />
 
     {/* 1. Featured Properties (Seamless Infinite Carousel) */}
-    <section className="wrap section !pt-8" id="featured-properties">
+    <section className="wrap section !pt-8 !pb-4 sm:!pb-6" id="featured-properties">
       <VerifiedPropertiesCarousel
         items={featured.data?.items}
         loading={featured.loading}

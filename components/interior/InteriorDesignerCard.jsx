@@ -98,8 +98,10 @@ export default function InteriorDesignerCard({ onBookConsultation }) {
                   type="button"
                   onClick={() => onBookConsultation && onBookConsultation(designer)}
                   className="flex-1 btn btn-primary text-xs py-1.5 flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                  title="Book Consultation"
+                  aria-label="Book Consultation"
                 >
-                  <Sparkles size={12} /> Book
+                  <Sparkles size={12} /> Book Consultation
                 </button>
                 <button
                   type="button"

@@ -76,7 +76,7 @@ export default function BuilderProjectsBanner() {
   const currentProp = PROPERTIES[currentIndex];
 
   return (
-    <section className="wrap relative w-full !pt-32 sm:!pt-36 lg:!pt-44 !pb-14 overflow-visible" aria-label="Builder Projects Showcase">
+    <section className="wrap relative w-full pt-4 sm:pt-6 lg:!pt-36 xl:!pt-44 pb-10 overflow-visible" aria-label="Builder Projects Showcase">
       {/* 
         CRITICAL: Parent section has generous top clearance (!pt-36 to !pt-44)
         so the long building protruding out of the top has ample breathing room! 
@@ -98,9 +98,9 @@ export default function BuilderProjectsBanner() {
           </div>
 
           {/* =========================================
-              LEFT COLUMN: ~65% DETAILS
+              LEFT COLUMN: ~64% DETAILS
              ========================================= */}
-          <div className="relative z-10 w-full md:w-[62%] lg:w-[64%] flex flex-col justify-between pr-0 md:pr-6 lg:pr-8 space-y-5">
+          <div className="relative z-10 w-full lg:w-[64%] flex flex-col justify-between pr-0 lg:pr-8 space-y-5">
             
             {/* Top row: Badge, Builder & Slide Index */}
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -203,21 +203,21 @@ export default function BuilderProjectsBanner() {
           {/* =========================================
               RIGHT COLUMN: POP-OUT BUILDING (WITHOUT TEXT PILLS)
              ========================================= */}
-          <div className="w-full md:w-[38%] lg:w-[36%] relative md:static flex justify-center items-end pointer-events-none mt-8 md:mt-0 overflow-visible">
+          <div className="w-full lg:w-[36%] relative lg:static flex justify-center items-end pointer-events-none mt-8 lg:mt-0 overflow-visible">
             
             {/* Skyscraper Cutout Image:
-                TOP: Pops out outside the card / section above!
+                TOP: Pops out outside the card from the top ONLY in laptop/desktop!
                 BOTTOM: Strictly contained at bottom: 0 (stays inside section only) */}
-            <div className="relative md:absolute md:right-4 lg:right-8 bottom-0 w-[260px] sm:w-[300px] md:w-[350px] lg:w-[420px] xl:w-[460px] h-[360px] sm:h-[420px] md:h-[580px] lg:h-[660px] xl:h-[720px] max-w-none transition-all duration-700 ease-out group-hover:scale-[1.02] z-20 flex items-end justify-center md:justify-end overflow-visible pointer-events-none">
-              <div className="relative w-full h-full flex items-end">
+            <div className="relative lg:absolute lg:right-4 xl:right-8 bottom-0 w-[240px] sm:w-[280px] md:w-[320px] lg:w-[440px] xl:w-[490px] h-[280px] sm:h-[340px] md:h-[400px] lg:h-[calc(100%+140px)] xl:h-[calc(100%+170px)] max-w-none transition-all duration-700 ease-out group-hover:scale-[1.02] z-20 flex items-end justify-center lg:justify-end overflow-visible pointer-events-none">
+              <div className="relative w-full h-full flex items-end overflow-visible">
                 <Image
                   key={currentProp.cutoutImage}
                   src={currentProp.cutoutImage}
                   alt={currentProp.alt}
                   fill
                   priority
-                  sizes="(max-width: 768px) 280px, (max-width: 1200px) 420px, 460px"
-                  className="object-contain object-bottom filter drop-shadow-[0_-20px_35px_rgba(0,0,0,0.65)] drop-shadow-[0_15px_25px_rgba(193,154,107,0.25)] transition-opacity duration-500"
+                  sizes="(max-width: 768px) 280px, (max-width: 1200px) 440px, 490px"
+                  className="object-contain object-bottom filter drop-shadow-[0_-20px_35px_rgba(0,0,0,0.65)] drop-shadow-[0_15px_25px_rgba(193,154,107,0.25)] transition-opacity duration-500 overflow-visible"
                 />
               </div>
             </div>
