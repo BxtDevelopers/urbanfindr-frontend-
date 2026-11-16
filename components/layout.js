@@ -6,6 +6,7 @@ import {  useState, useEffect, useRef, Fragment, useMemo  } from 'react';
 import {
   Menu,
   X,
+  ArrowLeft,
   ArrowUpRight,
   House,
   Search,
@@ -85,6 +86,254 @@ function CityPickerModal({ onClose }) {
             </button>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ServicesDropdownPanel({
+  onClose,
+  categorySearch,
+  setCategorySearch,
+  filteredLauncherCategories,
+  handleLauncherMouseEnter,
+  handleLauncherMouseLeave,
+  className = '',
+}) {
+  return (
+    <div
+      className={className}
+      onMouseEnter={handleLauncherMouseEnter}
+      onMouseLeave={handleLauncherMouseLeave}
+    >
+      <div className="flex items-center justify-between px-2 pt-1 pb-2 mb-2 border-b border-stone-100">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-stone-900 tracking-tight">
+            Explore by Category
+          </span>
+          <span className="text-[10px] font-bold text-forest bg-forest/10 px-1.5 py-0.5 rounded-full">
+            {serviceCategories.length}
+          </span>
+        </div>
+        <Link
+          href="/categories"
+          onClick={onClose}
+          className="text-xs font-semibold text-forest hover:underline inline-flex items-center gap-1"
+        >
+          <span>All categories</span>
+          <ArrowRight size={13} />
+        </Link>
+      </div>
+
+      <div className="relative mb-3 px-1">
+        <Search size={14} className="absolute left-3.5 top-2.5 text-stone-400" />
+        <input
+          type="text"
+          autoFocus
+          value={categorySearch}
+          onChange={(e) => setCategorySearch(e.target.value)}
+          placeholder="Search category or service..."
+          className="w-full pl-8 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-forest focus:bg-white transition-all"
+        />
+        {categorySearch && (
+          <button
+            type="button"
+            onClick={() => setCategorySearch('')}
+            className="absolute right-3.5 top-2 text-stone-400 hover:text-stone-600 text-xs px-1"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {filteredLauncherCategories.length === 0 ? (
+        <div className="py-6 text-center text-xs text-stone-400">
+          No categories found for &quot;{categorySearch}&quot;
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 max-h-[340px] overflow-y-auto p-1 pr-1.5">
+          {filteredLauncherCategories.map((cat) => (
+            <Link
+              key={cat.slug}
+              href={cat.href}
+              onClick={onClose}
+              className="flex flex-col items-center p-2 rounded-2xl hover:bg-stone-50 transition-all duration-150 group text-center"
+            >
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs group-hover:scale-105 group-hover:shadow transition-transform"
+                style={{
+                  backgroundColor: cat.bgTint || '#f5f5f5',
+                  borderColor: cat.borderTint || '#e5e5e5',
+                  borderWidth: '1px',
+                  color: cat.accentColor || '#163e35',
+                }}
+              >
+                <CategoryIcon name={cat.iconName} size={22} />
+              </div>
+              <span className="text-[11px] font-medium text-stone-700 group-hover:text-forest mt-1.5 leading-tight line-clamp-1 w-full">
+                {cat.shortTitle || cat.label}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-forest/5 via-lime/10 to-transparent border border-forest/10 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-2 text-stone-700">
+          <Sparkles size={15} className="text-forest shrink-0" />
+          <span className="font-medium text-[11px] leading-tight">
+            Explore 13+ verified categories
+          </span>
+        </div>
+        <Link
+          href="/categories"
+          onClick={onClose}
+          className="font-bold text-forest text-xs hover:underline whitespace-nowrap ml-2"
+        >
+          View →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function UserAccountDropdownMenu({
+  user,
+  activeAccountMode,
+  setActiveAccountMode,
+  onClose,
+  logout,
+  router,
+  toast,
+  className = '',
+}) {
+  if (!user) return null;
+
+  return (
+    <div className={className}>
+      {/* User Profile Header (shows name and role) */}
+      <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-2.5 mb-1">
+        <div className="w-8 h-8 rounded-full bg-forest/10 text-forest font-bold text-sm flex items-center justify-center shrink-0">
+          {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-stone-900 truncate">
+            {user.name || 'User'}
+          </p>
+          <p className="text-[11px] text-stone-500 truncate capitalize">
+            {user.role === 'broker'
+              ? 'Broker'
+              : user.role === 'owner'
+              ? 'Property Owner'
+              : user.role === 'builder'
+              ? 'Builder'
+              : user.role === 'channel_partner'
+              ? 'Channel Partner'
+              : user.role === 'service_provider' || user.role === 'service-provider' || activeAccountMode === 'provider'
+              ? 'Service Provider'
+              : user.role === 'admin'
+              ? 'Administrator'
+              : 'Customer Account'}
+          </p>
+        </div>
+      </div>
+
+      {/* Dropdown Options */}
+      <div className="space-y-0.5 pt-1">
+        <Link
+          href={
+            user.role === 'admin'
+              ? '/admin'
+              : user.role === 'broker'
+              ? '/dashboard/broker'
+              : user.role === 'owner'
+              ? '/dashboard/owner'
+              : user.role === 'builder'
+              ? '/dashboard/builder'
+              : user.role === 'service_provider' || user.role === 'service-provider'
+              ? '/dashboard/provider'
+              : activeAccountMode === 'provider'
+              ? '/dashboard/provider'
+              : '/dashboard/customer'
+          }
+          onClick={onClose}
+          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
+        >
+          <LayoutDashboard size={15} className="text-stone-500" />
+          <span>Dashboard</span>
+        </Link>
+
+        {/* Switch User Account / Business Account option */}
+        {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
+          activeAccountMode === 'provider' ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                try {
+                  localStorage.setItem('havenest_active_account_mode', 'customer');
+                } catch (e) {}
+                setActiveAccountMode('customer');
+                router.push('/dashboard/customer');
+                if (toast) toast('Switched to User Account');
+              }}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <User size={15} className="text-stone-500" />
+                <span>Switch to User Account</span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                User
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                try {
+                  localStorage.setItem('havenest_active_account_mode', 'provider');
+                } catch (e) {}
+                setActiveAccountMode('provider');
+                router.push('/dashboard/provider');
+                if (toast) toast('Switched to Business Account');
+              }}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <Briefcase size={15} className="text-stone-500" />
+                <span>Switch to Business Account</span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                Business
+              </span>
+            </button>
+          )
+        )}
+
+        {user.role === 'admin' && (
+          <Link
+            href="/dashboard?view=user"
+            onClick={onClose}
+            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
+          >
+            <User size={15} className="text-stone-500" />
+            <span>User Portal View</span>
+          </Link>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            logout();
+          }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all text-left cursor-pointer"
+        >
+          <LogOut size={15} className="text-red-500" />
+          <span>Logout</span>
+        </button>
       </div>
     </div>
   );
@@ -284,10 +533,73 @@ export function Header() {
     setShowProjectsModal(true);
   }
 
+  // Mobile navigation history stack: keeps track of sequential page visits
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const currentUrl = window.location.pathname + (window.location.search || '');
+      const raw = sessionStorage.getItem('urbanfindr_nav_history');
+      let stack = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(stack)) stack = [];
+
+      const lastEntry = stack[stack.length - 1];
+      if (lastEntry !== currentUrl) {
+        // If user already was on the previous page (went backward), trim history stack to that position
+        const prevIdx = stack.lastIndexOf(currentUrl);
+        if (prevIdx !== -1 && prevIdx === stack.length - 2) {
+          stack = stack.slice(0, prevIdx + 1);
+        } else {
+          stack.push(currentUrl);
+        }
+        if (stack.length > 50) stack = stack.slice(stack.length - 50);
+        sessionStorage.setItem('urbanfindr_nav_history', JSON.stringify(stack));
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    }
+  }, [pathname]);
+
+  const handleMobileBack = () => {
+    try {
+      const raw = sessionStorage.getItem('urbanfindr_nav_history');
+      let stack = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(stack) && stack.length > 1) {
+        // Pop current page off the stack
+        stack.pop();
+        const prevUrl = stack[stack.length - 1];
+        sessionStorage.setItem('urbanfindr_nav_history', JSON.stringify(stack));
+        if (prevUrl) {
+          router.push(prevUrl);
+          return;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+    } else {
+      router.push('/');
+    }
+  };
+
   return (
     <>
       {/* Main navbar */}
       <header className="header">
+        {/* Mobile Back Button: Only on mobile (< lg), appears on every page when not on root (pathname !== '/') */}
+        {pathname !== '/' && (
+          <button
+            type="button"
+            onClick={handleMobileBack}
+            aria-label="Back"
+            className="lg:hidden p-1.5 -ml-1 text-[#163e35] hover:opacity-80 active:scale-95 transition-all flex items-center justify-center shrink-0 cursor-pointer"
+          >
+            <ArrowLeft size={22} className="text-[#163e35]" strokeWidth={2.4} />
+          </button>
+        )}
+
         <Link href="/" className="brand flex items-center gap-2 sm:gap-2.5 shrink-0 group min-w-0">
           <span className="brand-icon w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-forest text-lime flex items-center justify-center shrink-0 shadow-2xs p-0">
             <House size={20} />
@@ -332,132 +644,16 @@ export function Header() {
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in">
-                    {/* User Profile Header */}
-                    <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-2.5 mb-1">
-                      <div className="w-8 h-8 rounded-full bg-forest/10 text-forest font-bold text-sm flex items-center justify-center shrink-0">
-                        {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-stone-900 truncate">
-                          {user.name || 'User'}
-                        </p>
-                        <p className="text-[11px] text-stone-500 truncate capitalize">
-                          {user.role === 'broker'
-                            ? 'Broker'
-                            : user.role === 'owner'
-                            ? 'Property Owner'
-                            : user.role === 'builder'
-                            ? 'Builder'
-                            : user.role === 'channel_partner'
-                            ? 'Channel Partner'
-                            : user.role === 'service_provider' || user.role === 'service-provider' || activeAccountMode === 'provider'
-                            ? 'Service Provider'
-                            : user.role === 'admin'
-                            ? 'Administrator'
-                            : 'Customer Account'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Dropdown Options */}
-                    <div className="space-y-0.5 pt-1">
-                      <Link
-                        href={
-                          user.role === 'admin'
-                            ? '/admin'
-                            : user.role === 'broker'
-                            ? '/dashboard/broker'
-                            : user.role === 'owner'
-                            ? '/dashboard/owner'
-                            : user.role === 'builder'
-                            ? '/dashboard/builder'
-                            : user.role === 'service_provider' || user.role === 'service-provider'
-                            ? '/dashboard/provider'
-                            : activeAccountMode === 'provider'
-                            ? '/dashboard/provider'
-                            : '/dashboard/customer'
-                        }
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
-                      >
-                        <LayoutDashboard size={15} className="text-stone-500" />
-                        <span>Dashboard</span>
-                      </Link>
-
-                      {/* Switch User Account / Business Account option */}
-                      {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
-                        activeAccountMode === 'provider' ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setUserMenuOpen(false);
-                              try {
-                                localStorage.setItem('havenest_active_account_mode', 'customer');
-                              } catch (e) {}
-                              setActiveAccountMode('customer');
-                              router.push('/dashboard/customer');
-                              if (toast) toast('Switched to User Account');
-                            }}
-                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <User size={15} className="text-stone-500" />
-                              <span>Switch to User Account</span>
-                            </div>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
-                              User
-                            </span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setUserMenuOpen(false);
-                              try {
-                                localStorage.setItem('havenest_active_account_mode', 'provider');
-                              } catch (e) {}
-                              setActiveAccountMode('provider');
-                              router.push('/dashboard/provider');
-                              if (toast) toast('Switched to Business Account');
-                            }}
-                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <Briefcase size={15} className="text-stone-500" />
-                              <span>Switch to Business Account</span>
-                            </div>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              Business
-                            </span>
-                          </button>
-                        )
-                      )}
-
-                      {user.role === 'admin' && (
-                        <Link
-                          href="/dashboard?view=user"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
-                        >
-                          <User size={15} className="text-stone-500" />
-                          <span>User Portal View</span>
-                        </Link>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          logout();
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all text-left cursor-pointer"
-                      >
-                        <LogOut size={15} className="text-red-500" />
-                        <span>Logout</span>
-                      </button>
-                    </div>
-                  </div>
+                  <UserAccountDropdownMenu
+                    user={user}
+                    activeAccountMode={activeAccountMode}
+                    setActiveAccountMode={setActiveAccountMode}
+                    onClose={() => setUserMenuOpen(false)}
+                    logout={logout}
+                    router={router}
+                    toast={toast}
+                    className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in"
+                  />
                 )}
               </div>
             ) : (
@@ -528,99 +724,15 @@ export function Header() {
 
               {/* Services Popup with Instant Search & Category Grid */}
               {servicesLauncherOpen && (
-                <div
+                <ServicesDropdownPanel
+                  onClose={() => setServicesLauncherOpen(false)}
+                  categorySearch={categorySearch}
+                  setCategorySearch={setCategorySearch}
+                  filteredLauncherCategories={filteredLauncherCategories}
+                  handleLauncherMouseEnter={handleLauncherMouseEnter}
+                  handleLauncherMouseLeave={handleLauncherMouseLeave}
                   className="absolute right-0 top-full mt-2 w-[360px] bg-white rounded-3xl shadow-2xl border border-stone-200/90 z-50 p-4 transition-all duration-150 animate-in fade-in"
-                  onMouseEnter={handleLauncherMouseEnter}
-                  onMouseLeave={handleLauncherMouseLeave}
-                >
-                  <div className="flex items-center justify-between px-2 pt-1 pb-2 mb-2 border-b border-stone-100">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-stone-900 tracking-tight">
-                        Explore by Category
-                      </span>
-                      <span className="text-[10px] font-bold text-forest bg-forest/10 px-1.5 py-0.5 rounded-full">
-                        {serviceCategories.length}
-                      </span>
-                    </div>
-                    <Link
-                      href="/categories"
-                      onClick={() => setServicesLauncherOpen(false)}
-                      className="text-xs font-semibold text-forest hover:underline inline-flex items-center gap-1"
-                    >
-                      <span>All categories</span>
-                      <ArrowRight size={13} />
-                    </Link>
-                  </div>
-
-                  <div className="relative mb-3 px-1">
-                    <Search size={14} className="absolute left-3.5 top-2.5 text-stone-400" />
-                    <input
-                      type="text"
-                      autoFocus
-                      value={categorySearch}
-                      onChange={(e) => setCategorySearch(e.target.value)}
-                      placeholder="Search category or service..."
-                      className="w-full pl-8 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-forest focus:bg-white transition-all"
-                    />
-                    {categorySearch && (
-                      <button
-                        type="button"
-                        onClick={() => setCategorySearch('')}
-                        className="absolute right-3.5 top-2 text-stone-400 hover:text-stone-600 text-xs px-1"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-
-                  {filteredLauncherCategories.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-stone-400">
-                      No categories found for &quot;{categorySearch}&quot;
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2 max-h-[340px] overflow-y-auto p-1 pr-1.5">
-                      {filteredLauncherCategories.map((cat) => (
-                        <Link
-                          key={cat.slug}
-                          href={cat.href}
-                          onClick={() => setServicesLauncherOpen(false)}
-                          className="flex flex-col items-center p-2 rounded-2xl hover:bg-stone-50 transition-all duration-150 group text-center"
-                        >
-                          <div
-                            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs group-hover:scale-105 group-hover:shadow transition-transform"
-                            style={{
-                              backgroundColor: cat.bgTint || '#f5f5f5',
-                              borderColor: cat.borderTint || '#e5e5e5',
-                              borderWidth: '1px',
-                              color: cat.accentColor || '#163e35',
-                            }}
-                          >
-                            <CategoryIcon name={cat.iconName} size={22} />
-                          </div>
-                          <span className="text-[11px] font-medium text-stone-700 group-hover:text-forest mt-1.5 leading-tight line-clamp-1 w-full">
-                            {cat.shortTitle || cat.label}
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-forest/5 via-lime/10 to-transparent border border-forest/10 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-stone-700">
-                      <Sparkles size={15} className="text-forest shrink-0" />
-                      <span className="font-medium text-[11px] leading-tight">
-                        Explore 13+ verified categories
-                      </span>
-                    </div>
-                    <Link
-                      href="/categories"
-                      onClick={() => setServicesLauncherOpen(false)}
-                      className="font-bold text-forest text-xs hover:underline whitespace-nowrap ml-2"
-                    >
-                      View →
-                    </Link>
-                  </div>
-                </div>
+                />
               )}
             </div>
 
@@ -635,29 +747,96 @@ export function Header() {
             </Link>
           </div>
 
-        {/* Right side on mobile (< lg): Log in + Hamburger Menu Button */}
+        {/* Right side on mobile (< lg): User Letter Avatar + Services Dropdown (Dotted Box) + Hamburger Menu Button */}
         <div className="flex lg:hidden items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {!user ? (
-            <Link
-              href="/login"
-              className="text-[13px] sm:text-[14px] font-semibold text-[#252d27] hover:text-[#163e35] transition-colors px-1.5 sm:px-2 py-1"
-            >
-              Log in
-            </Link>
-          ) : (
+          {/* User Letter Avatar on Mobile (with Name, Dashboard, Logout dropdown) */}
+          {user && (
+            <div className="relative user-menu-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  setUserMenuOpen((prev) => !prev);
+                  setServicesLauncherOpen(false);
+                  setOpen(false);
+                }}
+                className={`w-8 h-8 rounded-full bg-forest text-white font-bold text-xs flex items-center justify-center shadow-xs cursor-pointer ring-2 transition-all select-none ${
+                  userMenuOpen ? 'ring-lime shadow-md' : 'ring-forest/15 hover:ring-lime/50'
+                }`}
+                aria-label="User account menu"
+                aria-expanded={userMenuOpen}
+              >
+                {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+              </button>
+
+              {/* Mobile User Account Dropdown */}
+              {userMenuOpen && (
+                <UserAccountDropdownMenu
+                  user={user}
+                  activeAccountMode={activeAccountMode}
+                  setActiveAccountMode={setActiveAccountMode}
+                  onClose={() => setUserMenuOpen(false)}
+                  logout={logout}
+                  router={router}
+                  toast={toast}
+                  className="fixed right-3 sm:right-auto sm:absolute sm:right-0 top-[68px] sm:top-full mt-1.5 w-64 bg-white rounded-2xl shadow-2xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Services / Category Launcher (Dotted Box) on Mobile */}
+          <div className="relative services-launcher-wrap flex items-center shrink-0">
             <button
               type="button"
-              onClick={() => setUserMenuOpen((prev) => !prev)}
-              className="w-8 h-8 rounded-full bg-forest text-white font-bold text-xs flex items-center justify-center shadow-xs"
-              aria-label="User account menu"
+              onClick={() => {
+                setServicesLauncherOpen((prev) => !prev);
+                setCategorySearch('');
+                setOpen(false);
+                setUserMenuOpen(false);
+              }}
+              aria-label="UrbanFindr Categories & Services"
+              aria-expanded={servicesLauncherOpen}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                servicesLauncherOpen
+                  ? 'bg-stone-200 text-forest shadow-inner'
+                  : 'text-[#252d27] hover:text-forest hover:bg-stone-100'
+              }`}
+              title="Explore Services & Categories"
             >
-              {(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <circle cx="5" cy="5" r="2.2" />
+                <circle cx="12" cy="5" r="2.2" />
+                <circle cx="19" cy="5" r="2.2" />
+                <circle cx="5" cy="12" r="2.2" />
+                <circle cx="12" cy="12" r="2.2" />
+                <circle cx="19" cy="12" r="2.2" />
+                <circle cx="5" cy="19" r="2.2" />
+                <circle cx="12" cy="19" r="2.2" />
+                <circle cx="19" cy="19" r="2.2" />
+              </svg>
             </button>
-          )}
+
+            {/* Mobile Services Dropdown Popup */}
+            {servicesLauncherOpen && (
+              <ServicesDropdownPanel
+                onClose={() => setServicesLauncherOpen(false)}
+                categorySearch={categorySearch}
+                setCategorySearch={setCategorySearch}
+                filteredLauncherCategories={filteredLauncherCategories}
+                handleLauncherMouseEnter={handleLauncherMouseEnter}
+                handleLauncherMouseLeave={handleLauncherMouseLeave}
+                className="fixed right-2 sm:right-4 top-[68px] sm:top-[76px] w-[calc(100vw-16px)] sm:w-[360px] max-w-[370px] bg-white rounded-3xl shadow-2xl border border-stone-200/90 z-50 p-3.5 sm:p-4 transition-all duration-150 animate-in fade-in max-h-[82vh] overflow-y-auto"
+              />
+            )}
+          </div>
 
           <button
             type="button"
-            onClick={() => setOpen((prev) => !prev)}
+            onClick={() => {
+              setOpen((prev) => !prev);
+              setServicesLauncherOpen(false);
+              setUserMenuOpen(false);
+            }}
             className="p-1.5 sm:p-2 rounded-xl text-stone-800 hover:text-forest hover:bg-stone-100 transition-colors flex items-center justify-center cursor-pointer shrink-0"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
@@ -972,26 +1151,6 @@ export function Header() {
                 </div>
               </div>
             )}
-
-            {/* Promo Box (Screen 4) */}
-            <div className="p-3.5 rounded-2xl bg-[#f0f7f2] border border-[#d2e7d7] flex items-center justify-between gap-3 shadow-2xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-9 h-9 rounded-xl bg-forest/10 text-forest flex items-center justify-center shrink-0">
-                  <House size={18} />
-                </span>
-                <div className="min-w-0">
-                  <div className="text-xs font-extrabold text-stone-900 leading-tight">Find Your Perfect Property</div>
-                  <div className="text-[10px] text-stone-500 mt-0.5">Direct owner connections</div>
-                </div>
-              </div>
-              <Link
-                href="/properties"
-                onClick={() => setOpen(false)}
-                className="px-2.5 py-1.5 bg-forest text-white text-[11px] font-bold rounded-xl shadow-xs hover:bg-[#1f4a3f] whitespace-nowrap transition-colors shrink-0"
-              >
-                Search Now →
-              </Link>
-            </div>
           </div>
 
           {/* Action Footer (Screens 2 & 4) */}
@@ -1029,14 +1188,24 @@ export function Header() {
                 </button>
               </div>
             ) : (
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-stone-300 font-bold text-stone-800 bg-white hover:bg-stone-50 shadow-2xs transition-all text-sm"
-              >
-                <User size={16} className="text-stone-600" />
-                <span>Log In</span>
-              </Link>
+              <div className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl border border-stone-300 font-semibold text-stone-800 bg-white shadow-2xs text-sm">
+                <User size={16} className="text-stone-500 shrink-0 mr-2" />
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="font-bold text-stone-900 hover:text-forest transition-colors"
+                >
+                  Login
+                </Link>
+                <span className="w-[1.5px] h-3.5 bg-stone-300 rounded-full mx-2.5 shrink-0 select-none" aria-hidden="true" />
+                <Link
+                  href="/register"
+                  onClick={() => setOpen(false)}
+                  className="font-bold text-stone-900 hover:text-forest transition-colors"
+                >
+                  Register
+                </Link>
+              </div>
             )}
 
             <Link
@@ -1058,10 +1227,10 @@ export function Header() {
         </nav>
       )}
 
-      {/* Discovery navbar */}
+      {/* Discovery navbar (hidden on mobile, visible on desktop / laptop) */}
       {!pathname?.startsWith('/dashboard') && (
         <nav
-          className="discovery-nav"
+          className="discovery-nav hidden lg:flex"
           aria-label="More ways to explore"
         >
           <Link href="/properties">

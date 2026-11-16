@@ -41,7 +41,7 @@ export default function DashboardHeader({
   const currentTitle = sectionTitles[activeSection] || 'Dashboard';
 
   return (
-    <header className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#e6e8e1] px-4 py-2.5 flex items-center justify-between gap-3">
+    <header className="lg:hidden sticky top-[var(--header-h,72px)] z-30 bg-white/95 backdrop-blur-md border-b border-[#e6e8e1] px-4 py-2.5 flex items-center justify-between gap-3">
       {/* Mobile hamburger menu */}
       <button
         type="button"

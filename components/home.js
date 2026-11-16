@@ -30,6 +30,8 @@ import ExploreCategories from './ExploreCategories';
 import BuilderProjectsBanner from './BuilderProjectsBanner';
 import VerifiedPropertiesCarousel from './VerifiedPropertiesCarousel';
 import FeaturedProfessionals from './FeaturedProfessionals';
+import MobileMagicSearch from './MobileMagicSearch';
+import MobileProjectsShowcase from './MobileProjectsShowcase';
 import { cities, money } from '@/lib/format';
 
 function HeroCategoryIcon({ name }) {
@@ -518,10 +520,14 @@ export default function HomePage() {
 
       {/* Bottom Search Bar */}
       <div className="wrap relative z-40 mt-3 mb-4 sm:mb-6 lg:mt-0 lg:-mb-[72px] pointer-events-auto">
+        {/* Mobile View: MagicBricks Search Bar & Fullscreen Filter Modal (Mobile Only) */}
+        <MobileMagicSearch initialTotal={latest.data?.total || verified.data?.total || null} />
+
+        {/* Desktop View: 4-Column Search Form (Laptop & Desktop Only - Untouched) */}
         <form
           ref={searchBarRef}
           onSubmit={search}
-          className="bg-white rounded-2xl border border-stone-200/80 shadow-[0_16px_48px_rgba(15,23,42,0.12)] p-3 sm:p-4 sm:px-5 grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] items-center gap-2 sm:gap-0"
+          className="hidden lg:grid bg-white rounded-2xl border border-stone-200/80 shadow-[0_16px_48px_rgba(15,23,42,0.12)] p-4 px-5 grid-cols-[1fr_1fr_1fr_auto] items-center gap-0"
         >
           {/* 1. Location Custom Searchable Dropdown */}
           <div className="relative">
@@ -867,7 +873,10 @@ export default function HomePage() {
       />
     </section>
 
-    {/* Builder Projects Investment Showcase (directly after Featured Properties) */}
+    {/* Mobile Only: New Projects Encyclopedia Showcase (MagicBricks reference style) */}
+    <MobileProjectsShowcase />
+
+    {/* Builder Projects Investment Showcase (Laptop & Desktop Only) */}
     <BuilderProjectsBanner />
 
     {/* 2. Verified Properties Section (Seamless Infinite Carousel) */}
@@ -1039,7 +1048,7 @@ export default function HomePage() {
     </section>
 
     {/* 5. Frequently Asked Questions (FAQ) Section */}
-    <section className="wrap section" id="faq">
+    <section className="wrap section pb-4 sm:pb-12" id="faq">
       <SectionTitle
         eyebrow="GOT QUESTIONS?"
         title="Frequently asked questions"
@@ -1073,7 +1082,7 @@ export default function HomePage() {
     </section>
 
     {/* For Property Owners Banner */}
-    <section className="wrap pb-20">
+    <section className="wrap pb-8 sm:pb-20">
       <div className="owner-banner">
         <div>
           <p className="eyebrow text-forest/60">FOR PROPERTY OWNERS & BROKERS</p>

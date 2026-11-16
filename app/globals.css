@@ -250,6 +250,11 @@ table{font-size:15px}td,th{padding:15px}.check-label{font-size:15px;line-height:
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
+@media (max-width: 1023px) {
+  .discovery-nav {
+    display: none !important;
+  }
+}
 .discovery-nav::-webkit-scrollbar {
   display: none;
 }

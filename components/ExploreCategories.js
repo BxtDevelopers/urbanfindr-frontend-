@@ -37,7 +37,7 @@ export default function ExploreCategories() {
         </Link>
       </div>
 
-      {/* Desktop Layout: Exactly 13 Columns on wide screens */}
+      {/* Desktop Layout: 13 Columns on wide screens */}
       <div className="hidden xl:grid xl:grid-cols-[repeat(13,minmax(0,1fr))] gap-2 xl:gap-2.5 items-stretch">
         {serviceCategories.map((cat) => (
           <Link

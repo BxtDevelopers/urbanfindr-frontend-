@@ -54,11 +54,11 @@ export default function InteriorFAQ() {
   };
 
   return (
-    <section className="w-full bg-white py-16 sm:py-20 lg:py-24 border-t border-stone-200/80" aria-label="Frequently Asked Questions">
+    <section className="w-full bg-white pt-8 pb-6 sm:py-20 lg:py-24 border-t border-stone-200/80" aria-label="Frequently Asked Questions">
       <div className="wrap max-w-4xl mx-auto">
         
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-14">
           <div className="inline-flex items-center gap-2 bg-[#edf2e2] text-forest border border-[#d6e2cd] px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider mb-3 shadow-xs">
             <HelpCircle size={14} className="text-forest" />
             <span>Got Questions? We Have Answers</span>
@@ -119,7 +119,7 @@ export default function InteriorFAQ() {
         </div>
 
         {/* Bottom Help Banner */}
-        <div className="mt-12 sm:mt-16 bg-[#edf2e2] border border-[#d6e2cd] rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-5 text-center sm:text-left shadow-xs">
+        <div className="mt-7 sm:mt-16 bg-[#edf2e2] border border-[#d6e2cd] rounded-3xl p-5 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-5 text-center sm:text-left shadow-xs">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-forest text-lime flex items-center justify-center shrink-0 shadow-xs">
               <MessageSquare size={22} />

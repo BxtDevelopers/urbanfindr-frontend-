@@ -348,9 +348,10 @@ export default function Listings({
             </svg>
           </div>
 
-          {/* Top Row: Logo & City Dropdown Pill */}
-          <div className="relative z-10 flex items-center justify-between pb-3">
-            <Link href="/" className="inline-flex items-center gap-2.5 group cursor-pointer">
+          {/* Top Row: Logo & City Dropdown Pill - z-40 ensures dropdown is never overlapped */}
+          <div className="relative z-40 flex items-center justify-between pb-3">
+            {/* Desktop Brand Logo */}
+            <Link href="/" className="hidden sm:inline-flex items-center gap-2.5 group cursor-pointer">
               <span className="w-9 h-9 rounded-xl bg-white/10 text-[#d8edb3] flex items-center justify-center shrink-0 border border-white/15 shadow-sm group-hover:bg-white/20 transition">
                 <House size={20} />
               </span>
@@ -364,12 +365,18 @@ export default function Listings({
               </div>
             </Link>
 
+            {/* Mobile Title Badge */}
+            <div className="sm:hidden flex items-center gap-1.5 text-white font-bold text-sm tracking-tight">
+              <Building2 size={16} className="text-[#d8edb3]" />
+              <span>Builder Projects</span>
+            </div>
+
             {/* City Selector Pill with Dropdown */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setCityDropdownOpen(v => !v)}
-                className="bg-white text-stone-800 font-semibold text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-sm hover:bg-stone-50 transition flex items-center gap-1.5 cursor-pointer"
+                className="bg-white text-stone-800 font-bold text-xs sm:text-sm px-3.5 sm:px-4 py-1.5 rounded-full shadow-sm hover:bg-stone-50 transition flex items-center gap-1.5 cursor-pointer ring-1 ring-black/5"
                 aria-label="Select City"
               >
                 <span>{displayCityName}</span>
@@ -377,36 +384,42 @@ export default function Listings({
               </button>
 
               {cityDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-stone-200 py-2 z-50 text-stone-800 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-stone-400 tracking-wider">
-                    Select City
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setCityDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-52 sm:w-56 bg-white rounded-2xl shadow-2xl border border-stone-200/90 py-2.5 z-50 text-stone-800 animate-in fade-in zoom-in-95 duration-100 max-h-80 overflow-y-auto">
+                    <div className="px-3.5 py-1.5 text-[10px] uppercase font-bold text-stone-400 tracking-wider">
+                      Select City
+                    </div>
+                    {cityGuides.map(c => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => {
+                          setCityDropdownOpen(false);
+                          setCurrentCity(c.name);
+                          const next = new URLSearchParams(params.toString());
+                          next.set('city', c.name);
+                          next.delete('locality');
+                          next.delete('q');
+                          router.push(`${basePath}?${next.toString()}`);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-xs sm:text-sm font-semibold transition flex items-center justify-between cursor-pointer ${
+                          displayCityName.toLowerCase() === c.name.toLowerCase()
+                            ? 'text-[#163e35] font-bold bg-[#ecf2e4]'
+                            : 'text-stone-700 hover:bg-stone-50 hover:text-[#163e35]'
+                        }`}
+                      >
+                        <span className="truncate">{c.name}</span>
+                        {displayCityName.toLowerCase() === c.name.toLowerCase() && (
+                          <Check size={14} className="text-[#163e35] shrink-0" strokeWidth={2.5} />
+                        )}
+                      </button>
+                    ))}
                   </div>
-                  {cityGuides.map(c => (
-                    <button
-                      key={c.name}
-                      type="button"
-                      onClick={() => {
-                        setCityDropdownOpen(false);
-                        setCurrentCity(c.name);
-                        const next = new URLSearchParams(params.toString());
-                        next.set('city', c.name);
-                        next.delete('locality');
-                        next.delete('q');
-                        router.push(`${basePath}?${next.toString()}`);
-                      }}
-                      className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm hover:bg-[#163e35]/10 hover:text-[#163e35] font-medium transition flex items-center justify-between cursor-pointer ${
-                        displayCityName.toLowerCase() === c.name.toLowerCase()
-                          ? 'text-[#163e35] font-bold bg-[#163e35]/5'
-                          : 'text-stone-700'
-                      }`}
-                    >
-                      <span>{c.name}</span>
-                      {displayCityName.toLowerCase() === c.name.toLowerCase() && (
-                        <Check size={14} className="text-[#163e35]" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -423,15 +436,16 @@ export default function Listings({
             )}
           </div>
 
-          {/* Centered Tab: "Search by locality" only (no "Search by project name", no stats pill) */}
-          <div className="relative z-10 flex justify-center mt-5 mb-1">
-            <div className="bg-white text-[#163e35] px-5 py-2 rounded-full font-bold text-xs sm:text-sm shadow-sm">
-              Search by locality
+          {/* Centered Tab: "Search by locality" with clean space above the form */}
+          <div className="relative z-20 flex justify-center mt-4 sm:mt-6 mb-3 sm:mb-4">
+            <div className="bg-white text-[#163e35] border border-stone-200/90 px-4 sm:px-5 py-2 rounded-full font-bold text-xs sm:text-sm shadow-sm inline-flex items-center gap-1.5">
+              <MapPin size={13} className="text-[#163e35]" />
+              <span>Search by locality</span>
             </div>
           </div>
 
           {/* Overlapping Search Bar Card: Half inside the hero section, half outside extending downwards */}
-          <div className="relative z-30 max-w-4xl mx-auto -mb-28 sm:-mb-32 pt-4">
+          <div className="relative z-30 max-w-4xl mx-auto -mb-28 sm:-mb-32">
             <form
               key={`projects:${displayCityName}:${params}`}
               onSubmit={search}
@@ -523,35 +537,74 @@ export default function Listings({
               )}
 
               {/* Bottom Actions Bar */}
-              <div className="flex items-center justify-between mt-3 pt-2 text-xs text-stone-500">
-                <button
-                  type="button"
-                  onClick={() => setProjectsExpanded(v => !v)}
-                  className="text-[#163e35] font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
-                >
-                  <SlidersHorizontal size={13} />
-                  <span>{projectsExpanded ? 'Fewer filters' : '+ More filters (BHK, Budget, Project name)'}</span>
-                </button>
+              <div className="mt-3 pt-2.5 border-t border-stone-100">
+                {/* Mobile Layout (< sm) - Clean, spacious, no wrapping/crowding */}
+                <div className="flex sm:hidden flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProjectsExpanded(v => !v)}
+                      className="text-[#163e35] font-bold text-xs hover:underline inline-flex items-center gap-1.5 cursor-pointer py-0.5"
+                    >
+                      <SlidersHorizontal size={13} className="text-[#163e35]" />
+                      <span>{projectsExpanded ? 'Fewer filters' : '+ More filters (BHK, Budget)'}</span>
+                    </button>
 
-                <div className="flex items-center gap-3">
-                  <select
-                    className="input !w-auto text-xs py-1 px-2.5 h-8"
-                    name="sort"
-                    aria-label="Sort results"
-                    defaultValue={params.get('sort') || ''}
-                  >
-                    <option value="">Newest first</option>
-                    <option value="recommended">Recommended</option>
-                    <option value="price-asc">Price: low to high</option>
-                  </select>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-stone-500 hover:text-[#163e35] underline cursor-pointer shrink-0 py-0.5"
+                      onClick={clear}
+                    >
+                      Clear filters
+                    </button>
+                  </div>
 
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-100/70">
+                    <span className="text-[11px] font-semibold text-stone-500">Sort by:</span>
+                    <select
+                      className="input !w-auto text-xs py-1 px-2.5 h-8 bg-stone-50 border border-stone-200 rounded-lg text-stone-800 font-semibold"
+                      name="sort"
+                      aria-label="Sort results"
+                      defaultValue={params.get('sort') || ''}
+                    >
+                      <option value="">Newest first</option>
+                      <option value="recommended">Recommended</option>
+                      <option value="price-asc">Price: low to high</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Desktop Layout (>= sm) - 100% Untouched */}
+                <div className="hidden sm:flex items-center justify-between text-xs text-stone-500">
                   <button
                     type="button"
-                    className="text-stone-500 hover:text-stone-800 underline cursor-pointer"
-                    onClick={clear}
+                    onClick={() => setProjectsExpanded(v => !v)}
+                    className="text-[#163e35] font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
                   >
-                    Clear filters
+                    <SlidersHorizontal size={13} />
+                    <span>{projectsExpanded ? 'Fewer filters' : '+ More filters (BHK, Budget, Project name)'}</span>
                   </button>
+
+                  <div className="flex items-center gap-3">
+                    <select
+                      className="input !w-auto text-xs py-1 px-2.5 h-8"
+                      name="sort"
+                      aria-label="Sort results"
+                      defaultValue={params.get('sort') || ''}
+                    >
+                      <option value="">Newest first</option>
+                      <option value="recommended">Recommended</option>
+                      <option value="price-asc">Price: low to high</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      className="text-stone-500 hover:text-stone-800 underline cursor-pointer"
+                      onClick={clear}
+                    >
+                      Clear filters
+                    </button>
+                  </div>
                 </div>
               </div>
             </form>

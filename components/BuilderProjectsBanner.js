@@ -76,7 +76,7 @@ export default function BuilderProjectsBanner() {
   const currentProp = PROPERTIES[currentIndex];
 
   return (
-    <section className="wrap relative w-full pt-4 sm:pt-6 lg:!pt-36 xl:!pt-44 pb-10 overflow-visible" aria-label="Builder Projects Showcase">
+    <section className="hidden lg:block wrap relative w-full pt-4 sm:pt-6 lg:!pt-36 xl:!pt-44 pb-10 overflow-visible" aria-label="Builder Projects Showcase">
       {/* 
         CRITICAL: Parent section has generous top clearance (!pt-36 to !pt-44)
         so the long building protruding out of the top has ample breathing room! 

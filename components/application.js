@@ -41,7 +41,7 @@ function Content() {
   if (root === 'projects') return id ? <Details id={id} project /> : <Listings projects />;
   if (root === 'interiors') return <Interiors id={id} />;
   if (root === 'build-your-home' || root === 'build-home') return <BuildYourHome />;
-  if (root === 'login' || root === 'register' || root === 'auth') return <AuthPage register={root === 'register' || id === 'register'} />;
+  if (root === 'login' || root === 'register' || root === 'auth' || root === 'signin' || root === 'sign-in' || root === 'signup' || root === 'sign-up') return <AuthPage register={root === 'register' || root === 'signup' || root === 'sign-up' || id === 'register'} />;
   if (root === 'admin-login' || (root === 'admin' && id === 'login')) return <AuthPage adminLogin={true} />;
   if (root === 'forgot-password') return <ForgotPasswordPage />;
   if (root === 'reset-password') return <ResetPasswordPage />;

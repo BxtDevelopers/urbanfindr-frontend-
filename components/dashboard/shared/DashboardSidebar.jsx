@@ -133,55 +133,57 @@ export default function DashboardSidebar({
       {/* Mobile Drawer Overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-stone-900/50 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 top-[var(--header-h,72px)] z-40 bg-stone-900/50 backdrop-blur-xs lg:hidden"
           onClick={onCloseMobile}
         />
       )}
 
       {/* Sidebar container */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-40 h-screen bg-white border-r border-[#e6e8e1] flex flex-col justify-between transition-all duration-200 shrink-0 ${
+        className={`fixed lg:sticky top-[var(--header-h,72px)] lg:top-0 left-0 z-40 h-[calc(100dvh-var(--header-h,72px))] lg:h-screen bg-white border-r border-[#e6e8e1] flex flex-col justify-between transition-all duration-200 shrink-0 ${
           collapsed ? 'w-20' : 'w-72'
         } ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Top Profile Card & Mobile Close */}
-        <div className="p-4 border-b border-[#e6e8e1]">
-          <div className="flex items-center justify-end mb-3 lg:hidden">
+        <div className="p-3 sm:p-4 border-b border-[#e6e8e1]">
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex-1 min-w-0">
+              {!collapsed ? (
+                <WorkspaceSwitcher
+                  onSelectProfile={() => {
+                    onSelectSection('profile');
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                />
+              ) : (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectSection('profile');
+                      if (onCloseMobile) onCloseMobile();
+                    }}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shadow-xs bg-[#163e35] text-[#d8edb3] hover:bg-[#1f5247] transition-colors cursor-pointer"
+                    title="My Profile"
+                  >
+                    <User size={18} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Close Button - integrated cleanly on the same row */}
             <button
               type="button"
               onClick={onCloseMobile}
-              className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg"
+              className="lg:hidden w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-600 hover:text-stone-900 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
               aria-label="Close sidebar"
             >
               <X size={18} />
             </button>
           </div>
-
-          {/* Profile Card */}
-          {!collapsed ? (
-            <WorkspaceSwitcher
-              onSelectProfile={() => {
-                onSelectSection('profile');
-                if (onCloseMobile) onCloseMobile();
-              }}
-            />
-          ) : (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  onSelectSection('profile');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-                className="w-10 h-10 rounded-xl flex items-center justify-center shadow-xs bg-[#163e35] text-[#d8edb3] hover:bg-[#1f5247] transition-colors cursor-pointer"
-                title="My Profile"
-              >
-                <User size={18} />
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Navigation list */}
