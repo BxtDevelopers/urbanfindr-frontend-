@@ -3,7 +3,7 @@
 import {  useRef  } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const BRAND_LIST = [
+export const BRAND_LIST = [
   {
     id: 'wove',
     name: 'Wove Projects',

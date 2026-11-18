@@ -32,6 +32,7 @@ import VerifiedPropertiesCarousel from './VerifiedPropertiesCarousel';
 import FeaturedProfessionals from './FeaturedProfessionals';
 import MobileMagicSearch from './MobileMagicSearch';
 import MobileProjectsShowcase from './MobileProjectsShowcase';
+import MobileUrbanInteriors from './MobileUrbanInteriors';
 import { cities, money } from '@/lib/format';
 
 function HeroCategoryIcon({ name }) {
@@ -954,8 +955,11 @@ export default function HomePage() {
       </div>
     </section>
 
-    {/* Home Interiors */}
-    <section className="wrap section" id="home-interiors">
+    {/* Mobile Only: Urban Interiors Card (MagicBricks reference style) */}
+    <MobileUrbanInteriors />
+
+    {/* Home Interiors (Laptop & Desktop Only - 100% Untouched) */}
+    <section className="hidden lg:block wrap section" id="home-interiors">
       <div className="interior-banner">
         <Image
           src="/photos/living-1.jpg"

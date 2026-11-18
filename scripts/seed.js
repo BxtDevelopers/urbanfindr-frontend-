@@ -221,7 +221,7 @@ export async function seed() {
         images: propertyGallery({ purpose, type }, i),
         status: 'approved',
         verified: true,
-        featured: k === 0 || k === 3,
+        featured: [0, 3, 4, 5, 6, 7, 8, 9].includes(k),
         ownership: ['owner', 'builder', 'broker'][k % 3],
         propertyAge: ['Newly built', 'Resale', 'Older property'][k % 3],
         coordinates: localityCoords[locality] || { lat: 12.9716, lng: 77.5946 },

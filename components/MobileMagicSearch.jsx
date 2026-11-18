@@ -492,12 +492,12 @@ export default function MobileMagicSearch({ initialTotal = null }) {
           1. MOBILE HOME SEARCH SECTION (lg:hidden) - Website Theme Color (#163e35)
           ========================================================================= */}
       <div className="lg:hidden w-full pt-1 pb-1">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar border-b border-stone-200/90 px-1 pb-2">
+        {/* Category Tabs: Full width, evenly distributed so all 5 options (Buy, Rent, New Projects, PG, Commercial) fit 100% on mobile without clipping */}
+        <div className="w-full flex items-center justify-between sm:justify-start sm:gap-6 overflow-x-auto no-scrollbar border-b border-stone-200/90 px-0.5 pb-2">
           <button
             type="button"
             onClick={() => handleCategorySwitch('buy')}
-            className={`relative pb-1.5 text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+            className={`relative pb-1.5 text-xs min-[360px]:text-[13px] min-[390px]:text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
               activeCategory === 'buy'
                 ? 'font-bold text-[#163e35]'
                 : 'font-semibold text-stone-600 hover:text-stone-900'
@@ -512,7 +512,7 @@ export default function MobileMagicSearch({ initialTotal = null }) {
           <button
             type="button"
             onClick={() => handleCategorySwitch('rent')}
-            className={`relative pb-1.5 text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+            className={`relative pb-1.5 text-xs min-[360px]:text-[13px] min-[390px]:text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
               activeCategory === 'rent'
                 ? 'font-bold text-[#163e35]'
                 : 'font-semibold text-stone-600 hover:text-stone-900'
@@ -527,7 +527,7 @@ export default function MobileMagicSearch({ initialTotal = null }) {
           <button
             type="button"
             onClick={() => handleCategorySwitch('projects')}
-            className={`relative pb-1.5 text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+            className={`relative pb-1.5 text-xs min-[360px]:text-[13px] min-[390px]:text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
               activeCategory === 'projects'
                 ? 'font-bold text-[#163e35]'
                 : 'font-semibold text-stone-600 hover:text-stone-900'
@@ -542,7 +542,7 @@ export default function MobileMagicSearch({ initialTotal = null }) {
           <button
             type="button"
             onClick={() => handleCategorySwitch('pg')}
-            className={`relative pb-1.5 text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+            className={`relative pb-1.5 text-xs min-[360px]:text-[13px] min-[390px]:text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
               activeCategory === 'pg'
                 ? 'font-bold text-[#163e35]'
                 : 'font-semibold text-stone-600 hover:text-stone-900'
@@ -557,7 +557,7 @@ export default function MobileMagicSearch({ initialTotal = null }) {
           <button
             type="button"
             onClick={() => handleCategorySwitch('commercial')}
-            className={`relative pb-1.5 text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+            className={`relative pb-1.5 text-xs min-[360px]:text-[13px] min-[390px]:text-sm whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
               activeCategory === 'commercial'
                 ? 'font-bold text-[#163e35]'
                 : 'font-semibold text-stone-600 hover:text-stone-900'

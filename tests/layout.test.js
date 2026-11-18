@@ -112,3 +112,24 @@ test('MobileProjectsShowcase renders on mobile with Encyclopedia features and th
   const showcaseIdx = home.indexOf('<MobileProjectsShowcase');
   assert.ok(featIdx !== -1 && showcaseIdx !== -1 && showcaseIdx > featIdx, 'Must be placed directly after Featured Properties');
 });
+
+test('MobileUrbanInteriors renders mobile card with 100+ brands, marquee carousel, theme colors, and no instant quote', () => {
+  const comp = readFileSync(path.resolve('components/MobileUrbanInteriors.jsx'), 'utf8');
+  assert.ok(comp.includes('lg:hidden'), 'Must be restricted exclusively to mobile view');
+  assert.ok(comp.includes('urban') && comp.includes('Interiors'), 'Must display urbanInteriors');
+  assert.ok(comp.includes('Transform your Home with'), 'Must include transform subheading');
+  assert.ok(comp.includes('100+ top verified interior brands'), 'Must specify 100+ brands instead of 300+');
+  assert.ok(comp.includes('Save upto 40%'), 'Must include Save upto 40% badge');
+  assert.ok(comp.includes('Top') && comp.includes('Brands'), 'Must include Top Brands label');
+  assert.ok(comp.includes('font-semibold') && !comp.includes('font-extrabold text-stone-800 leading-tight uppercase tracking-tight text-left'), 'Top Brands must be somewhat bold (font-semibold)');
+  assert.ok(!comp.includes('||'), 'Must not include || symbol after Top Brands');
+  assert.ok(comp.includes('animate-marquee'), 'Must feature moving marquee carousel');
+  assert.ok(comp.includes('BRAND_LIST'), 'Must use website BRAND_LIST with icons & colors');
+  assert.ok(comp.includes('Interior Designers'), 'Must feature Interior Designers button');
+  assert.ok(comp.includes('#163e35'), 'Must use website theme color (#163e35)');
+  assert.ok(!comp.includes('Get Instant Quote'), 'Must NOT include Get Instant Quote link');
+
+  const home = readFileSync(path.resolve('components/home.js'), 'utf8');
+  assert.ok(home.includes('<MobileUrbanInteriors'), 'home.js must include MobileUrbanInteriors');
+  assert.ok(home.includes('hidden lg:block wrap section" id="home-interiors"'), 'Desktop home interiors must remain visible on lg+ screens');
+});
