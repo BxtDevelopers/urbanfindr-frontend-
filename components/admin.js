@@ -98,6 +98,7 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const adminDisplayName = (user?.name && !user.name.toLowerCase().includes('coordinator')) ? user.name : 'UrbanFindr';
 
   // Live platform statistics
   const stats = useData('admin/stats');
@@ -193,27 +194,14 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Top: Logo Brand Header */}
+        {/* Top: Navigation Section */}
         <div>
-          <div className="p-5 sm:p-6 border-b border-[#e5e9e2] flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-[#ecf2e4] flex items-center justify-center border border-[#d8edb3] text-[#163e35] group-hover:scale-105 transition-transform shadow-xs">
-                <Home size={22} className="stroke-[2.2]" />
-              </div>
-              <div>
-                <span className="font-extrabold text-base sm:text-lg text-stone-900 tracking-tight block leading-tight">
-                  UrbanFindr
-                </span>
-                <span className="text-[10px] text-stone-500 font-medium tracking-tight block">
-                  Find. Buy. Live Better.
-                </span>
-              </div>
-            </Link>
-
+          {/* Mobile-only close button */}
+          <div className="lg:hidden p-4 border-b border-[#e5e9e2] flex items-center justify-end">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden p-1.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+              className="p-1.5 text-stone-400 hover:text-stone-700 cursor-pointer"
               aria-label="Close sidebar"
             >
               <X size={18} />
@@ -326,32 +314,8 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
             />
           </div>
 
-          {/* Right Action Icons: Notification Bell & Admin Profile Pill */}
+          {/* Right Action Icons: Admin Profile Pill */}
           <div className="flex items-center gap-2 sm:gap-4 shrink-0 ml-auto">
-            {/* Universal Notification Bell */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setNotificationPanelOpen(!notificationPanelOpen)}
-                className="relative p-2.5 text-stone-600 hover:text-[#163e35] hover:bg-[#ecf2e4] rounded-xl transition-colors cursor-pointer"
-                title="Notifications"
-                aria-label="Notifications"
-              >
-                <Bell size={20} />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] bg-rose-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center px-1 border-2 border-white shadow-xs">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </button>
-
-              <NotificationPanel
-                isOpen={notificationPanelOpen}
-                onClose={() => setNotificationPanelOpen(false)}
-                onUpdated={reloadNotifications}
-              />
-            </div>
-
             {/* Admin Avatar Profile Pill matching image */}
             <div className="relative">
               <button
@@ -360,10 +324,10 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
                 className="flex items-center gap-2.5 p-1 sm:pr-3 rounded-full hover:bg-stone-50 border border-stone-200/80 transition-colors cursor-pointer shadow-xs"
               >
                 <div className="w-8 h-8 rounded-full bg-[#163e35] text-[#d8edb3] font-bold text-xs flex items-center justify-center shadow-xs">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                  {adminDisplayName ? adminDisplayName.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <span className="text-xs font-bold text-stone-800 hidden sm:inline">
-                  {user?.name || 'Admin'}
+                  {adminDisplayName}
                 </span>
                 <ChevronDown size={14} className="text-stone-400 hidden sm:inline" />
               </button>
@@ -371,7 +335,7 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
               {profileMenuOpen && (
                 <div className="absolute right-0 top-12 w-52 bg-white rounded-2xl shadow-xl border border-stone-200 py-2 z-50 text-xs animate-in fade-in duration-100">
                   <div className="px-4 py-2 border-b border-stone-100">
-                    <p className="font-bold text-stone-900 truncate">{user?.name || 'Administrator'}</p>
+                    <p className="font-bold text-stone-900 truncate">{adminDisplayName}</p>
                     <p className="text-stone-400 text-[11px] truncate">{user?.email || 'admin@urbanfindr.demo'}</p>
                   </div>
                   <Link

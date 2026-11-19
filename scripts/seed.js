@@ -22,7 +22,7 @@ export async function seed() {
     ['Aarav Mehta', 'user@urbanfinder.demo', 'user', '9000000001'],
     ['Ananya Rao', 'owner@urbanfinder.demo', 'owner', '9000000002'],
     ['Rohan Kapoor', 'owner2@urbanfinder.demo', 'owner', '9000000003'],
-    ['UrbanFinder Coordinator', 'admin@urbanfinder.demo', 'admin', '9000000004'],
+    ['UrbanFindr', 'admin@urbanfinder.demo', 'admin', '9000000004'],
     ['Apex Realty Partners', 'partner@urbanfinder.demo', 'channel_partner', '9000000005']
   ];
 
