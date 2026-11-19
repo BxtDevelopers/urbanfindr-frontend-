@@ -129,5 +129,20 @@ export function PropertyCard({item,onFavorite}){
     </article>
   );
 }
-export function ProjectCard({item}){return <article className="property-card"><Link href={`/projects/${item._id}`} className="card-image block"><Image src={projectImages(item)[0]} alt={item.title}/><div className="absolute left-3 top-3 flex flex-wrap gap-1.5 items-center z-10">{item.isSponsored && <span className="card-badge bg-amber-600 text-white font-bold tracking-wider uppercase shadow-xs flex items-center gap-1"><Sparkles size={11} className="stroke-[2.5]" /> Sponsored</span>}<span className="card-badge bg-white/95 text-stone-900 border border-stone-200/80 font-semibold">{item.stage}</span></div></Link><div className="p-5"><p className="eyebrow mb-2">{item.builder}</p><Link className="card-title" href={`/projects/${item._id}`}>{item.title}</Link><p className="muted text-sm mt-2">{item.locality}, {item.city}</p><p className="font-semibold text-lg my-4">{money(item.price)} – {money(item.maxPrice)}</p><div className="flex justify-between text-xs border-t pt-4"><span>{item.configurations?.map(x=>x.name).join(' · ')}</span><ArrowUpRight size={16}/></div></div></article>;}
+export function ProjectCard({item}){return <article className="property-card"><Link href={`/projects/${item._id}`} className="card-image block"><Image src={projectImages(item)[0]} alt={item.title}/><div className="absolute left-3 top-3 flex flex-wrap gap-1.5 items-center z-10">{item.isSponsored && (
+            <span className={`card-badge font-bold tracking-wider uppercase shadow-xs flex items-center gap-1 text-white ${
+              item.sponsoredData?.tier === 'elite' || item.sponsoredData?.tierLevel === 3
+                ? 'bg-gradient-to-r from-[#0e2a24] to-[#163e35] border border-emerald-400/60 ring-1 ring-emerald-400/30'
+                : item.sponsoredData?.tier === 'premium' || item.sponsoredData?.tierLevel === 2
+                ? 'bg-gradient-to-r from-[#163e35] to-[#749546] border border-lime-400/40'
+                : 'bg-amber-600'
+            }`}>
+              <Sparkles size={11} className="stroke-[2.5]" />
+              <span>
+                {item.sponsoredData?.planName
+                  ? `Sponsored · ${item.sponsoredData.planName.replace(' Boost', '')}`
+                  : 'Sponsored'}
+              </span>
+            </span>
+          )}<span className="card-badge bg-white/95 text-stone-900 border border-stone-200/80 font-semibold">{item.stage}</span></div></Link><div className="p-5"><p className="eyebrow mb-2">{item.builder}</p><Link className="card-title" href={`/projects/${item._id}`}>{item.title}</Link><p className="muted text-sm mt-2">{item.locality}, {item.city}</p><p className="font-semibold text-lg my-4">{money(item.price)} – {money(item.maxPrice)}</p><div className="flex justify-between text-xs border-t pt-4"><span>{item.configurations?.map(x=>x.name).join(' · ')}</span><ArrowUpRight size={16}/></div></div></article>;}
 export function SectionTitle({eyebrow,title,description,href,link='View all'}){return <div className="section-title"><div>{eyebrow&&<p className="eyebrow">{eyebrow}</p>}<h2>{title}</h2>{description&&<p className="muted mt-3">{description}</p>}</div>{href&&<Link className="text-link" href={href}>{link}<ArrowUpRight size={17}/></Link>}</div>;}
