@@ -108,17 +108,10 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
           </p>
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/post-property"
-            className="whitespace-nowrap shrink-0 px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all inline-flex items-center gap-1.5 shadow-sm"
-          >
-            <Plus size={15} className="shrink-0" />
-            <span className="whitespace-nowrap">Add New Property</span>
-          </Link>
           <button
             type="button"
             onClick={() => onSelectSection('properties')}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all border border-white/20"
+            className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all shadow-sm"
           >
             My Properties ({stats.properties || 0})
           </button>
@@ -1771,13 +1764,6 @@ function CustomerPropertiesSection({ onSelectSection }) {
             Manage all your posted residential and commercial listings. Closed properties remain visible here in your dashboard cards but are hidden from visitors on the website.
           </p>
         </div>
-        <Link
-          href="/post-property"
-          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
-        >
-          <Plus size={15} className="shrink-0" />
-          <span className="whitespace-nowrap">Add New Property</span>
-        </Link>
       </div>
 
       {/* Filter & Search Bar */}
@@ -2154,7 +2140,7 @@ function CustomerPropertiesSection({ onSelectSection }) {
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs whitespace-nowrap"
             >
               <Plus size={14} className="shrink-0" />
-              <span className="whitespace-nowrap">Add New Property</span>
+              <span className="whitespace-nowrap">Post Property</span>
             </Link>
           )}
         </div>

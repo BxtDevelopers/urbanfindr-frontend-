@@ -2771,13 +2771,6 @@ function ProviderPropertiesSection({ onPromote }) {
             Manage all your direct residential and commercial listings. Closed properties remain visible here in your dashboard cards but are removed from the public website.
           </p>
         </div>
-        <Link
-          href="/post-property"
-          className="whitespace-nowrap shrink-0 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
-        >
-          <Plus size={15} className="shrink-0" />
-          <span className="whitespace-nowrap">Add New Property</span>
-        </Link>
       </div>
 
       {/* Filter, Search & View Switcher Bar */}
