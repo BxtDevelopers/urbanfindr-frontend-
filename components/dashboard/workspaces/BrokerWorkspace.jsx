@@ -12,6 +12,7 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
+import PromotionManagementView from '../../promotions/PromotionManagementView';
 import {
   Briefcase,
   House,
@@ -2026,78 +2027,15 @@ function BrokerAnalyticsSection({ stats }) {
 
 // Section: Promotions
 function BrokerPromotionsSection({ onPromote }) {
-  const { data } = useData('promotions');
   const { data: propData } = useData('properties?mine=true&limit=100');
-  const items = data?.items || [];
   const myProperties = propData?.items || [];
-  const [selectedPropertyId, setSelectedPropertyId] = useState('');
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-stone-900">Listing Promotions</h2>
-          <p className="text-xs text-stone-500">Featured visibility plans for fast-moving client properties</p>
-        </div>
-        {myProperties.length > 0 && onPromote && (
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedPropertyId}
-              onChange={(e) => setSelectedPropertyId(e.target.value)}
-              className="text-xs px-3 py-2 bg-white border border-stone-200 rounded-xl max-w-xs truncate"
-            >
-              <option value="">Select a listing to promote…</option>
-              {myProperties.map((p) => (
-                <option key={p._id} value={p._id}>
-                  {p.title} ({money(p.price)})
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              disabled={!selectedPropertyId}
-              onClick={() => {
-                const targetProp = myProperties.find((p) => p._id === selectedPropertyId);
-                if (targetProp) onPromote(targetProp);
-              }}
-              className="whitespace-nowrap shrink-0 px-4 py-2 bg-[#163e35] hover:bg-[#24564a] disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:shadow self-start sm:self-auto"
-            >
-              <Sparkles size={15} />
-              <span>Promote Selected</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {items.length === 0 ? (
-        <div className="p-12 text-center bg-white border border-stone-200 rounded-xl space-y-2">
-          <Sparkles size={32} className="mx-auto text-amber-400" />
-          <h3 className="font-bold text-stone-800 text-sm">No active promotions</h3>
-          <p className="text-xs text-stone-400 max-w-sm mx-auto">
-            Feature your top client properties on the homepage to generate 5x more buyer enquiries.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {items.map((promo) => (
-            <div key={promo._id} className="bg-white border border-stone-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-stone-900 text-sm">{promo.targetTitle}</h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                    {promo.plan}
-                  </span>
-                </div>
-                <p className="text-xs text-stone-500">
-                  Active until {date(promo.endDate)} • {promo.impressions} views • {promo.clicks} clicks
-                </p>
-              </div>
-              <StatusBadge status={promo.status} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <PromotionManagementView
+      myListings={myProperties}
+      targetType="property"
+      onPromoteNew={onPromote}
+    />
   );
 }
 

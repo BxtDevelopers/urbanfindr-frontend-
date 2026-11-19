@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowUpRight, Heart, MapPin, BedDouble, Maximize, GitCompareArrows, Check, Home, ArrowRight } from 'lucide-react';
+import { ArrowUpRight, Heart, MapPin, BedDouble, Maximize, GitCompareArrows, Check, Home, ArrowRight, Sparkles } from 'lucide-react';
 import { api,useApp } from './providers';
 import { money } from '@/lib/format';
 import { isMonthly } from '@/lib/catalog';
@@ -55,6 +55,11 @@ export function PropertyCard({item,onFavorite}){
           <Image src={propertyImages(item)[0]} alt={item.title}/>
         </Link>
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5 items-center z-10">
+          {item.isSponsored && (
+            <span className="card-badge bg-amber-600 text-white font-bold tracking-wider uppercase shadow-xs flex items-center gap-1">
+              <Sparkles size={11} className="stroke-[2.5]" /> Sponsored
+            </span>
+          )}
           <span className={`card-badge uppercase tracking-wider ${
             isRent
               ? 'bg-amber-600 text-white'
@@ -124,5 +129,5 @@ export function PropertyCard({item,onFavorite}){
     </article>
   );
 }
-export function ProjectCard({item}){return <article className="property-card"><Link href={`/projects/${item._id}`} className="card-image block"><Image src={projectImages(item)[0]} alt={item.title}/><span className="card-badge bg-white/95 text-stone-900 border border-stone-200/80 absolute left-3 top-3 font-semibold">{item.stage}</span></Link><div className="p-5"><p className="eyebrow mb-2">{item.builder}</p><Link className="card-title" href={`/projects/${item._id}`}>{item.title}</Link><p className="muted text-sm mt-2">{item.locality}, {item.city}</p><p className="font-semibold text-lg my-4">{money(item.price)} – {money(item.maxPrice)}</p><div className="flex justify-between text-xs border-t pt-4"><span>{item.configurations?.map(x=>x.name).join(' · ')}</span><ArrowUpRight size={16}/></div></div></article>;}
+export function ProjectCard({item}){return <article className="property-card"><Link href={`/projects/${item._id}`} className="card-image block"><Image src={projectImages(item)[0]} alt={item.title}/><div className="absolute left-3 top-3 flex flex-wrap gap-1.5 items-center z-10">{item.isSponsored && <span className="card-badge bg-amber-600 text-white font-bold tracking-wider uppercase shadow-xs flex items-center gap-1"><Sparkles size={11} className="stroke-[2.5]" /> Sponsored</span>}<span className="card-badge bg-white/95 text-stone-900 border border-stone-200/80 font-semibold">{item.stage}</span></div></Link><div className="p-5"><p className="eyebrow mb-2">{item.builder}</p><Link className="card-title" href={`/projects/${item._id}`}>{item.title}</Link><p className="muted text-sm mt-2">{item.locality}, {item.city}</p><p className="font-semibold text-lg my-4">{money(item.price)} – {money(item.maxPrice)}</p><div className="flex justify-between text-xs border-t pt-4"><span>{item.configurations?.map(x=>x.name).join(' · ')}</span><ArrowUpRight size={16}/></div></div></article>;}
 export function SectionTitle({eyebrow,title,description,href,link='View all'}){return <div className="section-title"><div>{eyebrow&&<p className="eyebrow">{eyebrow}</p>}<h2>{title}</h2>{description&&<p className="muted mt-3">{description}</p>}</div>{href&&<Link className="text-link" href={href}>{link}<ArrowUpRight size={17}/></Link>}</div>;}

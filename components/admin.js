@@ -36,53 +36,69 @@ import {
   ChevronLeft,
   ChevronRight,
   Camera,
+  Sparkles,
 } from 'lucide-react';
-import { api, useApp, useData } from './providers';
+import AdminPromotionManagement from './promotions/AdminPromotionManagement';
+import { api, useApp, useData, useNotificationSummary } from './providers';
 import { Field, Pagination, State, Submit, Image } from './ui';
 import { cities, money, date } from '@/lib/format';
 import { cityGuides } from '@/lib/catalog';
 import { initialServiceProviders } from '@/lib/serviceProviders';
 import { serviceCategories } from '@/lib/serviceCategories';
 
-export default function Admin() {
+const VALID_ADMIN_TABS = new Set([
+  'overview',
+  'workspace-requests',
+  'service-providers',
+  'channel-partners',
+  'builders',
+  'agents',
+  'users',
+  'properties',
+  'promotions',
+  'enquiries',
+  'notifications',
+  'support',
+  'cities'
+]);
+
+export default function Admin({ initialTab: propInitialTab } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, toast } = useApp();
 
-  const initialTab = searchParams?.get('tab') || 'overview';
-  const initialPropId = searchParams?.get('propertyId') || searchParams?.get('review') || searchParams?.get('id');
-  const initialStatus = searchParams?.get('status') || searchParams?.get('filter') || '';
+  const tabParam = searchParams?.get('tab');
+  const propIdParam = searchParams?.get('propertyId') || searchParams?.get('review') || searchParams?.get('id');
+  const statusParam = searchParams?.get('status') || searchParams?.get('filter') || '';
   const initialUserId = searchParams?.get('userId');
+
+  const initialTab = tabParam || propInitialTab || 'overview';
 
   const [tab, setTab] = useState(initialTab);
   const [prevTab, setPrevTab] = useState('overview');
-  const [propertyStatusFilter, setPropertyStatusFilter] = useState(initialStatus);
+  const [propertyStatusFilter, setPropertyStatusFilter] = useState(statusParam);
   const [selectedPropertyForModal, setSelectedPropertyForModal] = useState(null);
-  const [selectedPropertyId, setSelectedPropertyId] = useState(initialPropId || null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState(propIdParam || null);
   const [selectedPartnerForModal, setSelectedPartnerForModal] = useState(null);
 
   // Live platform statistics
   const stats = useData('admin/stats');
-  const { data: notificationsData, reload: reloadNotifications } = useData('notifications');
-  const unreadCount = notificationsData?.unread ?? 0;
+  const { unread: unreadCount, reload: reloadNotifications } = useNotificationSummary();
 
-  // React to searchParams updates from URL
+  // React to searchParams updates from URL or initialTab prop without infinite loops
   useEffect(() => {
-    const qTab = searchParams?.get('tab');
-    const qPropId = searchParams?.get('propertyId') || searchParams?.get('review') || searchParams?.get('id');
-    const qStatus = searchParams?.get('status') || searchParams?.get('filter');
-
-    if (qTab && navSections.some((s) => s.id === qTab)) {
+    const qTab = tabParam || propInitialTab;
+    if (qTab && qTab !== tab && VALID_ADMIN_TABS.has(qTab)) {
       setTab(qTab);
     }
-    if (qPropId) {
-      setSelectedPropertyId(qPropId);
-      if (!qTab) setTab('properties');
+    if (propIdParam && propIdParam !== selectedPropertyId) {
+      setSelectedPropertyId(propIdParam);
+      if (!tabParam && tab !== 'properties') setTab('properties');
     }
-    if (qStatus) {
-      setPropertyStatusFilter(qStatus);
+    if (statusParam !== propertyStatusFilter) {
+      setPropertyStatusFilter(statusParam);
     }
-  }, [searchParams]);
+  }, [tabParam, propInitialTab, propIdParam, statusParam, tab, selectedPropertyId, propertyStatusFilter]);
 
   // Sidebar navigation sections
   const navSections = [
@@ -94,6 +110,7 @@ export default function Admin() {
     { id: 'agents', label: 'Brokers & Agents', icon: BriefcaseBusiness, count: stats.data?.brokers || 0 },
     { id: 'users', label: 'All Users & Owners', icon: Users, count: stats.data?.users || 0 },
     { id: 'properties', label: 'Properties & Listings', icon: Home, badgeColor: Number(stats.data?.pending) > 0 ? 'bg-amber-500' : null },
+    { id: 'promotions', label: 'Promotions & Monetization', icon: Sparkles },
     { id: 'enquiries', label: 'Enquiries & Visits', icon: Mail, count: stats.data?.leads || 0 },
     { id: 'notifications', label: 'Notifications', icon: Bell, badgeColor: unreadCount > 0 ? 'bg-emerald-500' : null },
     { id: 'support', label: 'Customer Support', icon: LifeBuoy, count: stats.data?.openTickets || 0, badgeColor: Number(stats.data?.openTickets) > 0 ? 'bg-red-500' : null },
@@ -259,6 +276,10 @@ export default function Admin() {
               onReload={stats.reload}
               onOpenProperty={handleOpenProperty}
             />
+          )}
+
+          {tab === 'promotions' && (
+            <AdminPromotionManagement />
           )}
 
           {tab === 'enquiries' && (
@@ -2589,9 +2610,6 @@ function OverviewView({ stats, loading, error, onNavigate, onOpenProperty }) {
           <h1 className="!text-4xl">Platform command center.</h1>
           <p className="muted mt-4 mb-7">Review listings, verify partners, and monitor incoming enquiries.</p>
         </div>
-        <Link className="btn" href="/post-property">
-          <Plus size={16} /> Post property
-        </Link>
       </div>
 
       <State loading={loading} error={error} />
@@ -2903,29 +2921,29 @@ function ServiceProvidersView() {
   const pagedProviders = filtered.slice((page - 1) * limit, page * limit);
 
   function toggleVerification(id) {
+    const target = providers.find((p) => p._id === id);
+    if (!target) return;
+    const next = !target.verified;
     setProviders((prev) =>
-      prev.map((p) => {
-        if (p._id === id) {
-          const next = !p.verified;
-          toast(`${p.name} verification set to ${next ? 'Verified' : 'Unverified'}`);
-          return { ...p, verified: next };
-        }
-        return p;
-      })
+      prev.map((p) => (p._id === id ? { ...p, verified: next } : p))
     );
+    if (selectedProvider && selectedProvider._id === id) {
+      setSelectedProvider((prev) => (prev ? { ...prev, verified: next } : prev));
+    }
+    toast(`${target.name} verification set to ${next ? 'Verified' : 'Unverified'}`);
   }
 
   function toggleFeatured(id) {
+    const target = providers.find((p) => p._id === id);
+    if (!target) return;
+    const next = !target.featured;
     setProviders((prev) =>
-      prev.map((p) => {
-        if (p._id === id) {
-          const next = !p.featured;
-          toast(`${p.name} featured state toggled.`);
-          return { ...p, featured: next };
-        }
-        return p;
-      })
+      prev.map((p) => (p._id === id ? { ...p, featured: next } : p))
     );
+    if (selectedProvider && selectedProvider._id === id) {
+      setSelectedProvider((prev) => (prev ? { ...prev, featured: next } : prev));
+    }
+    toast(`${target.name} featured state toggled.`);
   }
 
   return (

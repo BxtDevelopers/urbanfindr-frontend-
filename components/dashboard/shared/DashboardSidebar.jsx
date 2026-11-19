@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useWorkspace, WORKSPACE_CONFIG } from '../WorkspaceContext';
-import { useApp, useData } from '../../providers';
+import { useApp, useNotificationSummary } from '../../providers';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 import {
   House,
@@ -46,21 +46,7 @@ export default function DashboardSidebar({
 }) {
   const { user, logout } = useApp();
   const { activeWorkspace, currentConfig, openRegisterModal } = useWorkspace();
-  const { data: notifSummary, reload: reloadNotifSummary } = useData(user ? 'notifications?limit=1' : null);
-  const unreadMessagesCount = notifSummary?.unreadMessages || 0;
-
-  useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(() => reloadNotifSummary(), 15000);
-    const sync = () => reloadNotifSummary();
-    window.addEventListener('focus', sync);
-    window.addEventListener('urbanfindr:notifications-updated', sync);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', sync);
-      window.removeEventListener('urbanfindr:notifications-updated', sync);
-    };
-  }, [user, reloadNotifSummary]);
+  const { unread: unreadNotifCount, unreadMessages: unreadMessagesCount } = useNotificationSummary();
 
   // Role-specific navigation items (Quotations, calendar schedules, and booking terms replaced with direct requests & offers)
   const navItems = {
@@ -198,7 +184,6 @@ export default function DashboardSidebar({
             const Icon = item.icon;
             const isSelected = activeSection === item.id || (item.id === 'requests' && activeSection === 'bookings');
             const showMessageGreenDot = item.id === 'messages' && unreadMessagesCount > 0;
-            const unreadNotifCount = notifSummary?.unread || 0;
             const showNotifBadge = item.id === 'notifications' && unreadNotifCount > 0;
             return (
               <button

@@ -11,6 +11,7 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
+import PromotionManagementView from '../../promotions/PromotionManagementView';
 import {
   Building2,
   Layers,
@@ -73,6 +74,9 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
           onPromote={(proj) => setPromotionTarget(proj)}
         />
       );
+    }
+    if (section === 'promotions') {
+      return <BuilderPromotionsSection onPromote={(proj) => setPromotionTarget(proj)} />;
     }
     if (section === 'enquiries') {
       return <BuilderEnquiriesSection />;
@@ -963,45 +967,15 @@ function BuilderPerformanceSection({ stats }) {
 
 // Section: Promotions
 function BuilderPromotionsSection({ onPromote }) {
-  const { data } = useData('promotions');
-  const items = data?.items || [];
+  const { data: projectData } = useData('projects?mine=true&limit=100');
+  const myProjects = projectData?.items || [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-stone-900">Township &amp; Launch Promotions</h2>
-        <p className="text-xs text-stone-500">Feature your pre-launch towers with top banner visibility</p>
-      </div>
-
-      {items.length === 0 ? (
-        <div className="p-12 text-center bg-white border border-stone-200 rounded-xl space-y-2">
-          <Sparkles size={32} className="mx-auto text-amber-400" />
-          <h3 className="font-bold text-stone-800 text-sm">No active promotions</h3>
-          <p className="text-xs text-stone-400 max-w-sm mx-auto">
-            Promote new launches on the UrbanFindr homepage banner to reach thousands of prospective buyers.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {items.map((promo) => (
-            <div key={promo._id} className="bg-white border border-stone-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-stone-900 text-sm">{promo.targetTitle}</h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                    {promo.plan}
-                  </span>
-                </div>
-                <p className="text-xs text-stone-500">
-                  Active until {date(promo.endDate)} • {promo.impressions} views • {promo.clicks} clicks
-                </p>
-              </div>
-              <StatusBadge status={promo.status} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <PromotionManagementView
+      myListings={myProjects}
+      targetType="builder_project"
+      onPromoteNew={onPromote}
+    />
   );
 }
 

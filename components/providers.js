@@ -1,7 +1,9 @@
 'use client';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 
-export async function api(url, options = {}) {
+const inflightGetRequests = new Map();
+
+async function executeApiRequest(url, options = {}) {
   let response;
   try {
     response = await fetch(`/api/${url}`, {
@@ -29,6 +31,21 @@ export async function api(url, options = {}) {
     throw new Error([data.error || 'The request could not be completed.', ...(data.details || [])].join('\n'));
   }
   return data;
+}
+
+export async function api(url, options = {}) {
+  const isGet = !options.method || options.method.toUpperCase() === 'GET';
+  if (isGet && !options.body) {
+    if (inflightGetRequests.has(url)) {
+      return inflightGetRequests.get(url);
+    }
+    const promise = executeApiRequest(url, options).finally(() => {
+      inflightGetRequests.delete(url);
+    });
+    inflightGetRequests.set(url, promise);
+    return promise;
+  }
+  return executeApiRequest(url, options);
 }
 
 // Helper to get structured badge info for any account role
@@ -265,6 +282,8 @@ export function useData(url) {
   const [version, setVersion] = useState(0);
   const prevUrlRef = useRef(url);
 
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
+
   useEffect(() => {
     let active = true;
     if (prevUrlRef.current !== url) {
@@ -296,5 +315,87 @@ export function useData(url) {
     };
   }, [url, version]);
 
-  return { data, error, loading, reload: () => setVersion((v) => v + 1) };
+  return { data, error, loading, reload };
+}
+
+// Global Notification Summary Store & Hook to eliminate duplicate polling & render loops
+const notifState = {
+  data: { unread: 0, unreadMessages: 0, items: [] },
+  lastFetched: 0,
+  promise: null,
+  listeners: new Set(),
+};
+
+function notifyNotifListeners() {
+  for (const fn of notifState.listeners) {
+    try {
+      fn({ ...notifState.data });
+    } catch {}
+  }
+}
+
+export async function fetchNotificationSummary(force = false) {
+  const now = Date.now();
+  // Throttle: don't hit more than once every 10 seconds unless forced, and return in-flight promise if pending
+  if (!force && notifState.lastFetched && now - notifState.lastFetched < 10000) {
+    return notifState.data;
+  }
+  if (notifState.promise) {
+    return notifState.promise;
+  }
+
+  notifState.promise = api('notifications?limit=5')
+    .then((res) => {
+      notifState.data = {
+        unread: typeof res?.unread === 'number' ? res.unread : 0,
+        unreadMessages: typeof res?.unreadMessages === 'number' ? res.unreadMessages : 0,
+        items: Array.isArray(res?.items) ? res.items : [],
+      };
+      notifState.lastFetched = Date.now();
+      notifyNotifListeners();
+      return notifState.data;
+    })
+    .catch(() => notifState.data)
+    .finally(() => {
+      notifState.promise = null;
+    });
+
+  return notifState.promise;
+}
+
+let notifDebounceTimer = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('urbanfindr:notifications-updated', () => {
+    if (notifDebounceTimer) clearTimeout(notifDebounceTimer);
+    notifDebounceTimer = setTimeout(() => {
+      fetchNotificationSummary(true);
+    }, 400);
+  });
+}
+
+export function useNotificationSummary() {
+  const { user } = useApp();
+  const [summary, setSummary] = useState(notifState.data);
+
+  useEffect(() => {
+    if (!user) return;
+    notifState.listeners.add(setSummary);
+    // Fetch if stale (>10s old)
+    fetchNotificationSummary(false);
+    return () => {
+      notifState.listeners.delete(setSummary);
+    };
+  }, [user]);
+
+  const reload = useCallback(() => {
+    if (!user) return;
+    fetchNotificationSummary(true);
+  }, [user]);
+
+  return {
+    unread: summary.unread,
+    unreadMessages: summary.unreadMessages,
+    items: summary.items,
+    reload,
+  };
 }

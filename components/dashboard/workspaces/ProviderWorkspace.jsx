@@ -12,6 +12,7 @@ import StatusBadge from '../shared/StatusBadge';
 import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
+import PromotionManagementView from '../../promotions/PromotionManagementView';
 import PropertyDashboardCard from '../shared/PropertyDashboardCard';
 import PropertyRequestsModal from '../shared/PropertyRequestsModal';
 import MessageCenter from '../shared/MessageCenter';
@@ -231,7 +232,10 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
     return <ProviderBusinessProfileSection />;
   }
   if (section === 'services') {
-    return <ProviderServicesSection />;
+    return <ProviderServicesSection onPromote={(srv) => setPromotionTarget(srv)} />;
+  }
+  if (section === 'promotions') {
+    return <ProviderPromotionsSection onPromote={(srv) => setPromotionTarget(srv)} />;
   }
   if (section === 'enquiries') {
     return <ProviderEnquiriesSection onSelectSection={onSelectSection} />;
@@ -285,6 +289,17 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
         <AssignTechnicianModal
           request={assignTechRequest}
           onClose={() => setAssignTechRequest(null)}
+        />
+      )}
+
+      {/* Promotion Modal */}
+      {promotionTarget && (
+        <PromotionModal
+          isOpen={Boolean(promotionTarget)}
+          target={promotionTarget}
+          targetType="service_provider"
+          onClose={() => setPromotionTarget(null)}
+          onPromoted={() => setPromotionTarget(null)}
         />
       )}
 
@@ -628,6 +643,15 @@ function ProviderServicesSection({ onPromote }) {
       header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-2">
+          {onPromote && (
+            <button
+              type="button"
+              onClick={() => onPromote(row)}
+              className="text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 inline-flex items-center gap-1 cursor-pointer"
+            >
+              <Sparkles size={11} /> Promote
+            </button>
+          )}
           <button
             type="button"
             disabled={busy === row._id}
@@ -2302,45 +2326,15 @@ function ProviderReviewsSection({ rating }) {
 
 // Section: Promotions
 function ProviderPromotionsSection({ onPromote }) {
-  const { data } = useData('promotions');
-  const items = data?.items || [];
+  const { data: servicesData } = useData('provider-services');
+  const myServices = servicesData?.items || [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-stone-900">Service Category Promotions</h2>
-        <p className="text-xs text-stone-500">Highlight your business at the top of UrbanFindr category listings</p>
-      </div>
-
-      {items.length === 0 ? (
-        <div className="p-12 text-center bg-white border border-stone-200 rounded-xl space-y-2">
-          <Sparkles size={32} className="mx-auto text-amber-400" />
-          <h3 className="font-bold text-stone-800 text-sm">No active promotions</h3>
-          <p className="text-xs text-stone-400 max-w-sm mx-auto">
-            Feature your services on the category discovery page to capture up to 3x higher direct consultation requests.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {items.map((promo) => (
-            <div key={promo._id} className="bg-white border border-stone-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-stone-900 text-sm">{promo.targetTitle}</h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                    {promo.plan}
-                  </span>
-                </div>
-                <p className="text-xs text-stone-500">
-                  Active until {date(promo.endDate)} • {promo.impressions} views • {promo.clicks} clicks
-                </p>
-              </div>
-              <StatusBadge status={promo.status} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <PromotionManagementView
+      myListings={myServices}
+      targetType="service_provider"
+      onPromoteNew={onPromote}
+    />
   );
 }
 

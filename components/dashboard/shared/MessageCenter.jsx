@@ -73,9 +73,6 @@ export default function MessageCenter({
       const items = res?.items || [];
       const chronological = [...items].reverse();
       setMessages(chronological);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('urbanfindr:notifications-updated'));
-      }
     } catch (err) {
       console.warn('Failed to fetch messages for thread:', err);
     } finally {

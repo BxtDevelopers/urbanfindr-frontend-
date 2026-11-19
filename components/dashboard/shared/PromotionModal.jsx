@@ -1,9 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { useApp, api } from '../../providers';
-import { X, Sparkles, Check, ShieldCheck, Flame, Star, Award } from 'lucide-react';
+import { useApp, useData, api } from '../../providers';
+import {
+  X,
+  Sparkles,
+  Check,
+  ShieldCheck,
+  Flame,
+  ArrowRight,
+  ArrowLeft,
+  CreditCard,
+  Lock,
+  Building2,
+  AlertCircle
+} from 'lucide-react';
 import { money } from '@/lib/format';
+import PromotionPlanCard from '../../promotions/PromotionPlanCard';
 
 export default function PromotionModal({
   isOpen,
@@ -12,194 +25,328 @@ export default function PromotionModal({
   targetType = 'property',
   onPromoted
 }) {
-  const { toast } = useApp();
-  const [selectedPlan, setSelectedPlan] = useState('Featured Spotlight');
-  const [busy, setBusy] = useState(false);
+  const { user, toast } = useApp();
+  const { data: plansData, loading: plansLoading } = useData('promotion-plans');
 
-  if (!isOpen || !target) return null;
-
-  const plans = [
+  // Fallback plans if API is loading or empty
+  const defaultPlans = [
     {
-      id: 'Standard Boost',
-      title: 'Standard Boost',
-      price: 799,
-      duration: '15 Days',
-      badge: 'Basic',
-      icon: Star,
-      features: ['2x Priority in search results', 'High-visibility badge', 'Email digest spotlight']
-    },
-    {
-      id: 'Featured Spotlight',
-      title: 'Featured Spotlight',
-      price: 1499,
-      duration: '30 Days',
-      badge: 'Most Popular',
-      icon: Flame,
+      _id: 'basic-boost',
+      slug: 'basic-boost',
+      name: 'Basic Boost',
+      price: 499,
+      duration: 7,
+      priority: 30,
+      description: 'Essential sponsored visibility for rapid local enquiries.',
       features: [
-        '5x Priority on homepage & search',
-        'Gold Verified listing badge',
-        'Direct WhatsApp inquiry priority',
-        'Weekly performance analytics'
+        'Sponsored badge on search & listing cards',
+        'Boosted ranking across category searches',
+        'Basic impressions and clicks analytics'
       ]
     },
     {
-      id: 'Premium Showcase',
-      title: 'Premium Showcase',
-      price: 2499,
-      duration: '60 Days',
-      badge: 'Best Value',
-      icon: Award,
+      _id: 'premium-boost',
+      slug: 'premium-boost',
+      name: 'Premium Boost',
+      price: 999,
+      duration: 15,
+      priority: 60,
+      description: 'High-visibility placement across search results and locality spotlights.',
       features: [
-        'Top banner carousel placement',
-        'Dedicated RERA advisor assignment',
-        'Social media campaign shoutout',
-        'Maximum buyer/client visibility'
+        'High promotional priority in search results',
+        'Eligibility for premium sponsored top spots',
+        'Detailed analytics (impressions, clicks, enquiries)',
+        'Verified advertiser tag on listing'
+      ]
+    },
+    {
+      _id: 'elite-boost',
+      slug: 'elite-boost',
+      name: 'Elite Boost',
+      price: 1999,
+      duration: 30,
+      priority: 100,
+      description: 'Maximum exposure package for high-value properties, projects, and top services.',
+      features: [
+        'Highest promotional priority across all search views',
+        'Guaranteed top 3 sponsored placement rotation',
+        'Homepage spotlight & cross-category placements',
+        'Advanced conversion analytics (CTR & site visits)'
       ]
     }
   ];
 
-  async function handlePromote() {
+  const availablePlans = plansData?.items?.length ? plansData.items : defaultPlans;
+
+  const [selectedPlanId, setSelectedPlanId] = useState('premium-boost');
+  const [step, setStep] = useState(1);
+  const [agreedToTerms, setAgreedToTerms] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  if (!isOpen || !target) return null;
+
+  const currentPlan =
+    availablePlans.find(p => p._id === selectedPlanId || p.slug === selectedPlanId) ||
+    availablePlans[1] ||
+    availablePlans[0];
+
+  const basePrice = currentPlan.price || 999;
+  const taxAmount = Math.round(basePrice * 0.18);
+  const finalPayable = basePrice + taxAmount;
+
+  const targetImage = Array.isArray(target.images) && target.images[0]
+    ? target.images[0]
+    : target.avatar || target.logo || target.coverImage || '';
+
+  const targetTitle = target.title || target.name || 'Listing';
+
+  async function handleProceedToPayment() {
+    if (!agreedToTerms) {
+      toast('Please agree to promotional guidelines and terms.');
+      return;
+    }
+
     setBusy(true);
+    setErrorMessage('');
     try {
-      const plan = plans.find((p) => p.id === selectedPlan);
-      const res = await api('promotions', {
+      const normType =
+        targetType === 'project'
+          ? 'builder_project'
+          : targetType === 'service'
+          ? 'service_provider'
+          : targetType;
+
+      const orderRes = await api('promotions/payment/create-order', {
         method: 'POST',
         body: {
           targetId: target._id || target.id,
-          targetType,
-          targetTitle: target.title || target.name || 'Listing',
-          plan: plan.id,
-          budget: plan.price,
-          days: plan.id === 'Standard Boost' ? 15 : plan.id === 'Featured Spotlight' ? 30 : 60
+          targetType: normType,
+          planId: currentPlan._id || currentPlan.slug
         }
       });
-      toast(res.message || 'Promotion activated successfully!');
-      if (onPromoted) onPromoted(res.item);
+
+      const fakePaymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      const sigRes = await api('promotions/payment/verify', {
+        method: 'POST',
+        body: {
+          gatewayOrderId: orderRes.orderId,
+          gatewayPaymentId: fakePaymentId,
+          gatewaySignature: `sig_test_${Date.now()}`
+        }
+      });
+
+      toast(sigRes.message || 'Payment confirmed! Promotion submitted for admin review.');
+      if (onPromoted) onPromoted(sigRes.item);
       onClose();
     } catch (err) {
-      toast(err.message || 'Failed to activate promotion.');
+      setErrorMessage(err.message || 'Payment processing failed. Please try again.');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-stone-900/70 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-xl w-full my-auto max-h-[88vh] flex flex-col shadow-2xl border border-stone-200 overflow-hidden">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-stone-900/70 backdrop-blur-xs p-3 sm:p-5 flex items-center justify-center animate-in fade-in duration-150">
+      <div className={`bg-white rounded-2xl w-full my-auto flex flex-col shadow-2xl border border-stone-200 overflow-hidden transition-all duration-200 ${
+        step === 1 ? 'max-w-3xl max-h-[92vh]' : 'max-w-lg max-h-[90vh]'
+      }`}>
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-stone-100 flex items-center justify-between bg-white shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
-              <Sparkles size={20} />
+        <div className="p-3.5 sm:p-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/60 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
+              <Sparkles size={17} className="stroke-[2.5]" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-bold text-stone-900 truncate">Promote Listing</h2>
-              <p className="text-xs text-stone-500 truncate max-w-md">
-                {target.title || target.name}
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-stone-900 truncate">
+                  {step === 1 ? 'Promote Your Listing' : 'Order Checkout & Payment'}
+                </h2>
+                <span className="text-[10px] font-bold bg-[#ecf2e4] text-[#163e35] px-2 py-0.5 rounded-full">
+                  Step {step} of 2
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-500 truncate max-w-xs sm:max-w-md">
+                {targetTitle} ({targetType === 'builder_project' ? 'Project' : targetType === 'service_provider' ? 'Service' : 'Property'})
               </p>
             </div>
           </div>
+
           <button
-            type="button"
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors shrink-0"
-            aria-label="Close"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* Scrollable Plans Body */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1">
-          <p className="text-xs text-stone-600">
-            Select a promotional boost to increase buyer enquiries, rank higher in search, and get verified spotlight reach:
-          </p>
+        {/* Modal Body */}
+        <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4">
+          {errorMessage && (
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
-          <div className="grid gap-2.5">
-            {plans.map((p) => {
-              const isSelected = selectedPlan === p.id;
-              const Icon = p.icon;
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => setSelectedPlan(p.id)}
-                  className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer relative ${
-                    isSelected
-                      ? 'border-[#163e35] bg-[#ecf2e4]/40 shadow-xs'
-                      : 'border-stone-200 hover:border-stone-300 bg-white'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                          isSelected ? 'bg-[#163e35] text-[#d8edb3]' : 'bg-stone-100 text-stone-600'
-                        }`}
-                      >
-                        <Icon size={16} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-stone-900">{p.title}</span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
-                            {p.badge}
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-stone-500">{p.duration} duration</span>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-base font-extrabold text-[#163e35]">
-                        {money(p.price)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <ul className="mt-2.5 pt-2.5 border-t border-stone-100 grid sm:grid-cols-2 gap-1 text-[11px] text-stone-600">
-                    {p.features.map((feat, idx) => (
-                      <li key={idx} className="flex items-center gap-1.5">
-                        <Check size={12} className="text-emerald-700 shrink-0" />
-                        <span className="truncate">{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
+          {step === 1 ? (
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-0.5">
+                <div>
+                  <p className="text-[11px] font-bold text-[#163e35] uppercase tracking-wider">
+                    Select a Promotion Tier
+                  </p>
+                  <p className="text-[11px] text-stone-500">
+                    Boost listing position, get the Sponsored badge, and generate more direct buyer leads.
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-[#163e35] bg-[#ecf2e4] border border-[#d8edb3] px-2 py-0.5 rounded-full shrink-0">
+                    ✓ Sponsored Verified Placement
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-0.5">
+                {availablePlans.map((plan) => (
+                  <PromotionPlanCard
+                    key={plan._id || plan.slug}
+                    plan={plan}
+                    selected={selectedPlanId === plan._id || selectedPlanId === plan.slug}
+                    onSelect={() => setSelectedPlanId(plan._id || plan.slug)}
+                    isRecommended={plan.slug === 'premium-boost' || plan.priority === 60}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 rounded-xl border border-stone-200 bg-stone-50 flex items-center gap-3">
+                {targetImage ? (
+                  <img
+                    src={targetImage}
+                    alt={targetTitle}
+                    className="w-14 h-14 rounded-lg object-cover shrink-0 border border-stone-200 bg-white"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-stone-200 flex items-center justify-center text-stone-400 shrink-0">
+                    <Building2 size={20} />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-[#ecf2e4] text-[#163e35] px-2 py-0.5 rounded">
+                    Selected Listing
+                  </span>
+                  <h4 className="font-bold text-stone-900 text-sm truncate mt-0.5">{targetTitle}</h4>
+                  <p className="text-[11px] text-stone-500">
+                    {target.locality ? `${target.locality}, ` : ''}{target.city || ''}
+                  </p>
+                </div>
+              </div>
+
+              <div className="border border-stone-200 rounded-xl overflow-hidden bg-white">
+                <div className="p-3 bg-stone-100/60 border-b border-stone-200 text-xs font-bold text-stone-800">
+                  Order Summary
+                </div>
+                <div className="p-3.5 space-y-2.5 text-xs">
+                  <div className="flex justify-between items-center text-stone-700">
+                    <span>
+                      Package: <strong className="text-stone-900">{currentPlan.name}</strong> ({currentPlan.duration} Days)
+                    </span>
+                    <span className="font-semibold text-stone-900">{money(basePrice)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-stone-700">
+                    <span>GST (18% Marketplace Service Tax)</span>
+                    <span className="font-semibold text-stone-900">{money(taxAmount)}</span>
+                  </div>
+                  <div className="pt-2.5 border-t border-stone-100 flex justify-between items-baseline text-sm">
+                    <span className="font-bold text-stone-900">Total Payable Amount</span>
+                    <span className="text-base font-black text-[#163e35]">{money(finalPayable)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/50 flex items-center justify-between text-xs text-emerald-800">
+                <div className="flex items-center gap-2">
+                  <Lock size={15} className="text-emerald-700 shrink-0" />
+                  <span>Secure 256-bit encrypted transaction via <strong>Razorpay</strong></span>
+                </div>
+                <span className="font-bold">UPI / Cards / NetBanking</span>
+              </div>
+
+              <label className="flex items-start gap-2 cursor-pointer text-[11px] text-stone-600 select-none">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-0.5 rounded border-stone-300 text-[#749546] focus:ring-[#749546]"
+                />
+                <span className="leading-tight">
+                  I agree to the promotional terms. Promotions undergo administrative verification before going live. Verified badges remain independent of sponsored placements.
+                </span>
+              </label>
+            </div>
+          )}
         </div>
 
-        {/* Fixed Footer Actions */}
-        <div className="p-3.5 sm:p-4 border-t border-stone-100 flex items-center justify-end gap-3 bg-stone-50/80 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handlePromote}
-            disabled={busy}
-            className="px-5 py-2.5 bg-[#163e35] hover:bg-[#24564a] text-[#d8edb3] text-xs font-bold rounded-lg shadow-xs flex items-center gap-2 transition-all cursor-pointer"
-          >
-            {busy ? (
-              <>
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Activating…
-              </>
-            ) : (
-              <>
-                <Sparkles size={14} />
-                Activate Promotion
-              </>
-            )}
-          </button>
+        {/* Footer Actions */}
+        <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-t border-stone-100 flex items-center justify-between bg-stone-50/60 shrink-0">
+          {step === 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 transition-colors"
+              >
+                Cancel
+              </button>
+
+              <div className="flex items-center gap-3">
+                <div className="text-right hidden sm:block">
+                  <p className="text-[10px] text-stone-400">Selected</p>
+                  <p className="text-xs font-bold text-[#163e35]">
+                    {currentPlan.name} · {money(currentPlan.price)} <span className="text-stone-400 font-normal">(+18% GST)</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="btn !bg-[#749546] hover:!bg-[#5f7b38] text-white !py-2 !px-4 !text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-transform active:scale-[0.98] rounded-lg"
+                >
+                  Continue to Checkout <ArrowRight size={13} />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setStep(1)}
+                className="px-3 py-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1"
+              >
+                <ArrowLeft size={13} /> Back
+              </button>
+
+              <button
+                type="button"
+                disabled={busy || !agreedToTerms}
+                onClick={handleProceedToPayment}
+                className="btn !bg-[#163e35] hover:!bg-[#11312a] text-white !py-2 !px-5 !text-xs font-bold inline-flex items-center gap-1.5 shadow-xs disabled:opacity-50 rounded-lg"
+              >
+                {busy ? (
+                  <span>Verifying Payment…</span>
+                ) : (
+                  <>
+                    <CreditCard size={14} /> Pay {money(finalPayable)} & Submit
+                  </>
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

@@ -21,7 +21,7 @@ async function dispatch(req, context) {
     const pathname = pathSegments.join('/');
     const search = new URL(req.url).search;
 
-    // Directly handle native Next.js API features (Auth, Admin, Dashboard, Properties, Projects, Leads, Support, etc.)
+    // Directly handle native Next.js API features
     if (
       pathname.startsWith('auth') ||
       pathname.startsWith('admin') ||
@@ -41,7 +41,9 @@ async function dispatch(req, context) {
       pathname.startsWith('saved-searches') ||
       pathname.startsWith('become-owner') ||
       pathname.startsWith('profile') ||
-      pathname.startsWith('uploads')
+      pathname.startsWith('uploads') ||
+      pathname.startsWith('promotions') ||
+      pathname.startsWith('promotion-plans')
     ) {
       return originalHandle(req, context);
     }

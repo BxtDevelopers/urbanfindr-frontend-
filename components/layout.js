@@ -31,7 +31,7 @@ import {
 import CategoryIcon from './CategoryIcon';
 import NotificationPanel from './dashboard/shared/NotificationPanel';
 
-import { useApp, useData } from './providers';
+import { useApp, useData, useNotificationSummary } from './providers';
 import { cityGuides } from '@/lib/catalog';
 import { serviceCategories } from '@/lib/serviceCategories';
 
@@ -264,7 +264,7 @@ function UserAccountDropdownMenu({
         </Link>
 
         {/* Switch User Account / Business Account option */}
-        {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner') && (
+        {(user.role !== 'broker' && user.role !== 'owner' && user.role !== 'builder' && user.role !== 'channel_partner' && user.role !== 'admin') && (
           activeAccountMode === 'provider' ? (
             <button
               type="button"
@@ -443,22 +443,7 @@ export function Header() {
   }, [requestData?.items, isCustomer, user]);
 
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const { data: notifData, reload: reloadNotifs } = useData(user ? 'notifications?limit=5' : null);
-  const unreadNotifCount = notifData?.unread || 0;
-
-  useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(() => reloadNotifs(), 15000);
-    const onFocus = () => reloadNotifs();
-    const onNotifSync = () => reloadNotifs();
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('urbanfindr:notifications-updated', onNotifSync);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('urbanfindr:notifications-updated', onNotifSync);
-    };
-  }, [user, reloadNotifs]);
+  const { unread: unreadNotifCount, reload: reloadNotifs } = useNotificationSummary();
 
   useEffect(() => {
     setUserMenuOpen(false);

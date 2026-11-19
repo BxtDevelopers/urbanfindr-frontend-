@@ -12,6 +12,7 @@ import BrokerWorkspace from './dashboard/workspaces/BrokerWorkspace';
 import BuilderWorkspace from './dashboard/workspaces/BuilderWorkspace';
 import ProviderWorkspace from './dashboard/workspaces/ProviderWorkspace';
 import ChannelPartnerDashboard from './channel-partner-dashboard';
+import Admin from './admin';
 import BookingsTracker from './bookings-tracker';
 import InteriorProjectHub from './interior/InteriorProjectHub';
 
@@ -297,6 +298,11 @@ export default function Dashboard({ section = '', action = '' }) {
   const { user } = useApp();
   const searchParams = useSearchParams();
   const isUserView = searchParams?.get('view') === 'user';
+
+  // Smart Admin routing: render full Admin Dashboard if admin and not explicitly requesting user view
+  if (user && user.role === 'admin' && !isUserView) {
+    return <Admin initialTab={section || action || undefined} />;
+  }
 
   // Smart Channel Partner routing if not explicitly requesting customer view
   if (user && user.role === 'channel_partner' && !isUserView && section !== 'customer') {
