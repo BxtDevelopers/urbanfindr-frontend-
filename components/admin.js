@@ -194,14 +194,27 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Top: Navigation Section */}
+        {/* Top: Admin Dashboard Header */}
         <div>
-          {/* Mobile-only close button */}
-          <div className="lg:hidden p-4 border-b border-[#e5e9e2] flex items-center justify-end">
+          <div className="h-14 sm:h-16 px-5 sm:px-6 border-b border-[#e5e9e2] flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-[#ecf2e4] flex items-center justify-center border border-[#d8edb3] text-[#163e35] shadow-xs shrink-0">
+                <LayoutDashboard size={18} className="stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-extrabold text-sm sm:text-base text-stone-900 tracking-tight truncate leading-tight">
+                  Admin Dashboard
+                </h2>
+                <span className="text-[10px] text-stone-500 font-medium tracking-tight block truncate">
+                  Overview & Management
+                </span>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-1.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+              className="lg:hidden p-1.5 text-stone-400 hover:text-stone-700 cursor-pointer shrink-0 ml-2"
               aria-label="Close sidebar"
             >
               <X size={18} />
