@@ -61,7 +61,20 @@ function Content() {
     </div>
   );
 }
-export default function Application(){return <><Header/><Suspense fallback={<div className="wrap section">Loading your next chapter…</div>}><Content/></Suspense><Footer/></>;}
+export default function Application(){
+  const pathname = usePathname();
+  const isAdminPage = pathname?.startsWith('/admin') && pathname !== '/admin-login';
+
+  if (isAdminPage) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-[#f8faf7] flex items-center justify-center text-sm font-semibold text-stone-500">Loading command center…</div>}>
+        <Content />
+      </Suspense>
+    );
+  }
+
+  return <><Header/><Suspense fallback={<div className="wrap section">Loading your next chapter…</div>}><Content/></Suspense><Footer/></>;
+}
 function About(){return <div className="wrap section max-w-3xl"><p className="eyebrow">HELLO, WE’RE URBANFINDR</p><h1 className="!text-4xl">A place for every next chapter.</h1><p className="muted leading-8 mt-6">UrbanFindr is India&apos;s dedicated direct-owner real estate and verified home services platform, connecting property seekers directly with owners, builders, and trusted local service professionals with complete transparency and zero brokerage.</p><div className="panel mt-8 space-y-6"><div><h3>How the platform works</h3><p className="muted leading-7 mt-3">Browse publicly, then register to save homes, contact an owner, message a coordinator or request a visit. Owners submit listings for admin review. Administrators manage users, catalogues, enquiries and progress.</p></div><div><h3>Your information</h3><p className="muted leading-7 mt-3">Your name, email, phone, password hash, favorites, messages, visits, enquiries and notifications are stored in the configured database. Uploaded images are stored securely on the app server. Contact phone numbers are available to signed-in users. Consultation details are visible to you, the assigned specialist and administrators.</p></div><div><h3>Sessions & storage</h3><p className="muted leading-7 mt-3">A first-party HTTP-only cookie keeps you securely signed in for up to seven days. Signing out revokes that session. Your comparison shortlist is stored in your browser.</p></div><div><h3>Verified transactions</h3><p className="muted leading-7 mt-3">Confirm ownership, project registrations, availability, terms and final prices independently. Visit requests require host confirmation. Interior estimates are indicative and tailored to measurement, scope and material selection.</p></div></div></div>;}
 
 function Contact(){

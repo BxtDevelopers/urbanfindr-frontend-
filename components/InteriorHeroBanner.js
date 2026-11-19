@@ -1,13 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { 
   Headset, 
   Users, 
   FileText, 
   ShieldCheck, 
   Sparkles, 
-  ArrowRight, 
   Calculator 
 } from 'lucide-react';
 
@@ -115,14 +113,6 @@ export default function InteriorHeroBanner({ onBookClick, onGetQuoteClick }) {
                 <span>Get Instant Quote</span>
               </button>
             )}
-
-            <Link
-              href="/dashboard?section=interiors"
-              className="btn-outline px-4 py-3 text-xs sm:text-sm font-semibold flex items-center gap-2 bg-white/90 hover:bg-white transition-all shadow-xs"
-            >
-              <span>Track Project</span>
-              <ArrowRight size={14} />
-            </Link>
           </div>
 
           {/* Trust Badge */}
