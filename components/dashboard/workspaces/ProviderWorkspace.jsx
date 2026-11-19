@@ -56,6 +56,9 @@ import {
   Bath,
   Maximize,
   RotateCcw,
+  RotateCw,
+  MousePointerClick,
+  MessageSquare,
   XCircle
 } from 'lucide-react';
 
@@ -2492,11 +2495,47 @@ function ProviderPropertiesSection({ onPromote }) {
   const { data, loading, reload } = useData('properties?mine=true&limit=100');
   const { data: leadsData, reload: reloadLeads } = useData('leads?page=1&limit=100');
   const { data: visitsData, reload: reloadVisits } = useData('visits?limit=100');
+  const { data: promoData, reload: reloadPromos } = useData('promotions?mine=true');
   const items = data?.items || [];
+  const userPromotions = promoData?.items || [];
+
   const [busy, setBusy] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'approved' | 'closed'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'approved' | 'closed' | 'renew' | 'promotions'
   const [selectedPropertyForRequests, setSelectedPropertyForRequests] = useState(null);
+
+  // Group promotions by property ID
+  const promotionsByPropertyId = useMemo(() => {
+    const map = {};
+    for (const promo of userPromotions) {
+      if (promo.targetId) {
+        const pid = String(promo.targetId);
+        if (!map[pid]) map[pid] = [];
+        map[pid].push(promo);
+      }
+    }
+    return map;
+  }, [userPromotions]);
+
+  const getPropertyPromo = (propId) => {
+    const list = promotionsByPropertyId[String(propId)] || [];
+    if (!list.length) return null;
+    return [...list].sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate))[0];
+  };
+
+  const isExpiredPromo = (promo) => {
+    if (!promo) return false;
+    if (promo.promotionStatus === 'expired') return true;
+    if (promo.expiryDate && new Date(promo.expiryDate) < new Date()) return true;
+    return false;
+  };
+
+  const isActivePromo = (promo) => {
+    if (!promo) return false;
+    if (promo.promotionStatus !== 'active') return false;
+    if (promo.expiryDate && new Date(promo.expiryDate) < new Date()) return false;
+    return true;
+  };
 
   const requestsByProperty = useMemo(() => {
     const map = {};
@@ -2591,10 +2630,43 @@ function ProviderPropertiesSection({ onPromote }) {
     }
   }
 
+  // Counts for tabs
+  const activeCount = items.filter((i) => i.status !== 'closed' && i.status !== 'archived').length;
+  const closedCount = items.filter((i) => i.status === 'closed' || i.status === 'archived').length;
+  const renewCount = items.filter((i) => isExpiredPromo(getPropertyPromo(i._id))).length;
+  const promotionsCount = items.filter((i) => Boolean(getPropertyPromo(i._id))).length;
+
+  // Promoted properties and their aggregate stats for the Promotions tab
+  const promotedProperties = useMemo(() => {
+    return items.filter((item) => Boolean(getPropertyPromo(item._id)));
+  }, [items, promotionsByPropertyId]);
+
+  const promoStats = useMemo(() => {
+    let impressions = 0;
+    let clicks = 0;
+    let enquiries = 0;
+    let siteVisits = 0;
+
+    for (const p of promotedProperties) {
+      const promo = getPropertyPromo(p._id);
+      const reqs = requestsByProperty[String(p._id)] || [];
+      impressions += Number(promo?.impressions) || Number(p.views) || 0;
+      clicks += Number(promo?.clicks) || Number(p.clicks) || 0;
+      enquiries += Number(promo?.enquiries) || reqs.filter((r) => !r.isVisit).length || 0;
+      siteVisits += Number(promo?.siteVisits) || reqs.filter((r) => r.isVisit).length || 0;
+    }
+
+    const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(1) : '0.0';
+    return { impressions, clicks, enquiries, siteVisits, ctr, count: promotedProperties.length };
+  }, [promotedProperties, promotionsByPropertyId, requestsByProperty]);
+
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      const promo = getPropertyPromo(item._id);
       if (statusFilter === 'approved' && item.status !== 'approved' && item.status !== 'active') return false;
       if (statusFilter === 'closed' && item.status !== 'closed' && item.status !== 'archived') return false;
+      if (statusFilter === 'renew' && !isExpiredPromo(promo)) return false;
+      if (statusFilter === 'promotions' && !promo) return false;
       if (search) {
         const q = search.toLowerCase();
         const matchesTitle = item.title?.toLowerCase().includes(q);
@@ -2605,7 +2677,7 @@ function ProviderPropertiesSection({ onPromote }) {
       }
       return true;
     });
-  }, [items, statusFilter, search]);
+  }, [items, statusFilter, search, promotionsByPropertyId]);
 
   const columns = [
     {
@@ -2723,8 +2795,8 @@ function ProviderPropertiesSection({ onPromote }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Status Filter Pills */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
+          {/* Status Filter Pills: All, Active, Closed, Renew, Promotions */}
+          <div className="flex flex-wrap items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold gap-0.5">
             <button
               type="button"
               onClick={() => setStatusFilter('all')}
@@ -2741,7 +2813,7 @@ function ProviderPropertiesSection({ onPromote }) {
                 statusFilter === 'approved' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Active ({items.filter((i) => i.status !== 'closed' && i.status !== 'archived').length})
+              Active ({activeCount})
             </button>
             <button
               type="button"
@@ -2750,7 +2822,27 @@ function ProviderPropertiesSection({ onPromote }) {
                 statusFilter === 'closed' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Closed ({items.filter((i) => i.status === 'closed' || i.status === 'archived').length})
+              Closed ({closedCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('renew')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                statusFilter === 'renew' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <RotateCw size={12} className={statusFilter === 'renew' ? 'text-white' : 'text-amber-600'} />
+              <span>Renew ({renewCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('promotions')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                statusFilter === 'promotions' ? 'bg-[#163e35] text-white shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <Sparkles size={12} className={statusFilter === 'promotions' ? 'text-white' : 'text-emerald-700'} />
+              <span>Promotions ({promotionsCount})</span>
             </button>
           </div>
         </div>
@@ -2758,6 +2850,295 @@ function ProviderPropertiesSection({ onPromote }) {
 
       {loading ? (
         <div className="p-12 text-center text-xs text-stone-400">Loading your properties…</div>
+      ) : statusFilter === 'promotions' ? (
+        <div className="space-y-6">
+          {/* Promotions KPI Overview */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+            <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-stone-500 font-medium">Promoted Listings</p>
+                <Sparkles size={14} className="text-[#749546]" />
+              </div>
+              <p className="text-2xl font-extrabold text-stone-900 mt-1">{promotedProperties.length}</p>
+              <p className="text-[11px] text-stone-400 mt-0.5">Sponsored across search</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-stone-500 font-medium">Total Impressions</p>
+                <Eye size={14} className="text-blue-600" />
+              </div>
+              <p className="text-2xl font-extrabold text-stone-900 mt-1">{promoStats.impressions.toLocaleString()}</p>
+              <p className="text-[11px] text-stone-400 mt-0.5">Views in search & category</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-stone-500 font-medium">Total Clicks</p>
+                <MousePointerClick size={14} className="text-amber-600" />
+              </div>
+              <p className="text-2xl font-extrabold text-stone-900 mt-1">{promoStats.clicks.toLocaleString()}</p>
+              <p className="text-[11px] text-stone-400 mt-0.5">CTR: {promoStats.ctr}%</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-stone-500 font-medium">Total Enquiries</p>
+                <MessageSquare size={14} className="text-emerald-700" />
+              </div>
+              <p className="text-2xl font-extrabold text-stone-900 mt-1">{promoStats.enquiries.toLocaleString()}</p>
+              <p className="text-[11px] text-stone-400 mt-0.5">Direct buyer leads</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-stone-500 font-medium">Site Visits</p>
+                <Calendar size={14} className="text-purple-600" />
+              </div>
+              <p className="text-2xl font-extrabold text-stone-900 mt-1">{promoStats.siteVisits.toLocaleString()}</p>
+              <p className="text-[11px] text-stone-400 mt-0.5">Confirmed visits</p>
+            </div>
+          </div>
+
+          {/* Promoted Properties Cards */}
+          {promotedProperties.length === 0 ? (
+            <div className="p-12 text-center space-y-4 bg-white rounded-2xl border border-stone-200 shadow-xs">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
+                <Sparkles size={28} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-base text-stone-900">No Promoted Properties Yet</h3>
+                <p className="text-xs text-stone-500 max-w-md mx-auto">
+                  Boost your property listings to appear at the top of search results and generate up to 5x more buyer enquiries.
+                </p>
+              </div>
+
+              {items.filter((i) => i.status !== 'closed').length > 0 && onPromote && (
+                <button
+                  type="button"
+                  onClick={() => onPromote(items.filter((i) => i.status !== 'closed')[0])}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#163e35] hover:bg-[#24564a] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                >
+                  <Sparkles size={14} /> Promote Your First Property
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                  <span>Sponsored Properties & Performance</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#ecf2e4] text-[#163e35] border border-[#749546]/30">
+                    {promotedProperties.length} listing{promotedProperties.length > 1 ? 's' : ''}
+                  </span>
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {promotedProperties.map((prop) => {
+                  const promo = getPropertyPromo(prop._id);
+                  const isExp = isExpiredPromo(promo);
+                  const isAct = isActivePromo(promo);
+                  const images = propertyImages(prop);
+                  const reqs = requestsByProperty[String(prop._id)] || [];
+
+                  const pImpressions = Number(promo?.impressions) || Number(prop.views) || 0;
+                  const pClicks = Number(promo?.clicks) || Number(prop.clicks) || 0;
+                  const pEnquiries = Number(promo?.enquiries) || reqs.filter((r) => !r.isVisit).length || 0;
+                  const pVisits = Number(promo?.siteVisits) || reqs.filter((r) => r.isVisit).length || 0;
+                  const pCtr = pImpressions > 0 ? ((pClicks / pImpressions) * 100).toFixed(1) : '0.0';
+
+                  const planName = promo?.planId?.name || promo?.plan || (promo?.priority >= 100 ? 'Elite Boost' : promo?.priority >= 60 ? 'Premium Boost' : 'Basic Boost');
+                  const expiry = promo?.expiryDate ? new Date(promo.expiryDate) : null;
+                  const daysLeft = expiry ? Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+
+                  return (
+                    <div
+                      key={prop._id}
+                      className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs hover:border-stone-300 transition-all flex flex-col md:flex-row"
+                    >
+                      {/* Left: Thumbnail & Property Info */}
+                      <div className="md:w-72 shrink-0 relative bg-stone-100 min-h-[160px]">
+                        <img
+                          src={images[0] || '/placeholder.jpg'}
+                          alt={prop.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-stone-900/80 text-white backdrop-blur-xs">
+                            For {prop.purpose}
+                          </span>
+                          <StatusBadge status={prop.status} />
+                        </div>
+                      </div>
+
+                      {/* Right: Details, Promotion Tier, and Stats */}
+                      <div className="flex-1 p-5 flex flex-col justify-between space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-bold text-base text-stone-900">{prop.title}</h4>
+                              {isAct && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#163e35] text-[#ecf2e4] border border-[#749546]/40 shadow-2xs">
+                                  <Sparkles size={11} className="text-amber-300" />
+                                  <span>{planName}</span>
+                                </span>
+                              )}
+                              {isExp && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
+                                  <RotateCw size={11} />
+                                  <span>Boost Expired</span>
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
+                              <MapPin size={12} className="text-stone-400" />
+                              <span>{prop.locality ? `${prop.locality}, ` : ''}{prop.city}</span>
+                              <span className="text-stone-300">•</span>
+                              <span className="font-extrabold text-stone-900">{money(prop.price)}</span>
+                            </p>
+                          </div>
+
+                          {/* Promotion Status / Expiry */}
+                          <div className="text-right shrink-0">
+                            {isAct ? (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                                <span>Active • {daysLeft} days remaining</span>
+                              </div>
+                            ) : isExp ? (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 text-xs font-semibold">
+                                <span>Expired on {expiry ? expiry.toLocaleDateString('en-IN') : '–'}</span>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Performance Metrics Bar for this property */}
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 bg-stone-50 p-3 rounded-xl border border-stone-100 text-center">
+                          <div>
+                            <span className="text-[11px] text-stone-500 font-medium block">Impressions</span>
+                            <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1">
+                              <Eye size={12} className="text-blue-600" /> {pImpressions.toLocaleString()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-stone-500 font-medium block">Clicks</span>
+                            <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1">
+                              <MousePointerClick size={12} className="text-amber-600" /> {pClicks.toLocaleString()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-stone-500 font-medium block">Enquiries</span>
+                            <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1">
+                              <MessageSquare size={12} className="text-emerald-700" /> {pEnquiries.toLocaleString()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-stone-500 font-medium block">Site Visits</span>
+                            <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1">
+                              <Calendar size={12} className="text-purple-600" /> {pVisits.toLocaleString()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-stone-500 font-medium block">CTR</span>
+                            <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1">
+                              <TrendingUp size={12} className="text-[#749546]" /> {pCtr}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions Row */}
+                        <div className="flex items-center justify-between gap-3 pt-1 border-t border-stone-100">
+                          <Link
+                            href={`/properties/${prop._id}`}
+                            className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1"
+                          >
+                            <span>View Live Listing</span>
+                            <ExternalLink size={12} />
+                          </Link>
+
+                          <div className="flex items-center gap-2">
+                            {isExp && onPromote ? (
+                              <button
+                                type="button"
+                                onClick={() => onPromote(prop)}
+                                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                              >
+                                <RotateCw size={13} />
+                                <span>Renew Boost (from ₹499)</span>
+                              </button>
+                            ) : onPromote ? (
+                              <button
+                                type="button"
+                                onClick={() => onPromote(prop)}
+                                className="px-3 py-1.5 bg-[#163e35] hover:bg-[#24564a] text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                              >
+                                <Sparkles size={13} />
+                                <span>Renew / Upgrade Plan</span>
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : statusFilter === 'renew' ? (
+        <div className="space-y-4">
+          {filteredItems.length === 0 ? (
+            <div className="p-12 text-center space-y-3 bg-white rounded-2xl border border-stone-200 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-stone-100 text-stone-500 mx-auto flex items-center justify-center">
+                <RotateCw size={24} />
+              </div>
+              <h3 className="font-bold text-sm text-stone-800">No Promotions Pending Renewal</h3>
+              <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                All your boosted property subscriptions are currently active, or you haven't promoted any listings yet. When a promotion expires, you can quickly review and renew it from here.
+              </p>
+              {items.filter((i) => i.status !== 'closed').length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('promotions')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#163e35] hover:bg-[#24564a] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                >
+                  <Sparkles size={14} /> View All Promotions
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <RotateCw size={15} className="text-amber-700 shrink-0" />
+                  <span>
+                    <strong>{filteredItems.length} promotion{filteredItems.length > 1 ? 's have' : ' has'} expired.</strong> Renew your promotion subscription to regain guaranteed top search placement and verified badges.
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredItems.map((prop) => (
+                  <PropertyDashboardCard
+                    key={prop._id}
+                    property={prop}
+                    promotion={getPropertyPromo(prop._id)}
+                    busy={busy}
+                    requests={requestsByProperty[String(prop._id)] || []}
+                    onOpenRequests={(p, r) => setSelectedPropertyForRequests({ property: p, requests: r })}
+                    onAcceptRequest={handleAcceptRequest}
+                    onClose={handleClose}
+                    onReopen={handleReopen}
+                    onPromote={onPromote}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       ) : filteredItems.length === 0 ? (
         <div className="p-12 text-center space-y-3 bg-white rounded-2xl border border-stone-200 shadow-xs">
           <House size={32} className="mx-auto text-stone-300" />
@@ -2782,12 +3163,14 @@ function ProviderPropertiesSection({ onPromote }) {
             <PropertyDashboardCard
               key={prop._id}
               property={prop}
+              promotion={getPropertyPromo(prop._id)}
               busy={busy}
               requests={requestsByProperty[String(prop._id)] || []}
               onOpenRequests={(p, r) => setSelectedPropertyForRequests({ property: p, requests: r })}
               onAcceptRequest={handleAcceptRequest}
               onClose={handleClose}
               onReopen={handleReopen}
+              onPromote={onPromote}
             />
           ))}
         </div>

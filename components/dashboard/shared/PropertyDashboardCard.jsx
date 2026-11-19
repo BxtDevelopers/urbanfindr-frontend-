@@ -15,11 +15,15 @@ import {
   Check,
   Clock,
   Calendar,
-  Sparkles
+  Sparkles,
+  RotateCw,
+  Flame,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function PropertyDashboardCard({
   property,
+  promotion,
   busy,
   requests = [],
   onOpenRequests,
@@ -35,6 +39,14 @@ export default function PropertyDashboardCard({
   const isRent = property.purpose === 'rent';
   const isPg = property.purpose === 'pg';
   const isClosed = property.status === 'closed' || property.status === 'archived';
+
+  const isPromoExpired = Boolean(
+    promotion && (promotion.promotionStatus === 'expired' || (promotion.expiryDate && new Date(promotion.expiryDate) < new Date()))
+  );
+  const isPromoActive = Boolean(
+    promotion && promotion.promotionStatus === 'active' && (!promotion.expiryDate || new Date(promotion.expiryDate) >= new Date())
+  );
+  const promoPlanName = promotion?.planId?.name || promotion?.plan || (promotion?.priority >= 100 ? 'Elite Boost' : promotion?.priority >= 60 ? 'Premium Boost' : 'Basic Boost');
 
   const bedrooms = property.bedrooms || (property.type?.toLowerCase().includes('bhk') ? property.type : null);
   const bathrooms = property.bathrooms;
@@ -108,11 +120,23 @@ export default function PropertyDashboardCard({
               }`}
             />
             {/* Subtle top badges */}
-            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
+            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10 flex-wrap max-w-[92%]">
               <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-stone-900/80 text-white backdrop-blur-xs">
                 For {property.purpose}
               </span>
               <StatusBadge status={property.status} />
+              {isPromoActive && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#163e35] text-[#ecf2e4] border border-[#749546]/50 flex items-center gap-1 shadow-xs backdrop-blur-xs">
+                  <Sparkles size={11} className="text-amber-300" />
+                  <span>{promoPlanName}</span>
+                </span>
+              )}
+              {isPromoExpired && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-600 text-white flex items-center gap-1 shadow-xs">
+                  <RotateCw size={10} />
+                  <span>Boost Expired</span>
+                </span>
+              )}
             </div>
           </div>
 
@@ -214,19 +238,49 @@ export default function PropertyDashboardCard({
             </Link>
 
             {onPromote && !isClosed && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onPromote(property);
-                }}
-                className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg text-xs font-semibold border border-amber-200 flex items-center gap-1 transition-colors cursor-pointer"
-                title="Promote this listing"
-              >
-                <Sparkles size={13} className="text-amber-600" />
-                <span>Promote</span>
-              </button>
+              isPromoExpired ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onPromote(property);
+                  }}
+                  className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  title="Renew expired promotion subscription"
+                >
+                  <RotateCw size={13} />
+                  <span>Renew Boost</span>
+                </button>
+              ) : isPromoActive ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onPromote(property);
+                  }}
+                  className="px-2.5 py-1.5 bg-[#ecf2e4] hover:bg-[#d8edb3] text-[#163e35] rounded-lg text-xs font-bold border border-[#749546]/40 flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+                  title="Boost is active. Click to review or upgrade subscription"
+                >
+                  <Sparkles size={13} className="text-[#749546]" />
+                  <span>Boost Active</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onPromote(property);
+                  }}
+                  className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg text-xs font-semibold border border-amber-200 flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Promote this listing"
+                >
+                  <Sparkles size={13} className="text-amber-600" />
+                  <span>Promote</span>
+                </button>
+              )
             )}
           </div>
 
