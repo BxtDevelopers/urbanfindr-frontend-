@@ -67,9 +67,12 @@ export default function Application(){
 
   if (isAdminPage) {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-[#f8faf7] flex items-center justify-center text-sm font-semibold text-stone-500">Loading command center…</div>}>
-        <Content />
-      </Suspense>
+      <>
+        <Header />
+        <Suspense fallback={<div className="min-h-screen bg-[#f8faf7] flex items-center justify-center text-sm font-semibold text-stone-500">Loading command center…</div>}>
+          <Content />
+        </Suspense>
+      </>
     );
   }
 

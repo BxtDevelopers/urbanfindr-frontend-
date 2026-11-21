@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useData } from '../providers';
+import { propertyImages } from '@/lib/media';
 import {
   Sparkles,
   TrendingUp,
@@ -19,6 +21,23 @@ import {
 import { money } from '@/lib/format';
 import PromotionStatusBadge from './PromotionStatusBadge';
 import PromotionAnalyticsModal from './PromotionAnalyticsModal';
+
+function getPromotionTargetUrl(promo, myListings = []) {
+  let targetId = promo?.targetId?._id || promo?.targetId;
+  if (!targetId && promo?.targetTitle && myListings.length > 0) {
+    const matched = myListings.find(l => l.title?.toLowerCase() === promo.targetTitle?.toLowerCase());
+    if (matched) targetId = matched._id || matched.id;
+  }
+  if (!targetId) return null;
+  const tType = String(promo?.targetType || 'property').toLowerCase();
+  if (tType.includes('project')) {
+    return `/projects/${targetId}`;
+  }
+  if (tType.includes('service')) {
+    return `/services/${targetId}`;
+  }
+  return `/properties/${targetId}`;
+}
 
 export default function PromotionManagementView({
   myListings = [],
@@ -214,22 +233,58 @@ export default function PromotionManagementView({
                   const expiry = promo.expiryDate ? new Date(promo.expiryDate) : null;
                   const remainingDays = expiry ? Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
                   const isExpired = promo.promotionStatus === 'expired';
+                  const targetUrl = getPromotionTargetUrl(promo, myListings);
+                  const targetListing = myListings.find(
+                    l => String(l._id || l.id) === String(promo.targetId?._id || promo.targetId) ||
+                         (promo.targetTitle && l.title?.toLowerCase() === promo.targetTitle?.toLowerCase())
+                  );
+                  const targetImages = targetListing ? propertyImages(targetListing) : [];
+                  const targetImage = targetImages[0] || targetListing?.image || null;
 
                   return (
                     <tr key={promo._id} className="hover:bg-stone-50/70 transition-colors">
                       {/* Title & Type */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center shrink-0 text-stone-500 border border-stone-200">
-                            <Building2 size={18} />
+                        {targetUrl ? (
+                          <Link
+                            href={targetUrl}
+                            className="flex items-center gap-3 group cursor-pointer"
+                            title={`Open ${promo.targetTitle || 'listing'}`}
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center shrink-0 text-stone-500 border border-stone-200 overflow-hidden group-hover:border-[#163e35] transition-colors">
+                              {targetImage ? (
+                                <img
+                                  src={targetImage}
+                                  alt={promo.targetTitle || 'Property'}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                />
+                              ) : (
+                                <Building2 size={18} className="group-hover:text-[#163e35] transition-colors" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-stone-900 group-hover:text-[#163e35] group-hover:underline truncate max-w-xs flex items-center gap-1.5">
+                                <span>{promo.targetTitle || 'Listing'}</span>
+                                <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-[#163e35] transition-opacity shrink-0" />
+                              </p>
+                              <span className="text-[11px] text-stone-500 uppercase font-medium">
+                                {promo.targetType.replace('_', ' ')}
+                              </span>
+                            </div>
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center shrink-0 text-stone-500 border border-stone-200">
+                              <Building2 size={18} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-stone-900 truncate max-w-xs">{promo.targetTitle || 'Listing'}</p>
+                              <span className="text-[11px] text-stone-500 uppercase font-medium">
+                                {promo.targetType.replace('_', ' ')}
+                              </span>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-stone-900 truncate max-w-xs">{promo.targetTitle || 'Listing'}</p>
-                            <span className="text-[11px] text-stone-500 uppercase font-medium">
-                              {promo.targetType.replace('_', ' ')}
-                            </span>
-                          </div>
-                        </div>
+                        )}
                       </td>
 
                       {/* Package & Price */}
@@ -274,6 +329,16 @@ export default function PromotionManagementView({
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {targetUrl && (
+                            <Link
+                              href={targetUrl}
+                              className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 hover:text-[#163e35] hover:border-[#163e35] text-stone-600 transition-colors"
+                              title="Open Property Listing"
+                            >
+                              <ExternalLink size={15} />
+                            </Link>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => setAnalyticsPromo(promo)}

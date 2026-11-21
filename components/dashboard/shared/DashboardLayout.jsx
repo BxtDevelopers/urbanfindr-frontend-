@@ -14,10 +14,12 @@ export default function DashboardLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { currentConfig } = useWorkspace();
+  const { currentConfig, activeWorkspace } = useWorkspace();
+
+  const isCompactTheme = activeWorkspace === 'owner' || activeWorkspace === 'broker';
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] text-stone-900 flex flex-col lg:flex-row font-sans antialiased">
+    <div className={`min-h-screen ${isCompactTheme ? 'bg-[#f8faf7]' : 'bg-[#fafbfc]'} text-stone-900 flex flex-col lg:flex-row font-sans antialiased`}>
       {/* Sidebar */}
       <DashboardSidebar
         activeSection={activeSection}
@@ -36,7 +38,7 @@ export default function DashboardLayout({
           onActionClick={onActionClick}
         />
 
-        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-150">
+        <main className={`flex-1 ${isCompactTheme ? 'p-2.5 sm:p-3.5 lg:p-4 max-w-[1440px]' : 'p-4 sm:p-8 max-w-7xl'} w-full mx-auto animate-in fade-in duration-150`}>
           {children}
         </main>
       </div>

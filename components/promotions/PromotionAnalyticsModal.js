@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useData } from '../providers';
-import { X, BarChart3, Eye, MousePointerClick, MessageSquare, Phone, CalendarCheck, TrendingUp, Sparkles, AlertCircle } from 'lucide-react';
+import { X, BarChart3, Eye, MousePointerClick, MessageSquare, Phone, CalendarCheck, TrendingUp, Sparkles, AlertCircle, ExternalLink } from 'lucide-react';
 import { money } from '@/lib/format';
 import PromotionStatusBadge from './PromotionStatusBadge';
 
@@ -43,7 +44,19 @@ export default function PromotionAnalyticsModal({ promotion, onClose }) {
                 <PromotionStatusBadge status={promotion.promotionStatus} paymentStatus={promotion.paymentStatus} />
               </div>
               <p className="text-xs text-stone-500 truncate max-w-sm sm:max-w-md">
-                {promotion.targetTitle || 'Promoted Listing'} · {promotion.plan}
+                {promotion.targetId ? (
+                  <Link
+                    href={`/properties/${promotion.targetId}`}
+                    className="font-semibold text-stone-700 hover:text-[#163e35] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    title="Open Property"
+                  >
+                    <span>{promotion.targetTitle || 'Promoted Listing'}</span>
+                    <ExternalLink size={11} className="text-[#163e35]" />
+                  </Link>
+                ) : (
+                  <span>{promotion.targetTitle || 'Promoted Listing'}</span>
+                )}{' '}
+                · {promotion.plan}
               </p>
             </div>
           </div>

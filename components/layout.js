@@ -1213,7 +1213,7 @@ export function Header() {
       )}
 
       {/* Discovery navbar (hidden on mobile, visible on desktop / laptop) */}
-      {!pathname?.startsWith('/dashboard') && (
+      {!pathname?.startsWith('/dashboard') && !pathname?.startsWith('/admin') && (
         <nav
           className="discovery-nav hidden lg:flex"
           aria-label="More ways to explore"

@@ -184,13 +184,13 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
       {mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs z-40 lg:hidden animate-in fade-in duration-150"
+          className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs z-[1040] lg:hidden animate-in fade-in duration-150"
         />
       )}
 
       {/* ── LEFT SIDEBAR MATCHING IMAGE ── */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white border-r border-[#e5e9e2] flex flex-col justify-between shrink-0 shadow-xs transition-transform duration-200 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-[1050] w-64 sm:w-72 bg-white border-r border-[#e5e9e2] flex flex-col justify-between shrink-0 shadow-xs transition-transform duration-200 lg:sticky lg:top-[var(--header-h,72px)] lg:h-[calc(100vh-var(--header-h,72px))] lg:translate-x-0 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -304,7 +304,7 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
       {/* ── MAIN CONTENT AREA ── */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* ── TOP HEADER BAR MATCHING IMAGE ── */}
-        <header className="h-14 sm:h-16 bg-white border-b border-[#e5e9e2] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-20 shadow-xs">
+        <header className="h-14 sm:h-16 bg-white border-b border-[#e5e9e2] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 sticky top-[var(--header-h,72px)] z-20 shadow-xs">
           {/* Mobile hamburger */}
           <button
             type="button"
@@ -3411,6 +3411,58 @@ function OverviewView({ stats, loading, error, onNavigate, onOpenProperty }) {
                 </div>
                 <strong className="font-bold text-stone-900 text-[11px]">{servicesCount} ({servPct}%)</strong>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 4: CHANNEL PARTNER NETWORK METRICS ── */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-stone-200/80 shadow-xs">
+        <div className="flex items-center justify-between gap-4 mb-3 pb-2 border-b border-stone-100">
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-stone-900">
+              Channel Partner Ecosystem
+            </h2>
+            <p className="text-[11px] text-stone-500">Corporate brokerages &amp; enterprise agency performance</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate('channel-partners')}
+            className="text-xs font-bold text-[#163e35] hover:text-[#749546] transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
+          >
+            <span>Manage Partners</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3.5 rounded-xl bg-[#f8faf7] border border-[#e5e9e2] flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-medium text-stone-500 block">Registered Channel Partners</span>
+              <strong className="text-lg font-bold text-stone-900 mt-0.5 block">{activeStats?.channelPartners ?? 0}</strong>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+              <Handshake size={18} />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-[#f8faf7] border border-[#e5e9e2] flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-medium text-stone-500 block">Active CP Inventory</span>
+              <strong className="text-lg font-bold text-stone-900 mt-0.5 block">{activeStats?.channelPartnerProperties ?? activeStats?.cpInventory ?? 0}</strong>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center shrink-0">
+              <Building2 size={18} />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-[#f8faf7] border border-[#e5e9e2] flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-medium text-stone-500 block">Inbound CP Leads</span>
+              <strong className="text-lg font-bold text-stone-900 mt-0.5 block">{activeStats?.channelPartnerLeads ?? activeStats?.cpLeads ?? 0}</strong>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+              <Mail size={18} />
             </div>
           </div>
         </div>
