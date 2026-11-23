@@ -71,6 +71,17 @@ function UnifiedDashboardInner({ initialSection = '', initialAction = '' }) {
     }
   }, [urlSegments, searchParams]);
 
+  // Listen for direct navigation events (e.g. from NotificationPanel or global widgets)
+  useEffect(() => {
+    function handleNavigate(e) {
+      if (e.detail) {
+        handleSelectSection(e.detail);
+      }
+    }
+    window.addEventListener('urbanfindr:navigate-section', handleNavigate);
+    return () => window.removeEventListener('urbanfindr:navigate-section', handleNavigate);
+  }, [activeWorkspace]);
+
   // Handle selecting section from sidebar or in-page links
   function handleSelectSection(secId) {
     if (secId === 'add-property') {

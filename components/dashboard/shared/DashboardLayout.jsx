@@ -16,7 +16,7 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const { currentConfig, activeWorkspace } = useWorkspace();
 
-  const isCompactTheme = activeWorkspace === 'owner' || activeWorkspace === 'broker';
+  const isCompactTheme = activeWorkspace === 'owner' || activeWorkspace === 'broker' || activeWorkspace === 'customer';
 
   return (
     <div className={`min-h-screen ${isCompactTheme ? 'bg-[#f8faf7]' : 'bg-[#fafbfc]'} text-stone-900 flex flex-col lg:flex-row font-sans antialiased`}>
@@ -34,6 +34,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <DashboardHeader
           activeSection={activeSection}
+          onSelectSection={onSelectSection}
           onOpenMobileMenu={() => setMobileOpen(true)}
           onActionClick={onActionClick}
         />

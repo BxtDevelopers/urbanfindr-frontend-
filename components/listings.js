@@ -27,6 +27,7 @@ import {
   State,
   Image,
 } from './ui';
+import CreateAlertModal from '@/components/alerts/CreateAlertModal';
 
 import { amenities, cities } from '@/lib/format';
 import {
@@ -153,7 +154,18 @@ export default function Listings({
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [savingSearch, setSavingSearch] = useState(false);
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [currentCity, setCurrentCity] = useState(params.get('city') || city || '');
+
+  function handleOpenAlertModal() {
+    if (!user) {
+      toast('Please log in to save your search and create alerts.');
+      const currentUrl = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/properties';
+      router.push(`/login?next=${encodeURIComponent(currentUrl)}`);
+      return;
+    }
+    setAlertModalOpen(true);
+  }
 
   const activeCityParam = params.get('city') || city || currentCity || 'Bengaluru';
   const activeCityGuide = cityGuides?.find(
@@ -163,6 +175,18 @@ export default function Listings({
   );
   const displayCityName = activeCityGuide?.name || activeCityParam || 'Bengaluru';
   const cityLocalities = activeCityGuide?.localities || [];
+
+  const alertInitialData = {
+    city: params.get('city') || city || currentCity || displayCityName || 'Hyderabad',
+    locality: params.get('localities') || params.get('q') || '',
+    listingType: (params.get('purpose') || purpose || 'buy').toLowerCase(),
+    propertyType: params.get('type') || '',
+    bedrooms: params.get('bedrooms') ? Number(params.get('bedrooms')) : undefined,
+    minPrice: params.get('minPrice') || '',
+    maxPrice: params.get('maxPrice') || '',
+    furnishing: params.get('furnishing') || 'Any',
+    verified: params.get('verified') === 'true'
+  };
 
   const category = categoryFor(purpose);
 
@@ -1132,13 +1156,12 @@ export default function Listings({
           {!projects && (
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-stone-300 hover:border-forest text-stone-700 hover:text-forest bg-white transition shadow-sm"
-              onClick={saveSearch}
-              disabled={savingSearch}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold border border-[#163e35] text-[#163e35] bg-[#ecf2e4]/70 hover:bg-[#ecf2e4] transition shadow-2xs"
+              onClick={handleOpenAlertModal}
               title="Save search criteria & receive alerts for new matching listings"
             >
-              <Bell size={13} className="text-forest" />
-              {savingSearch ? 'Saving...' : 'Save search & alerts'}
+              <Bell size={13} className="text-[#163e35]" />
+              Save Search &amp; Create Alert 🔔
             </button>
           )}
         </div>
@@ -1228,6 +1251,13 @@ export default function Listings({
       {projects && selectedCityName && (
         <CityPropertiesSection cityName={selectedCityName} />
       )}
+
+      {/* Smart Property Alerts Creation Modal */}
+      <CreateAlertModal
+        isOpen={alertModalOpen}
+        onClose={() => setAlertModalOpen(false)}
+        initialData={alertInitialData}
+      />
       </div>
     </div>
   );

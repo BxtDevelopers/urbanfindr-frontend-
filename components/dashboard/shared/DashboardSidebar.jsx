@@ -36,7 +36,9 @@ import {
   X,
   LayoutGrid,
   MessageSquare,
-  Send
+  Send,
+  Headphones,
+  ChevronDown
 } from 'lucide-react';
 
 export default function DashboardSidebar({
@@ -53,23 +55,28 @@ export default function DashboardSidebar({
   const isOwner = activeWorkspace === 'owner';
   const isBroker = activeWorkspace === 'broker';
   const isOwnerOrBroker = isOwner || isBroker;
+  const isCustomer = activeWorkspace === 'customer';
   const { data: dashData } = useData(isOwnerOrBroker ? 'dashboard' : null);
+  const { data: alertStats } = useData(isCustomer ? 'property-alerts/stats' : null);
   const ownerEnquiriesCount = Number(dashData?.owner?.enquiries ?? 0);
   const brokerLeadsCount = Number(dashData?.broker?.newLeads ?? 0);
+  const customerAlertsCount = Number(alertStats?.activeAlerts ?? 0);
 
-  // Role-specific navigation items (Quotations, calendar schedules, and booking terms replaced with direct requests & offers)
+  // Role-specific navigation items matching reference layout
   const navItems = {
     customer: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-      { id: 'properties', label: 'My Properties', icon: House },
+      { id: 'properties', label: 'My Property', icon: House },
       { id: 'add-property', label: 'Add Property', icon: PlusCircle, isAction: true },
       { id: 'visits', label: 'Property Visits', icon: Calendar },
-      { id: 'favorites', label: 'Saved Properties', icon: Heart },
-      { id: 'saved-searches', label: 'Saved Searches', icon: Search },
-      { id: 'requests', label: 'My Service Requests', icon: Wrench },
-      { id: 'messages', label: 'Messages', icon: MessageCircle },
-      { id: 'notifications', label: 'Notifications', icon: Bell },
-      { id: 'profile', label: 'My Profile & Settings', icon: Settings }
+      { id: 'favorites', label: 'Save Properties', icon: Heart },
+      { id: 'saved-searches', label: 'Property Alerts', icon: Bell },
+      { id: 'spotlight', label: 'Promotions', icon: Send },
+      { id: 'requests', label: 'My Services Request', icon: Wrench },
+      { id: 'messages', label: 'Messages', icon: MessageSquare },
+      { id: 'profile', label: 'My Profile Setting', icon: Settings },
+      { id: 'support', label: 'Help Support', icon: Headphones },
+      { id: 'logout', label: 'Logout', icon: LogOut, isLogout: true }
     ],
     owner: [
       { id: 'overview', label: 'Dashboard', icon: LayoutGrid },
@@ -158,6 +165,41 @@ export default function DashboardSidebar({
               <X size={16} />
             </button>
           </div>
+        ) : isCustomer ? (
+          <div
+            onClick={() => {
+              onSelectSection('profile');
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="p-3.5 sm:p-4 border-b border-stone-100 flex items-center justify-between gap-2.5 hover:bg-stone-50/80 transition cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-[#163e35] text-[#d8edb3] text-xs font-bold flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-stone-200 shadow-2xs">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{(user?.name || 'C').charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-stone-900 leading-tight">My Profile</p>
+                  <p className="text-[11px] text-stone-500 font-medium truncate mt-0.5">{user?.name || 'Customer'}</p>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className="lg:hidden w-8 h-8 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center cursor-pointer shrink-0"
+              aria-label="Close sidebar"
+            >
+              <X size={16} />
+            </button>
+          </div>
         ) : (
           <div className="p-3 sm:p-4 border-b border-[#e6e8e1]">
             <div className="flex items-center justify-between gap-2.5">
@@ -227,10 +269,14 @@ export default function DashboardSidebar({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isOwner && item.id === 'spotlight') {
-                      onSelectSection('promotions');
+                    if (item.isLogout) {
+                      logout();
                     } else if (item.id === 'support') {
                       if (typeof window !== 'undefined') window.location.href = '/contact';
+                    } else if (item.id === 'add-property') {
+                      if (typeof window !== 'undefined') window.location.href = '/post-property';
+                    } else if ((isOwner || isCustomer) && item.id === 'spotlight') {
+                      onSelectSection('promotions');
                     } else if (isOwner && item.id === 'leads') {
                       onSelectSection('enquiries');
                     } else if (isOwner && item.id === 'clients') {
@@ -242,10 +288,10 @@ export default function DashboardSidebar({
                   }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isSelected
-                      ? isOwnerOrBroker
+                      ? isOwnerOrBroker || isCustomer
                         ? 'bg-[#ecf2e4] text-[#163e35] font-bold shadow-xs'
                         : 'bg-[#163e35] text-[#d8edb3] shadow-xs'
-                      : isOwnerOrBroker
+                      : isOwnerOrBroker || isCustomer
                       ? 'text-stone-700 hover:text-[#163e35] hover:bg-[#ecf2e4]/70'
                       : 'text-stone-700 hover:text-[#163e35] hover:bg-[#ecf2e4]'
                   } ${collapsed ? 'justify-center px-0' : ''}`}
@@ -254,7 +300,7 @@ export default function DashboardSidebar({
                   <Icon
                     size={17}
                     className={`shrink-0 ${
-                      isSelected && isOwnerOrBroker ? 'text-[#163e35]' : ''
+                      isSelected && (isOwnerOrBroker || isCustomer) ? 'text-[#163e35]' : ''
                     }`}
                   />
                   {!collapsed && <span className="truncate flex-1 text-left">{item.label}</span>}
@@ -268,13 +314,18 @@ export default function DashboardSidebar({
                       {brokerLeadsCount}
                     </span>
                   )}
+                  {isCustomer && item.id === 'saved-searches' && !collapsed && customerAlertsCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#ef4444] text-white shrink-0 min-w-[18px] text-center">
+                      {customerAlertsCount}
+                    </span>
+                  )}
                   {showMessageGreenDot && (
                     <span
                       className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"
                       aria-label="New message"
                     />
                   )}
-                  {showNotifBadge && !collapsed && (
+                  {showNotifBadge && !isCustomer && !collapsed && (
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white shrink-0">
                       {unreadNotifCount}
                     </span>
@@ -283,6 +334,35 @@ export default function DashboardSidebar({
               </div>
             );
           })}
+
+          {/* Customer Boost Your Listings / Go Premium Card placed directly under menu items (somewhat up side) */}
+          {isCustomer && !collapsed && (
+            <div className="pt-2.5 pb-2">
+              <div className="p-2.5 bg-white border border-stone-200/90 rounded-2xl shadow-2xs space-y-2">
+                <img
+                  src="/photos/living-1.jpg"
+                  alt="Boost listings"
+                  className="w-full h-24 sm:h-28 object-cover rounded-xl"
+                />
+                <div className="px-0.5">
+                  <h4 className="text-xs sm:text-sm font-bold text-stone-900 leading-tight">Boost Your Listings</h4>
+                  <p className="text-[11px] text-stone-500 mt-0.5 leading-snug">
+                    Get more visibility with featured listings.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectSection('promotions');
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  className="w-full py-2 px-3 bg-[#163e35] hover:bg-[#205246] text-[#d8edb3] hover:text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                >
+                  <span>Go Premium →</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom Section */}
@@ -314,7 +394,7 @@ export default function DashboardSidebar({
               </div>
             </div>
           ) : null
-        ) : (
+        ) : isCustomer ? null : (
           /* Non-owner footer actions */
           <div className="p-3 border-t border-[#e6e8e1] space-y-1 bg-[#f7f8f3]/60">
             <Link

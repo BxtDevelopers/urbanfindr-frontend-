@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp, useData, api } from '../../providers';
 import { Bell, Check, ExternalLink, X, Clock } from 'lucide-react';
-import { date } from '@/lib/format';
+import { date, money } from '@/lib/format';
 
 export default function NotificationPanel({ isOpen, onClose, onUpdated }) {
   const { user, toast } = useApp();
@@ -56,7 +56,7 @@ export default function NotificationPanel({ isOpen, onClose, onUpdated }) {
       }
       return item.link;
     }
-    return user?.role === 'admin' ? '/admin?tab=notifications' : '/dashboard';
+    return user?.role === 'admin' ? '/admin?tab=notifications' : '/dashboard?section=notifications';
   }
 
   const items = data?.items || [];
@@ -65,23 +65,23 @@ export default function NotificationPanel({ isOpen, onClose, onUpdated }) {
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-12 z-[9999] w-80 sm:w-96 max-h-[480px] flex flex-col bg-white border border-stone-200/90 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+      className="absolute right-0 top-12 z-[9999] w-80 sm:w-96 max-h-[500px] flex flex-col bg-white border border-stone-200/90 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
     >
       {/* Header bar matching user's design */}
       <div className="p-3.5 sm:p-4 bg-white border-b border-stone-100 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <Bell size={16} className="text-stone-800 shrink-0" />
-          <h3 className="font-extrabold text-xs text-stone-900 uppercase tracking-wider">
-            NOTIFICATIONS
+          <Bell size={16} className="text-[#163e35] shrink-0" />
+          <h3 className="font-extrabold text-xs text-stone-900 tracking-tight">
+            Notifications &amp; Alerts
           </h3>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 shrink-0">
-              {unreadCount} new
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white shrink-0">
+              {unreadCount} unread
             </span>
           )}
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
-          {items.length > 0 && (
+          {items.length > 0 && unreadCount > 0 && (
             <button
               type="button"
               onClick={markAllRead}
@@ -102,7 +102,7 @@ export default function NotificationPanel({ isOpen, onClose, onUpdated }) {
       </div>
 
       {/* Notifications List - Small Scrollable Cards */}
-      <div className="flex-1 overflow-y-auto max-h-[350px] p-2.5 sm:p-3 space-y-2 bg-stone-50/70">
+      <div className="flex-1 overflow-y-auto max-h-[360px] p-2.5 sm:p-3 space-y-2 bg-stone-50/70">
         {items.length === 0 ? (
           <div className="p-8 text-center text-xs text-stone-400 space-y-2 bg-white rounded-xl border border-dashed border-stone-200">
             <Bell size={24} className="mx-auto text-stone-300" />
@@ -142,6 +142,28 @@ export default function NotificationPanel({ isOpen, onClose, onUpdated }) {
                   </p>
                 )}
 
+                {item.metadata?.type === 'property_alert' && (
+                  <div className="flex items-center gap-2.5 p-2 rounded-xl bg-stone-50 border border-stone-200/80 my-2">
+                    {item.metadata.thumbnail && (
+                      <img
+                        src={item.metadata.thumbnail}
+                        alt={item.metadata.title || 'Property'}
+                        className="w-10 h-10 rounded-lg object-cover shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-xs text-stone-900 block truncate">
+                        {item.metadata.title}
+                      </span>
+                      <span className="text-[10px] font-semibold text-[#163e35] block truncate">
+                        {item.metadata.price ? money(item.metadata.price) : ''}
+                        {item.metadata.bhk ? ` • ${item.metadata.bhk} BHK` : ''}
+                        {item.metadata.locality ? ` • ${item.metadata.locality}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-400">
                   <span className="flex items-center gap-1">
                     <Clock size={11} className="text-stone-400" />
@@ -166,9 +188,14 @@ export default function NotificationPanel({ isOpen, onClose, onUpdated }) {
       {/* Footer */}
       <div className="py-2.5 px-4 bg-white border-t border-stone-100 text-center shrink-0">
         <Link
-          href={user?.role === 'admin' ? '/admin?tab=notifications' : '/dashboard'}
-          onClick={onClose}
-          className="text-xs font-bold text-emerald-800 hover:text-emerald-950 transition-colors inline-block"
+          href={user?.role === 'admin' ? '/admin?tab=notifications' : '/dashboard?section=notifications'}
+          onClick={() => {
+            onClose?.();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('urbanfindr:navigate-section', { detail: 'notifications' }));
+            }
+          }}
+          className="text-xs font-bold text-[#163e35] hover:text-[#24564a] transition-colors inline-block cursor-pointer"
         >
           View all notifications →
         </Link>

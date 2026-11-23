@@ -13,8 +13,12 @@ import DataTable from '../shared/DataTable';
 import PropertyDashboardCard from '../shared/PropertyDashboardCard';
 import PropertyRequestsModal from '../shared/PropertyRequestsModal';
 import PromotionModal from '../shared/PromotionModal';
+import PromotionManagementView from '../../promotions/PromotionManagementView';
 import BookingsTracker from '../../bookings-tracker';
 import InteriorProjectHub from '../../interior/InteriorProjectHub';
+import PropertyAlertsSection from '@/components/alerts/PropertyAlertsSection';
+import DashboardAlertsWidget from '@/components/alerts/DashboardAlertsWidget';
+import CreateAlertModal from '@/components/alerts/CreateAlertModal';
 import {
   Heart,
   Calendar,
@@ -46,16 +50,50 @@ import {
   MousePointerClick,
   MessageSquare,
   TrendingUp,
-  Eye
+  Eye,
+  ChevronRight
 } from 'lucide-react';
+
+function formatRelativeTime(dateInput) {
+  if (!dateInput) return 'Recently';
+  const past = new Date(dateInput).getTime();
+  if (isNaN(past)) return 'Recently';
+  const diffSec = Math.floor((Date.now() - past) / 1000);
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  const diffDays = Math.floor(diffHour / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(dateInput).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function formatVisitSchedule(scheduledAt) {
+  if (!scheduledAt) return 'Scheduled Visit';
+  const d = new Date(scheduledAt);
+  if (isNaN(d.getTime())) return 'Scheduled Visit';
+  const dateStr = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${dateStr} • ${timeStr}`;
+}
 
 export default function CustomerWorkspace({ section = 'overview', onSelectSection }) {
   const { user, toast } = useApp();
   const { data: dashData, loading: dashLoading, reload: reloadDash } = useData('dashboard');
+  const { data: favData, loading: favLoading, reload: reloadFavs } = useData('properties?favorites=true&limit=3');
+  const { data: visitsData, loading: visitsLoading, reload: reloadVisits } = useData('visits?limit=3');
+  const { data: alertsData, loading: alertsLoading, reload: reloadAlerts } = useData('property-alerts?limit=1');
+  const { data: notifData, loading: notifLoading } = useData('notifications?limit=3');
+  const [createAlertOpen, setCreateAlertOpen] = useState(false);
+  const [promotionTarget, setPromotionTarget] = useState(null);
 
+  // Live dynamic database metrics for logged-in user
   const stats = dashData?.customer || {
-    favorites: user?.favorites?.length || 0,
+    favorites: user?.favorites?.length ?? 0,
     savedSearches: 0,
+    activeAlerts: 0,
     enquiries: 0,
     upcomingVisits: 0,
     bookings: 0,
@@ -63,14 +101,46 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
     messages: 0
   };
 
+  const dynamicSavedCount = stats.favorites ?? (user?.favorites?.length ?? 0);
+  const dynamicVisitsCount = stats.upcomingVisits ?? (visitsData?.items?.length ?? 0);
+  const dynamicAlertsCount = stats.activeAlerts ?? (alertsData?.total ?? (alertsData?.items?.length ?? 0));
+  const dynamicRequestsCount = stats.bookings ?? 0;
+
+  // Dynamic user data
+  const savedPropertiesList = favData?.items || [];
+  const visitsList = visitsData?.items || [];
+  const latestAlert = (alertsData?.items || [])[0];
+  const activitiesList = notifData?.items || [];
+  const userName = user?.name ? user.name.split(' ')[0] : 'there';
+
   if (section === 'properties' || section === 'my-properties') {
     return <CustomerPropertiesSection onSelectSection={onSelectSection} />;
   }
   if (section === 'favorites') {
     return <SavedPropertiesSection />;
   }
-  if (section === 'saved-searches') {
-    return <SavedSearchesSection />;
+  if (section === 'saved-searches' || section === 'property-alerts' || section === 'alerts') {
+    return <PropertyAlertsSection />;
+  }
+  if (section === 'promotions' || section === 'spotlight') {
+    return (
+      <div className="space-y-6">
+        <CustomerPromotionsSection onPromote={setPromotionTarget} />
+        {promotionTarget && (
+          <PromotionModal
+            isOpen={Boolean(promotionTarget)}
+            target={promotionTarget}
+            targetType="property"
+            onClose={() => setPromotionTarget(null)}
+            onPromoted={() => {
+              setPromotionTarget(null);
+              reloadDash();
+              if (toast) toast('Promotion activated successfully!');
+            }}
+          />
+        )}
+      </div>
+    );
   }
   if (section === 'visits' || section === 'enquiries') {
     return <PropertyVisitsSection />;
@@ -91,132 +161,510 @@ export default function CustomerWorkspace({ section = 'overview', onSelectSectio
     return <CustomerProfileSection />;
   }
 
-  // Default: Overview
+  // Default: Unified single-view Overview with 100% dynamic database data & brand theme
   return (
-    <div className="space-y-8">
-      {/* Welcome banner */}
-      <div className="bg-gradient-to-r from-[#163e35] via-[#1c4a40] to-[#24564a] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
-        <div className="max-w-2xl relative z-10 space-y-2">
-          <div className="flex items-center gap-2 text-[#d8edb3] font-bold text-xs uppercase tracking-wider">
-            <Sparkles size={14} /> Customer Hub
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Welcome back, {user?.name ? user.name.split(' ')[0] : 'there'}
-          </h2>
-          <p className="text-xs sm:text-sm text-stone-300 leading-relaxed">
-            Discover verified properties, manage your scheduled inspections, and track active doorstep services.
+    <div className="space-y-4">
+      {/* 1. Hero Welcome Banner (Dark Theme, without image) */}
+      <div className="bg-gradient-to-r from-[#163e35] via-[#1a473d] to-[#12332c] text-white rounded-2xl p-4 sm:p-5 lg:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden shadow-xs border border-[#163e35]">
+        <div className="space-y-1.5 max-w-2xl z-10">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+            Welcome back, {userName}!
+          </h1>
+          <p className="text-xs sm:text-sm text-[#d8edb3]/90 leading-relaxed font-normal">
+            Find your dream home, explore new properties, and stay updated with the latest opportunities.
           </p>
         </div>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => onSelectSection('properties')}
-            className="px-4 py-2 bg-[#749546] hover:bg-[#5f7b38] text-white text-xs font-bold rounded-lg transition-all shadow-sm"
-          >
-            My Properties ({stats.properties || 0})
-          </button>
+        <div className="shrink-0 z-10 sm:self-center">
           <Link
             href="/properties"
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 border border-white/20"
+            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-white text-[#163e35] hover:bg-[#ecf2e4] text-xs font-bold rounded-full transition-all shadow-xs whitespace-nowrap"
           >
-            <Search size={14} /> Explore Properties
-          </Link>
-          <Link
-            href="/services"
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 border border-white/20"
-          >
-            <Wrench size={14} /> Book Home Services
+            <span>Explore Properties</span>
+            <ArrowRight size={13} />
           </Link>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard
-          title="My Properties"
-          value={stats.properties || 0}
-          subtitle="Manage your posted homes"
-          icon={House}
-          color="#163e35" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('properties')}
-        />
-        <StatCard
-          title="Saved Homes"
-          value={stats.favorites}
-          subtitle="Saved for comparison"
-          icon={Heart}
-          color="#163e35" bgIcon="#ecf2e4"
+      {/* 2. Four KPI Metric Cards in a row (100% dynamic values) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Card 1: Saved Properties */}
+        <div
           onClick={() => onSelectSection('favorites')}
-        />
-        <StatCard
-          title="Upcoming Visits"
-          value={stats.upcomingVisits}
-          subtitle="Scheduled on-site visits"
-          icon={Calendar}
-          color="#749546" bgIcon="#ecf2e4"
+          className="bg-white rounded-xl p-3 sm:p-3.5 border border-stone-200/80 shadow-2xs hover:shadow-md hover:border-[#163e35]/30 transition-all flex items-center justify-between cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
+              <House size={18} />
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-stone-900 leading-tight">
+                {dynamicSavedCount}
+              </div>
+              <div className="text-[11px] sm:text-xs font-medium text-stone-500">
+                Saved Properties
+              </div>
+            </div>
+          </div>
+          <ChevronRight size={15} className="text-stone-400 group-hover:text-[#163e35] group-hover:translate-x-0.5 transition" />
+        </div>
+
+        {/* Card 2: Upcoming Visits */}
+        <div
           onClick={() => onSelectSection('visits')}
-        />
-        <StatCard
-          title="Saved Searches"
-          value={stats.savedSearches}
-          subtitle="Alerts & preferences"
-          icon={Search}
-          color="#163e35" bgIcon="#ecf2e4"
+          className="bg-white rounded-xl p-3 sm:p-3.5 border border-stone-200/80 shadow-2xs hover:shadow-md hover:border-[#163e35]/30 transition-all flex items-center justify-between cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+              <Calendar size={18} />
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-stone-900 leading-tight">
+                {dynamicVisitsCount}
+              </div>
+              <div className="text-[11px] sm:text-xs font-medium text-stone-500">
+                Upcoming Visits
+              </div>
+            </div>
+          </div>
+          <ChevronRight size={15} className="text-stone-400 group-hover:text-[#163e35] group-hover:translate-x-0.5 transition" />
+        </div>
+
+        {/* Card 3: Active Alerts */}
+        <div
           onClick={() => onSelectSection('saved-searches')}
-        />
-        <StatCard
-          title="Service Bookings"
-          value={stats.bookings}
-          subtitle={`${stats.activeBookings || 0} currently in progress`}
-          icon={Wrench}
-          color="#749546" bgIcon="#ecf2e4"
-          onClick={() => onSelectSection('bookings')}
-        />
+          className="bg-white rounded-xl p-3 sm:p-3.5 border border-stone-200/80 shadow-2xs hover:shadow-md hover:border-[#163e35]/30 transition-all flex items-center justify-between cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center shrink-0">
+              <Bell size={18} />
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-stone-900 leading-tight">
+                {dynamicAlertsCount}
+              </div>
+              <div className="text-[11px] sm:text-xs font-medium text-stone-500">
+                Active Alerts
+              </div>
+            </div>
+          </div>
+          <ChevronRight size={15} className="text-stone-400 group-hover:text-[#163e35] group-hover:translate-x-0.5 transition" />
+        </div>
+
+        {/* Card 4: Service Requests */}
+        <div
+          onClick={() => onSelectSection('requests')}
+          className="bg-white rounded-xl p-3 sm:p-3.5 border border-stone-200/80 shadow-2xs hover:shadow-md hover:border-[#163e35]/30 transition-all flex items-center justify-between cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+              <Wrench size={18} />
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-stone-900 leading-tight">
+                {dynamicRequestsCount}
+              </div>
+              <div className="text-[11px] sm:text-xs font-medium text-stone-500">
+                Service Requests
+              </div>
+            </div>
+          </div>
+          <ChevronRight size={15} className="text-stone-400 group-hover:text-[#163e35] group-hover:translate-x-0.5 transition" />
+        </div>
       </div>
 
-      {/* Quick Access Sections Grid */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Service Bookings */}
-        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
+      {/* 3. Middle Row: My Saved Properties (left 65%) + Upcoming Visits (right 35%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* Left: My Saved Properties (100% dynamic from database) */}
+        <div className="lg:col-span-8 bg-white border border-stone-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-stone-900 text-base">Active Home Services</h3>
-              <p className="text-xs text-stone-500">Doorstep repair, cleaning, interior &amp; maintenance</p>
+            <div className="flex items-center gap-2">
+              <House size={18} className="text-[#163e35]" />
+              <h3 className="font-bold text-stone-900 text-sm sm:text-base">My Saved Properties</h3>
+              <span className="text-xs text-stone-400 font-semibold">({dynamicSavedCount})</span>
             </div>
             <button
               type="button"
-              onClick={() => onSelectSection('bookings')}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+              onClick={() => onSelectSection('favorites')}
+              className="text-xs font-bold text-[#163e35] hover:text-[#205246] flex items-center gap-1 transition cursor-pointer"
             >
               <span>View All</span>
-              <ArrowUpRight size={13} />
+              <ArrowRight size={13} />
             </button>
           </div>
 
-          <CustomerRecentBookingsList onSelectSection={onSelectSection} />
+          {favLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[1, 2, 3].map(n => (
+                <div key={n} className="rounded-2xl border border-stone-100 p-3 space-y-2 animate-pulse">
+                  <div className="aspect-video bg-stone-100 rounded-xl" />
+                  <div className="h-4 bg-stone-100 rounded w-3/4" />
+                  <div className="h-3 bg-stone-100 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : savedPropertiesList.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {savedPropertiesList.slice(0, 3).map((prop) => {
+                const isRent = prop.purpose === 'rent';
+                const propImg = propertyImages(prop)[0] || '/photos/apartment-1.jpg';
+                return (
+                  <div
+                    key={prop._id}
+                    className="rounded-2xl border border-stone-200/80 overflow-hidden bg-white hover:shadow-md transition group flex flex-col"
+                  >
+                    <div className="relative aspect-video w-full overflow-hidden bg-stone-100">
+                      <img
+                        src={propImg}
+                        alt={prop.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <span className={`absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-2xs ${
+                        isRent ? 'bg-blue-50 text-blue-700 border border-blue-200/60' : 'bg-[#ecf2e4] text-[#163e35] border border-[#d8edb3]'
+                      }`}>
+                        {isRent ? 'For Rent' : 'For Sale'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onSelectSection('favorites')}
+                        className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-stone-500 hover:text-red-500 shadow-2xs transition"
+                        title="Saved"
+                      >
+                        <Heart size={13} className="fill-red-500 text-red-500" />
+                      </button>
+                    </div>
+
+                    <div className="p-3.5 flex flex-col justify-between flex-1 space-y-2">
+                      <div>
+                        <Link href={`/properties/${prop._id}`} className="font-bold text-xs sm:text-sm text-stone-900 hover:text-[#163e35] transition truncate block">
+                          {prop.title}
+                        </Link>
+                        <p className="text-[11px] text-stone-400 flex items-center gap-1 mt-0.5 truncate">
+                          <MapPin size={11} className="shrink-0 text-stone-400" />
+                          <span>{prop.locality}, {prop.city}</span>
+                        </p>
+                      </div>
+
+                      <div className="pt-1 border-t border-stone-100">
+                        <div className="text-sm font-extrabold text-stone-900">
+                          {money(prop.price)}
+                          {isRent && <span className="text-[10px] font-normal text-stone-500"> / month</span>}
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-stone-500 mt-1 font-medium">
+                          {prop.bedrooms && <span>{prop.bedrooms} BHK</span>}
+                          {prop.bedrooms && prop.area && <span>•</span>}
+                          {prop.area && <span>{Number(prop.area).toLocaleString()} Sq.Ft.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-10 px-4 text-center bg-stone-50/60 rounded-2xl border border-dashed border-stone-200">
+              <div className="w-10 h-10 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center mx-auto mb-2.5">
+                <Heart size={18} />
+              </div>
+              <p className="text-xs font-bold text-stone-800">No saved properties yet</p>
+              <p className="text-[11px] text-stone-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                Click the heart icon on any property listing while searching to save and compare them here.
+              </p>
+              <Link
+                href="/properties"
+                className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#163e35] text-white text-xs font-bold rounded-full hover:bg-[#205246] transition shadow-xs"
+              >
+                <span>Browse Properties</span>
+                <ArrowRight size={12} />
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* Upcoming Visits */}
-        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
+        {/* Right: Upcoming Visits (100% dynamic from database) */}
+        <div className="lg:col-span-4 bg-white border border-stone-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-stone-900 text-base">Scheduled Site Visits</h3>
-              <p className="text-xs text-stone-500">Inspections confirmed with property hosts</p>
+            <div className="flex items-center gap-2">
+              <Calendar size={18} className="text-[#163e35]" />
+              <h3 className="font-bold text-stone-900 text-sm sm:text-base">Upcoming Visits</h3>
+              <span className="text-xs text-stone-400 font-semibold">({dynamicVisitsCount})</span>
             </div>
             <button
               type="button"
               onClick={() => onSelectSection('visits')}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+              className="text-xs font-bold text-[#163e35] hover:text-[#205246] flex items-center gap-1 transition cursor-pointer"
             >
               <span>View All</span>
-              <ArrowUpRight size={13} />
+              <ArrowRight size={13} />
             </button>
           </div>
 
-          <CustomerRecentVisitsList onSelectSection={onSelectSection} />
+          {visitsLoading ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3].map(n => (
+                <div key={n} className="flex items-center gap-2.5 p-2 rounded-xl border border-stone-100 animate-pulse">
+                  <div className="w-11 h-11 rounded-lg bg-stone-100 shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 bg-stone-100 rounded w-3/4" />
+                    <div className="h-3 bg-stone-100 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : visitsList.length > 0 ? (
+            <div className="space-y-2.5">
+              {visitsList.slice(0, 3).map((visit) => {
+                const isConfirmed = visit.status === 'confirmed' || visit.status === 'completed' || visit.status === 'accepted';
+                const statusLabel = isConfirmed ? 'Confirmed' : visit.status === 'cancelled' ? 'Cancelled' : 'Pending';
+                const propTitle = visit.property?.title || visit.project?.title || 'Property Inspection';
+                const propLocality = visit.property?.locality ? `${visit.property.locality}, ${visit.property.city || ''}` : (visit.project?.title || 'Scheduled Visit');
+                const visitImg = visit.property ? (propertyImages(visit.property)[0] || '/photos/apartment-1.jpg') : '/photos/apartment-1.jpg';
+
+                return (
+                  <div
+                    key={visit._id}
+                    onClick={() => onSelectSection('visits')}
+                    className="flex items-center gap-2.5 p-2 rounded-xl border border-stone-100 hover:border-[#163e35]/30 hover:bg-[#ecf2e4]/30 transition cursor-pointer"
+                  >
+                    <img
+                      src={visitImg}
+                      alt={propTitle}
+                      className="w-11 h-11 rounded-lg object-cover shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold text-stone-900 truncate">
+                        {formatVisitSchedule(visit.scheduledAt)}
+                      </p>
+                      <p className="text-xs font-medium text-stone-700 truncate mt-0.5">
+                        {propTitle}
+                      </p>
+                      <p className="text-[10px] text-stone-400 truncate">
+                        {propLocality}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 capitalize ${
+                      isConfirmed
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                        : visit.status === 'cancelled'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200/60'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                    }`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-7 px-4 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200">
+              <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto mb-2">
+                <Calendar size={16} />
+              </div>
+              <p className="text-xs font-bold text-stone-800">No scheduled visits</p>
+              <p className="text-[11px] text-stone-500 mt-0.5">
+                Book on-site visits on any property listing to track inspections here.
+              </p>
+              <Link
+                href="/properties"
+                className="mt-2.5 inline-flex items-center gap-1 px-3 py-1 bg-white text-[#163e35] border border-stone-200 text-xs font-bold rounded-full hover:bg-stone-50 transition shadow-2xs"
+              >
+                <span>Find Homes</span>
+                <ArrowRight size={11} />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* 4. Bottom Row: Property Alerts (col 1) + Recent Activity (col 2) + Need a Home Service? (col 3) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+        {/* Column 1: Property Alerts (100% dynamic from database) */}
+        <div className="bg-white border border-stone-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Bell size={18} className="text-[#163e35]" />
+                <h3 className="font-bold text-stone-900 text-sm sm:text-base">Property Alerts</h3>
+                <span className="text-xs text-stone-400 font-semibold">({dynamicAlertsCount})</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onSelectSection('saved-searches')}
+                className="text-xs font-bold text-[#163e35] hover:text-[#205246] flex items-center gap-1 transition cursor-pointer"
+              >
+                <span>View All</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+
+            {alertsLoading ? (
+              <div className="p-3 rounded-2xl bg-stone-50 border border-stone-100 flex items-center gap-3 animate-pulse">
+                <div className="w-14 h-14 bg-stone-200 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-stone-200 rounded w-3/4" />
+                  <div className="h-3 bg-stone-200 rounded w-1/2" />
+                </div>
+              </div>
+            ) : latestAlert ? (
+              <div
+                onClick={() => onSelectSection('saved-searches')}
+                className="flex items-start gap-3 p-3 rounded-2xl bg-stone-50/80 hover:bg-[#ecf2e4]/50 border border-stone-200/60 transition cursor-pointer"
+              >
+                <img
+                  src={latestAlert.latestMatch ? (propertyImages(latestAlert.latestMatch)[0] || '/photos/apartment-1.jpg') : '/photos/apartment-1.jpg'}
+                  alt="Property Alert"
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-bold text-stone-900 line-clamp-2">
+                    {latestAlert.name}
+                  </h4>
+                  <p className="text-[11px] text-stone-400 mt-1 flex items-center gap-1.5">
+                    <span>{formatRelativeTime(latestAlert.lastMatchedAt || latestAlert.createdAt)}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
+                  </p>
+                  <p className="text-[11px] text-stone-500 mt-0.5 truncate">
+                    {latestAlert.stats?.totalMatches > 0
+                      ? `${latestAlert.stats.totalMatches} matching properties found`
+                      : `Active • Monitoring ${latestAlert.filters?.city ? latestAlert.filters.city.toUpperCase() : 'your criteria'}`}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => setCreateAlertOpen(true)}
+                className="p-5 text-center bg-stone-50/60 rounded-2xl border border-dashed border-stone-200 cursor-pointer hover:bg-[#ecf2e4]/40 transition"
+              >
+                <div className="w-9 h-9 rounded-full bg-[#ecf2e4] text-[#163e35] flex items-center justify-center mx-auto mb-2">
+                  <Bell size={16} />
+                </div>
+                <p className="text-xs font-bold text-stone-800">No active alerts</p>
+                <p className="text-[11px] text-stone-500 mt-1">
+                  Save your search filters to get notified when new matching properties arrive.
+                </p>
+                <span className="mt-2.5 inline-block text-[11px] font-bold text-[#163e35] underline">
+                  Create Property Alert →
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Column 2: Recent Activity (100% dynamic from database) */}
+        <div className="bg-white border border-stone-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Clock size={18} className="text-[#163e35]" />
+              <h3 className="font-bold text-stone-900 text-sm sm:text-base">Recent Activity</h3>
+            </div>
+
+            {notifLoading ? (
+              <div className="space-y-2.5 animate-pulse">
+                {[1, 2, 3].map(n => (
+                  <div key={n} className="h-4 bg-stone-100 rounded w-full" />
+                ))}
+              </div>
+            ) : activitiesList.length > 0 ? (
+              <div className="space-y-3 relative pl-4 border-l-2 border-[#ecf2e4] ml-2">
+                {activitiesList.map((notif, i) => (
+                  <div key={notif._id || i} className="relative">
+                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-[#163e35] ring-4 ring-white" />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-stone-800 font-medium leading-snug truncate">
+                          {notif.title}
+                        </p>
+                        {notif.body && (
+                          <p className="text-[10px] text-stone-500 truncate mt-0.5">
+                            {notif.body}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-stone-400 shrink-0 whitespace-nowrap ml-2">
+                        {formatRelativeTime(notif.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-5 px-4 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200">
+                <Clock size={18} className="text-stone-300 mx-auto mb-1" />
+                <p className="text-xs font-bold text-stone-800">No recent activity</p>
+                <p className="text-[10px] text-stone-500 mt-0.5">
+                  Activity like visit confirmations, alerts, and enquiry updates will appear here.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Column 3: Need a Home Service? */}
+        <div className="bg-[#163e35] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col justify-between relative overflow-hidden text-white min-h-[140px]">
+          <div className="relative z-10 space-y-1.5 max-w-[65%]">
+            <h3 className="text-sm sm:text-base font-bold text-white">Need a Home Service?</h3>
+            <p className="text-[11px] sm:text-xs text-[#d8edb3]/90 leading-relaxed">
+              Book trusted professionals for all your home needs.
+            </p>
+            <div className="pt-1.5">
+              <Link
+                href="/services"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white text-[#163e35] text-xs font-bold rounded-full hover:bg-stone-100 transition shadow-xs"
+              >
+                <span>Request a Service</span>
+                <ArrowRight size={12} />
+              </Link>
+            </div>
+          </div>
+          <div className="absolute right-0 bottom-0 w-32 h-32 overflow-hidden pointer-events-none opacity-90">
+            <img
+              src="/photos/build-home-engineer.jpg"
+              alt="Technician"
+              className="w-full h-full object-cover object-top"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Alert Creation Modal Shortcut */}
+      <CreateAlertModal
+        isOpen={createAlertOpen}
+        onClose={() => setCreateAlertOpen(false)}
+        onSaved={() => {
+          reloadAlerts();
+          reloadDash();
+        }}
+        initialData={{ city: 'Hyderabad' }}
+      />
+
+      {/* Promotion Modal */}
+      {promotionTarget && (
+        <PromotionModal
+          isOpen={Boolean(promotionTarget)}
+          target={promotionTarget}
+          targetType="property"
+          onClose={() => setPromotionTarget(null)}
+          onPromoted={() => {
+            setPromotionTarget(null);
+            reloadDash();
+            if (toast) toast('Promotion activated successfully!');
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// Sub-component: Customer Promotions Section matching Owner promotions hub
+function CustomerPromotionsSection({ onPromote }) {
+  const { data: propData } = useData('properties?mine=true&limit=100');
+  const myProperties = propData?.items || [];
+
+  return (
+    <PromotionManagementView
+      myListings={myProperties}
+      targetType="property"
+      onPromoteNew={onPromote}
+    />
   );
 }
 

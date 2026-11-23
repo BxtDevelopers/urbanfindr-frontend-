@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp, useData, api } from '../../providers';
-import { date } from '@/lib/format';
+import { date, money } from '@/lib/format';
 import {
   Bell,
   Check,
@@ -19,7 +19,8 @@ import {
   Clock,
   Sparkles,
   Search,
-  Filter
+  Filter,
+  Eye
 } from 'lucide-react';
 
 export default function NotificationsCenter({
@@ -321,6 +322,29 @@ export default function NotificationsCenter({
                     <p className="text-xs text-stone-600 leading-relaxed max-w-2xl">
                       {item.body}
                     </p>
+
+                    {item.metadata?.type === 'property_alert' && (
+                      <div className="flex items-center gap-2.5 p-2 rounded-xl bg-stone-50 border border-stone-200/80 my-1.5">
+                        {item.metadata.thumbnail && (
+                          <img
+                            src={item.metadata.thumbnail}
+                            alt={item.metadata.title || 'Property'}
+                            className="w-12 h-12 rounded-lg object-cover shrink-0"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-xs text-stone-900 block truncate">
+                            {item.metadata.title}
+                          </span>
+                          <span className="text-[11px] font-semibold text-[#163e35] block">
+                            {money(item.metadata.price)}
+                            {item.metadata.bhk ? ` • ${item.metadata.bhk} BHK` : ''}
+                            {item.metadata.propertyType ? ` ${item.metadata.propertyType}` : ''}
+                            {item.metadata.locality ? ` • ${item.metadata.locality}, ${item.metadata.city}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -336,6 +360,17 @@ export default function NotificationsCenter({
                       <MessageSquare size={14} className="text-[#d8edb3]" />
                       <span>Chat &amp; Reply</span>
                     </button>
+                  ) : item.metadata?.type === 'property_alert' ? (
+                    <Link
+                      href={item.link || `/properties/${item.metadata.propertyId}`}
+                      onClick={() => {
+                        if (!item.read) handleMarkRead(item._id);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#163e35] hover:bg-[#12332c] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    >
+                      <Eye size={13} />
+                      <span>View Property</span>
+                    </Link>
                   ) : item.link ? (
                     <Link
                       href={item.link}

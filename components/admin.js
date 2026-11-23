@@ -47,9 +47,11 @@ import {
   Settings,
   Layers,
   CreditCard,
+  BellRing,
 } from 'lucide-react';
 import NotificationPanel from './dashboard/shared/NotificationPanel';
 import AdminPromotionManagement from './promotions/AdminPromotionManagement';
+import AdminPropertyAlertsView from './admin/AdminPropertyAlertsView';
 import { api, useApp, useData, useNotificationSummary } from './providers';
 import { Field, Pagination, State, Submit, Image } from './ui';
 import { cities, money, date } from '@/lib/format';
@@ -64,6 +66,7 @@ const VALID_ADMIN_TABS = new Set([
   'builders',
   'service-providers',
   'promotions',
+  'property-alerts',
   'channel-partners',
   'agents',
   'users',
@@ -127,6 +130,7 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
     { id: 'builders', label: 'Builder Projects', icon: Building2, count: stats.data?.projects || 0 },
     { id: 'service-providers', label: 'Service Providers', icon: Wrench, count: stats.data?.services || stats.data?.serviceProviders || initialServiceProviders.length },
     { id: 'promotions', label: 'Promotions & Ads', icon: Sparkles, count: stats.data?.promotions || 0 },
+    { id: 'property-alerts', label: 'Property Alerts', icon: BellRing },
     { id: 'channel-partners', label: 'Channel Partners', icon: Handshake, count: stats.data?.channelPartners || 0 },
     { id: 'agents', label: 'Brokers & Agents', icon: BriefcaseBusiness, count: stats.data?.brokers || 0 },
     { id: 'users', label: 'Users & Owners', icon: Users, count: stats.data?.users || 0 },
@@ -437,6 +441,10 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
 
           {tab === 'promotions' && (
             <AdminPromotionManagement />
+          )}
+
+          {tab === 'property-alerts' && (
+            <AdminPropertyAlertsView />
           )}
 
           {tab === 'enquiries' && (

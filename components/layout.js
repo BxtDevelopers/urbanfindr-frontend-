@@ -277,13 +277,13 @@ function UserAccountDropdownMenu({
                 router.push('/dashboard/customer');
                 if (toast) toast('Switched to User Account');
               }}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
             >
-              <div className="flex items-center gap-2.5">
-                <User size={15} className="text-stone-500" />
-                <span>Switch to User Account</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <User size={15} className="text-stone-500 shrink-0" />
+                <span className="whitespace-nowrap font-medium">Switch to User Account</span>
               </div>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+              <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
                 User
               </span>
             </button>
@@ -299,13 +299,13 @@ function UserAccountDropdownMenu({
                 router.push('/dashboard/provider');
                 if (toast) toast('Switched to Business Account');
               }}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all text-left cursor-pointer"
             >
-              <div className="flex items-center gap-2.5">
-                <Briefcase size={15} className="text-stone-500" />
-                <span>Switch to Business Account</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Briefcase size={15} className="text-stone-500 shrink-0" />
+                <span className="whitespace-nowrap font-medium">Switch to Business Account</span>
               </div>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
                 Business
               </span>
             </button>
@@ -637,7 +637,7 @@ export function Header() {
                     logout={logout}
                     router={router}
                     toast={toast}
-                    className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in"
+                    className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in"
                   />
                 )}
               </div>
@@ -763,7 +763,7 @@ export function Header() {
                   logout={logout}
                   router={router}
                   toast={toast}
-                  className="fixed right-3 sm:right-auto sm:absolute sm:right-0 top-[68px] sm:top-full mt-1.5 w-64 bg-white rounded-2xl shadow-2xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in"
+                  className="fixed right-3 sm:right-auto sm:absolute sm:right-0 top-[68px] sm:top-full mt-1.5 w-80 max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-2xl border border-stone-200/90 z-50 p-2 py-2.5 transition-all animate-in fade-in"
                 />
               )}
             </div>

@@ -39,6 +39,7 @@ async function dispatch(req, context) {
       pathname.startsWith('messages') ||
       pathname.startsWith('notifications') ||
       pathname.startsWith('saved-searches') ||
+      pathname.startsWith('property-alerts') ||
       pathname.startsWith('become-owner') ||
       pathname.startsWith('profile') ||
       pathname.startsWith('uploads') ||
