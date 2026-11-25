@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { ShieldAlert } from 'lucide-react';
 import { useApp } from './providers';
 import { WorkspaceProvider, useWorkspace, WORKSPACE_CONFIG } from './dashboard/WorkspaceContext';
 import DashboardLayout from './dashboard/shared/DashboardLayout';
@@ -309,6 +311,58 @@ export default function Dashboard({ section = '', action = '' }) {
   const { user } = useApp();
   const searchParams = useSearchParams();
   const isUserView = searchParams?.get('view') === 'user';
+
+  // Support readable account URLs: /dashboard/UF-CP-583194, /dashboard/UF-BR-729461, etc.
+  const isAccountIdPattern = /^UF-(CP|BR|BD|OW)-\d{6}$/i.test(section);
+  if (isAccountIdPattern) {
+    const isOwnerOfId = user && user.accountId && user.accountId.toUpperCase() === section.toUpperCase();
+    const isAdmin = user && user.role === 'admin';
+
+    // Strict Access Control: A user must not access another person's private dashboard by entering their Account ID
+    if (!isOwnerOfId && !isAdmin) {
+      return (
+        <div className="min-h-[75vh] bg-[#fafbfc] flex items-center justify-center p-4 sm:p-8">
+          <div className="bg-white border border-rose-200 rounded-3xl p-8 sm:p-10 text-center space-y-4 max-w-lg w-full shadow-md">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto shadow-2xs">
+              <ShieldAlert size={28} />
+            </div>
+            <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
+              Access Restricted
+            </h2>
+            <p className="text-sm text-stone-600 leading-relaxed">
+              You cannot access another account&apos;s private dashboard. Each UrbanFindr dashboard is strictly protected and accessible only to its authorized owner.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#163e35] text-white text-xs font-bold rounded-xl hover:bg-[#204e43] transition-colors shadow-2xs"
+              >
+                Go to My Dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Determine target role from prefix
+    const prefix = section.substring(3, 5).toUpperCase();
+    if (prefix === 'CP') {
+      return <ChannelPartnerDashboard initialSection={action} />;
+    }
+    const targetWorkspace = prefix === 'BR' ? 'broker' : prefix === 'BD' ? 'builder' : 'owner';
+    return (
+      <WorkspaceProvider
+        initialWorkspace={targetWorkspace}
+        initialSection={action || 'overview'}
+      >
+        <UnifiedDashboardInner
+          initialSection={action || 'overview'}
+          initialAction=""
+        />
+      </WorkspaceProvider>
+    );
+  }
 
   // Smart Admin routing: render full Admin Dashboard if admin and not explicitly requesting user view
   if (user && user.role === 'admin' && !isUserView) {

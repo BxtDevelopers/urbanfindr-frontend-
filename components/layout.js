@@ -312,16 +312,7 @@ function UserAccountDropdownMenu({
           )
         )}
 
-        {user.role === 'admin' && (
-          <Link
-            href="/dashboard?view=user"
-            onClick={onClose}
-            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-forest hover:bg-stone-50 rounded-xl transition-all"
-          >
-            <User size={15} className="text-stone-500" />
-            <span>User Portal View</span>
-          </Link>
-        )}
+
 
         <button
           type="button"

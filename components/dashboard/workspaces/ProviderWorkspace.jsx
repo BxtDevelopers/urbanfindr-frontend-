@@ -17,6 +17,7 @@ import PropertyDashboardCard from '../shared/PropertyDashboardCard';
 import PropertyRequestsModal from '../shared/PropertyRequestsModal';
 import MessageCenter from '../shared/MessageCenter';
 import NotificationsCenter from '../shared/NotificationsCenter';
+import AccountIdCard from '../shared/AccountIdCard';
 import { InvoiceAndDetailsModal } from '../../bookings-tracker';
 import {
   Wrench,
@@ -357,8 +358,18 @@ export default function ProviderWorkspace({ section = 'overview', onSelectSectio
         </div>
       </div>
 
+      {/* Permanent UrbanFindr Account ID Card */}
+      {user?.accountId && (
+        <AccountIdCard
+          accountId={user.accountId}
+          accountType="service_provider"
+          holderName={user.company || user.name || 'Service Provider'}
+          verificationStatus="Verified"
+        />
+      )}
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <StatCard
           title="My Properties"
           value={totalMyProperties}
@@ -2379,6 +2390,15 @@ function ProviderBusinessProfileSection() {
         <h2 className="text-xl font-bold text-stone-900">Service Business Profile</h2>
         <p className="text-xs text-stone-500">Verification details, primary service category, and working credentials</p>
       </div>
+
+      {user?.accountId && (
+        <AccountIdCard
+          accountId={user.accountId}
+          accountType="service_provider"
+          holderName={user.company || user.name || 'Service Provider'}
+          verificationStatus="Verified"
+        />
+      )}
 
       <form onSubmit={handleSave} className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">

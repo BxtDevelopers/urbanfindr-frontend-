@@ -12,6 +12,7 @@ import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
 import PromotionManagementView from '../../promotions/PromotionManagementView';
+import AccountIdCard from '../shared/AccountIdCard';
 import {
   Building2,
   Layers,
@@ -133,6 +134,16 @@ export default function BuilderWorkspace({ section = 'overview', onSelectSection
             </button>
           </div>
         </div>
+
+        {/* Permanent UrbanFindr Account ID Card */}
+        {user?.accountId && (
+          <AccountIdCard
+            accountId={user.accountId}
+            accountType="builder"
+            holderName={user.company || user.name || 'Builder'}
+            verificationStatus="Verified"
+          />
+        )}
 
         {/* KPI Cards: Manage projects, Manage project enquiries, Schedule site visits, Track project performance */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -324,6 +335,15 @@ function BuilderProfileSection() {
         <h2 className="text-xl font-bold text-stone-900">Developer &amp; Firm Profile</h2>
         <p className="text-xs text-stone-500">Corporate RERA registration and public brand credentials</p>
       </div>
+
+      {user?.accountId && (
+        <AccountIdCard
+          accountId={user.accountId}
+          accountType="builder"
+          holderName={user.company || user.name || 'Builder'}
+          verificationStatus="Verified"
+        />
+      )}
 
       <form onSubmit={handleSave} className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">
@@ -1033,6 +1053,15 @@ function BuilderSettingsSection() {
         <h2 className="text-xl font-bold text-stone-900">Builder Workspace Settings</h2>
         <p className="text-xs text-stone-500">Configure account preferences and team notification contacts</p>
       </div>
+
+      {user?.accountId && (
+        <AccountIdCard
+          accountId={user.accountId}
+          accountType="builder"
+          holderName={user.company || user.name || 'Builder'}
+          verificationStatus="Verified"
+        />
+      )}
 
       <form onSubmit={handleSave} className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
         <div>

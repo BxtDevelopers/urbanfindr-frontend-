@@ -41,13 +41,13 @@ import {
   FileText,
   ChevronDown,
   LogOut,
-  Crown,
   ArrowRight,
   Clock,
   Settings,
   Layers,
   CreditCard,
   BellRing,
+  Copy,
 } from 'lucide-react';
 import NotificationPanel from './dashboard/shared/NotificationPanel';
 import AdminPromotionManagement from './promotions/AdminPromotionManagement';
@@ -194,115 +194,91 @@ export default function Admin({ initialTab: propInitialTab } = {}) {
 
       {/* ── LEFT SIDEBAR MATCHING IMAGE ── */}
       <aside
-        className={`fixed inset-y-0 left-0 z-[1050] w-64 sm:w-72 bg-white border-r border-[#e5e9e2] flex flex-col justify-between shrink-0 shadow-xs transition-transform duration-200 lg:sticky lg:top-[var(--header-h,72px)] lg:h-[calc(100vh-var(--header-h,72px))] lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-[1050] w-64 sm:w-72 bg-white border-r border-[#e5e9e2] flex flex-col shrink-0 shadow-xs transition-transform duration-200 overflow-hidden lg:sticky lg:top-[var(--header-h,72px)] lg:h-[calc(100vh-var(--header-h,72px))] lg:translate-x-0 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Top: Admin Dashboard Header */}
-        <div>
-          <div className="h-14 sm:h-16 px-5 sm:px-6 border-b border-[#e5e9e2] flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#ecf2e4] flex items-center justify-center border border-[#d8edb3] text-[#163e35] shadow-xs shrink-0">
-                <LayoutDashboard size={18} className="stroke-[2.2]" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="font-extrabold text-sm sm:text-base text-stone-900 tracking-tight truncate leading-tight">
-                  Admin Dashboard
-                </h2>
-                <span className="text-[10px] text-stone-500 font-medium tracking-tight block truncate">
-                  Overview & Management
+        <div className="h-14 sm:h-16 px-5 sm:px-6 border-b border-[#e5e9e2] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-[#ecf2e4] flex items-center justify-center border border-[#d8edb3] text-[#163e35] shadow-xs shrink-0">
+              <LayoutDashboard size={18} className="stroke-[2.2]" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-extrabold text-sm sm:text-base text-stone-900 tracking-tight truncate leading-tight">
+                Admin Dashboard
+              </h2>
+              <span className="text-[10px] text-stone-500 font-medium tracking-tight block truncate">
+                Overview & Management
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden p-1.5 text-stone-400 hover:text-stone-700 cursor-pointer shrink-0 ml-2"
+            aria-label="Close sidebar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Navigation Links with smooth full-height scrolling */}
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-1 pb-10 scrollbar-thin overscroll-contain">
+          {navSections.map((item) => {
+            const Icon = item.icon;
+            const isActive = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setTab(item.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-[#163e35] text-[#d8edb3] shadow-md ring-1 ring-[#163e35]'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-[#ecf2e4]/70'
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <Icon size={18} className={isActive ? 'text-[#d8edb3]' : 'text-stone-400'} />
+                  <span className="truncate">{item.label}</span>
                 </span>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden p-1.5 text-stone-400 hover:text-stone-700 cursor-pointer shrink-0 ml-2"
-              aria-label="Close sidebar"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="overflow-y-auto max-h-[calc(100vh-280px)] px-3 sm:px-4 py-4 space-y-1 scrollbar-thin">
-            {navSections.map((item) => {
-              const Icon = item.icon;
-              const isActive = tab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setTab(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-[#163e35] text-[#d8edb3] shadow-md ring-1 ring-[#163e35]'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-[#ecf2e4]/70'
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon size={18} className={isActive ? 'text-[#d8edb3]' : 'text-stone-400'} />
-                    <span className="truncate">{item.label}</span>
+                {item.badgeColor ? (
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full ${item.badgeColor} shrink-0 ring-2 ring-white`}
+                    title={item.id === 'properties' ? 'Pending review' : 'Unread notifications'}
+                  />
+                ) : item.count !== undefined && item.count > 0 ? (
+                  <span
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
+                    }`}
+                  >
+                    {item.count}
                   </span>
+                ) : null}
+              </button>
+            );
+          })}
 
-                  {item.badgeColor ? (
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full ${item.badgeColor} shrink-0 ring-2 ring-white`}
-                      title={item.id === 'properties' ? 'Pending review' : 'Unread notifications'}
-                    />
-                  ) : item.count !== undefined && item.count > 0 ? (
-                    <span
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
-                      }`}
-                    >
-                      {item.count}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Bottom Card: Grow Your Business (Promotions Shortcut matching image) */}
-        <div className="p-4 border-t border-[#e5e9e2] space-y-2.5">
-          <div className="bg-gradient-to-br from-[#ecf2e4] to-[#f4f7ee] border border-[#d8edb3] rounded-2xl p-3.5 text-center space-y-2 shadow-xs">
-            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 mx-auto flex items-center justify-center shadow-xs">
-              <Crown size={15} />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-stone-900 leading-tight">Grow Your Business</h4>
-              <p className="text-[10px] text-stone-600 mt-0.5 leading-snug">
-                Manage visibility and boost listings reach.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setTab('promotions');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full py-2 px-3 bg-[#163e35] hover:bg-[#204e43] text-[#d8edb3] rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
-            >
-              <span>Go to Promotions</span>
-              <ArrowRight size={13} />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-stone-500 px-1 pt-0.5">
-            <Link href="/dashboard?view=user" className="hover:text-[#163e35] font-semibold transition-colors flex items-center gap-1">
-              ← User View
-            </Link>
-            <Link href="/" className="hover:text-[#163e35] font-medium transition-colors flex items-center gap-1">
-              Public Portal <ExternalLink size={11} />
-            </Link>
-          </div>
-        </div>
+          {/* Public Portal Link right after Settings */}
+          <Link
+            href="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-900 hover:bg-[#ecf2e4]/70 transition-all cursor-pointer mt-1"
+          >
+            <span className="flex items-center gap-3">
+              <ExternalLink size={18} className="text-stone-400" />
+              <span className="truncate">Public Portal</span>
+            </span>
+            <ExternalLink size={14} className="text-stone-400" />
+          </Link>
+        </nav>
       </aside>
 
       {/* ── MAIN CONTENT AREA ── */}
@@ -809,7 +785,7 @@ function PropertyDetailModal({ property, propertyId, onClose, onStatusUpdated, o
                   }}
                   className="btn !min-h-0 !py-1.5 !px-3 !text-xs"
                 >
-                  View Partner Dossier
+                  View Partner Details
                 </button>
               )}
             </div>
@@ -1055,7 +1031,7 @@ function ServiceProviderDetailModal({ provider, onClose, onToggleVerify, onToggl
             </button>
           </div>
           <button type="button" onClick={onClose} className="btn-outline !min-h-0 !py-2 !px-4 !text-xs">
-            Close Dossier
+            Close Details
           </button>
         </div>
       </div>
@@ -1331,9 +1307,28 @@ function AgentPartnerDetailModal({ user: agentUser, onClose, onToggleStatus, onR
               </span>
             </div>
             <h3 className="!text-2xl font-bold text-stone-900">{agentUser.name}</h3>
-            <p className="text-sm font-semibold muted mt-0.5">
-              Firm: <strong className="text-stone-800">{agentUser.company || 'Direct Agency Practice'}</strong>
-            </p>
+            <div className="flex flex-wrap items-center gap-3 text-sm font-semibold muted mt-0.5">
+              <span>Firm: <strong className="text-stone-800">{agentUser.company || 'Direct Agency Practice'}</strong></span>
+              {agentUser.accountId && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-1">
+                    Account ID: <strong className="font-mono text-stone-900 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">{agentUser.accountId}</strong>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(agentUser.accountId);
+                        toast(`Copied ${agentUser.accountId}`);
+                      }}
+                      className="p-0.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                      title="Copy Account ID"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </span>
+                </>
+              )}
+            </div>
           </div>
           <button onClick={onClose} className="muted hover:text-stone-900 p-1" aria-label="Close modal">
             <X size={20} />
@@ -1620,7 +1615,7 @@ function AgentPartnerDetailModal({ user: agentUser, onClose, onToggleStatus, onR
             </a>
           </div>
           <button type="button" onClick={onClose} className="btn-outline !min-h-0 !py-2 !px-4 !text-xs">
-            Close Dossier
+            Close Details
           </button>
         </div>
       </div>
@@ -2240,14 +2235,14 @@ function SupportTicketModal({ ticket, onClose, onUpdated }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// DETAIL MODAL: PROPERTY OWNER DOSSIER & LISTED INVENTORY
+// DETAIL MODAL: USER & OWNER DETAILS & LISTED INVENTORY
 // ─────────────────────────────────────────────────────────────
-function OwnerDetailModal({ user: ownerUser, onClose, onToggleStatus, onReload, onInspectProperty }) {
+function UserDetailModal({ user: detailUser, onClose, onToggleStatus, onReload, onInspectProperty }) {
   const { toast } = useApp();
-  const { data: propsData, loading: propsLoading, reload: reloadProps } = useData(`admin/properties?owner=${ownerUser._id}`);
+  const { data: propsData, loading: propsLoading, reload: reloadProps } = useData(`admin/properties?owner=${detailUser?._id}`);
   const [busyPropId, setBusyPropId] = useState(null);
 
-  if (!ownerUser) return null;
+  if (!detailUser) return null;
 
   async function handleApproveProperty(id) {
     setBusyPropId(id);
@@ -2263,7 +2258,19 @@ function OwnerDetailModal({ user: ownerUser, onClose, onToggleStatus, onReload, 
     }
   }
 
-  const listedCount = propsData?.total ?? ownerUser.propertiesCount ?? 0;
+  const roleDisplayLabels = {
+    user: 'Standard Customer',
+    customer: 'Standard Customer',
+    owner: 'Property Owner',
+    broker: 'Broker / Agent',
+    builder: 'Builder / Developer',
+    channel_partner: 'Channel Partner',
+    service_provider: 'Service Provider',
+    provider: 'Service Provider',
+    admin: 'Platform Administrator'
+  };
+  const roleLabel = roleDisplayLabels[detailUser.role] || detailUser.role || 'Platform User';
+  const listedCount = propsData?.total ?? detailUser.propertiesCount ?? 0;
 
   return (
     <div role="dialog" aria-modal="true" className="modal" onClick={onClose}>
@@ -2275,23 +2282,44 @@ function OwnerDetailModal({ user: ownerUser, onClose, onToggleStatus, onReload, 
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className="pill text-xs !bg-forest !text-white font-semibold">
-                Direct Property Owner
+                {roleLabel}
               </span>
-              <span className={`pill text-xs ${ownerUser.active ? '!bg-emerald-100 !text-emerald-800' : '!bg-red-100 !text-red-800'}`}>
-                {ownerUser.active ? 'Active Account' : 'Suspended Account'}
+              <span className={`pill text-xs ${detailUser.active ? '!bg-emerald-100 !text-emerald-800' : '!bg-red-100 !text-red-800'}`}>
+                {detailUser.active ? 'Active Account' : 'Suspended Account'}
               </span>
             </div>
-            <h3 className="!text-2xl font-bold text-stone-900">{ownerUser.name}</h3>
+            <h3 className="!text-2xl font-bold text-stone-900">{detailUser.name}</h3>
             <p className="text-sm font-semibold muted mt-0.5">
-              Account Role: <strong className="text-stone-800 capitalize">{ownerUser.role}</strong>
+              Account Role: <strong className="text-stone-800 capitalize">{detailUser.role}</strong>
             </p>
           </div>
-          <button onClick={onClose} className="muted hover:text-stone-900 p-1" aria-label="Close modal">
+          <button onClick={onClose} className="muted hover:text-stone-900 p-1 cursor-pointer" aria-label="Close modal">
             <X size={20} />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#f7f8f3] p-4 rounded-lg">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-[#f7f8f3] p-4 rounded-lg">
+          <div>
+            <span className="text-xs muted block">Account ID</span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <strong className="text-xs font-mono font-bold text-stone-900">
+                {detailUser.accountId || '—'}
+              </strong>
+              {detailUser.accountId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof navigator !== 'undefined') navigator.clipboard?.writeText(detailUser.accountId);
+                    toast(`Copied ${detailUser.accountId}`);
+                  }}
+                  className="p-0.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                  title="Copy Account ID"
+                >
+                  <Copy size={11} />
+                </button>
+              )}
+            </div>
+          </div>
           <div>
             <span className="text-xs muted block">Listed Properties</span>
             <strong className="text-base text-forest block mt-0.5 font-bold">
@@ -2301,32 +2329,71 @@ function OwnerDetailModal({ user: ownerUser, onClose, onToggleStatus, onReload, 
           <div>
             <span className="text-xs muted block">Account Role</span>
             <strong className="text-xs font-mono block mt-0.5 capitalize">
-              {ownerUser.role}
+              {detailUser.role}
             </strong>
           </div>
           <div>
             <span className="text-xs muted block">Contact Phone</span>
             <strong className="text-xs font-mono block mt-0.5">
-              {ownerUser.phone || 'Not provided'}
+              {detailUser.phone || 'Not provided'}
             </strong>
           </div>
           <div>
             <span className="text-xs muted block">Registered Email</span>
-            <strong className="text-xs block mt-0.5 truncate" title={ownerUser.email}>
-              {ownerUser.email}
+            <strong className="text-xs block mt-0.5 truncate" title={detailUser.email}>
+              {detailUser.email}
             </strong>
           </div>
         </div>
+
+        {/* Extra profile details if present */}
+        {(detailUser.company || detailUser.reraId || detailUser.serviceCategory || detailUser.experience) && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-stone-50 border border-stone-200 p-3.5 rounded-lg text-xs">
+            {detailUser.company && (
+              <div>
+                <span className="text-stone-500 block">Company / Firm</span>
+                <strong className="text-stone-900 block mt-0.5 truncate">{detailUser.company}</strong>
+              </div>
+            )}
+            {detailUser.reraId && (
+              <div>
+                <span className="text-stone-500 block">RERA Number</span>
+                <strong className="text-stone-900 font-mono block mt-0.5">{detailUser.reraId}</strong>
+              </div>
+            )}
+            {detailUser.serviceCategory && (
+              <div>
+                <span className="text-stone-500 block">Service Category</span>
+                <strong className="text-stone-900 capitalize block mt-0.5">{detailUser.serviceCategory}</strong>
+              </div>
+            )}
+            {detailUser.experience && (
+              <div>
+                <span className="text-stone-500 block">Experience</span>
+                <strong className="text-stone-900 block mt-0.5">{detailUser.experience}</strong>
+              </div>
+            )}
+          </div>
+        )}
+
+        {detailUser.bio && (
+          <div className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs text-stone-700 leading-relaxed">
+            <strong className="text-stone-900 block mb-1">Profile Bio / Notes:</strong>
+            {detailUser.bio}
+          </div>
+        )}
 
         {/* Listed Properties */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <div>
               <h4 className="text-base font-bold text-stone-900">
-                Owner's Listed Properties ({listedCount})
+                {roleLabel}'s Listed Properties ({listedCount})
               </h4>
               <p className="text-xs muted">
-                Click any property card to view the complete listing dossier or moderate status.
+                {listedCount > 0
+                  ? 'Click any property card to view the complete listing details or moderate status.'
+                  : 'Active property inventory connected to this user account.'}
               </p>
             </div>
           </div>
@@ -2397,9 +2464,11 @@ function OwnerDetailModal({ user: ownerUser, onClose, onToggleStatus, onReload, 
             !propsLoading && (
               <div className="panel text-center py-8 bg-[#fdfdfb]">
                 <Home className="mx-auto mb-2 text-stone-400" size={28} />
-                <h4 className="text-sm font-semibold">No properties listed yet</h4>
+                <h4 className="text-sm font-semibold">No properties listed</h4>
                 <p className="text-xs muted mt-1">
-                  When this owner posts a property, it will show up here.
+                  {detailUser.role === 'owner'
+                    ? 'When this owner posts a property, it will show up here.'
+                    : 'This account has no posted property listings.'}
                 </p>
               </div>
             )
@@ -2411,21 +2480,21 @@ function OwnerDetailModal({ user: ownerUser, onClose, onToggleStatus, onReload, 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => onToggleStatus(ownerUser)}
-              className={`btn !min-h-0 !py-2 !px-3 !text-xs ${ownerUser.active ? '!bg-red-700' : ''}`}
+              onClick={() => onToggleStatus(detailUser)}
+              className={`btn !min-h-0 !py-2 !px-3 !text-xs ${detailUser.active ? '!bg-red-700' : ''}`}
             >
-              {ownerUser.active ? 'Suspend Account' : 'Activate Account'}
+              {detailUser.active ? 'Suspend Account' : 'Activate Account'}
             </button>
-            {ownerUser.phone && (
+            {detailUser.phone && (
               <a
-                href={`tel:${ownerUser.phone}`}
+                href={`tel:${detailUser.phone}`}
                 className="btn-outline !min-h-0 !py-2 !px-3 !text-xs flex items-center gap-1"
               >
-                <Phone size={13} /> Call {ownerUser.phone}
+                <Phone size={13} /> Call {detailUser.phone}
               </a>
             )}
             <a
-              href={`mailto:${ownerUser.email}`}
+              href={`mailto:${detailUser.email}`}
               className="btn-outline !min-h-0 !py-2 !px-3 !text-xs flex items-center gap-1"
             >
               <Mail size={13} /> Email
@@ -2439,6 +2508,8 @@ function OwnerDetailModal({ user: ownerUser, onClose, onToggleStatus, onReload, 
     </div>
   );
 }
+
+const OwnerDetailModal = UserDetailModal;
 
 
 // 1. NOTIFICATIONS VIEW (Deep linking to Review Queue & Modals)
@@ -3875,7 +3946,7 @@ function ChannelPartnersView({ onReload, onInspectProperty }) {
           <Search size={16} className="text-stone-400 shrink-0" />
           <input
             type="text"
-            placeholder="Search by company firm, partner name, or RERA ID..."
+            placeholder="Search by Account ID (e.g. UF-CP-748268), company firm, partner name, or RERA ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input !h-10 !text-sm"
@@ -3901,7 +3972,14 @@ function ChannelPartnersView({ onReload, onInspectProperty }) {
             {data?.items?.map((cp) => (
               <tr key={cp._id} onClick={() => setSelectedPartner(cp)} className="cursor-pointer hover:bg-stone-50 transition-colors">
                 <td>
-                  <strong>{cp.company || 'Enterprise Agency'}</strong>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <strong>{cp.company || 'Enterprise Agency'}</strong>
+                    {cp.accountId && (
+                      <span className="font-mono text-[11px] font-bold text-stone-700 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200 select-all">
+                        {cp.accountId}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs muted">Lead: {cp.name}</div>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     <span className={`pill text-[10px] font-bold ${
@@ -4174,7 +4252,7 @@ function BrokersAgentsView({ onReload, onInspectProperty }) {
           <Search size={16} className="text-stone-400 shrink-0" />
           <input
             type="text"
-            placeholder="Search by broker name, advisory firm, or email..."
+            placeholder="Search by Account ID (e.g. UF-BR-182496), broker name, firm, or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input !h-10 !text-sm"
@@ -4200,7 +4278,14 @@ function BrokersAgentsView({ onReload, onInspectProperty }) {
             {data?.items?.map((b) => (
               <tr key={b._id} onClick={() => setSelectedBroker(b)} className="cursor-pointer hover:bg-stone-50 transition-colors">
                 <td>
-                  <strong>{b.name}</strong>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <strong>{b.name}</strong>
+                    {b.accountId && (
+                      <span className="font-mono text-[11px] font-bold text-stone-700 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200 select-all">
+                        {b.accountId}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs font-mono muted">{b.reraId || 'RERA Verified'}</div>
                 </td>
                 <td>{b.company || 'Independent Broker'}</td>
@@ -4227,7 +4312,7 @@ function BrokersAgentsView({ onReload, onInspectProperty }) {
                       onClick={() => setSelectedBroker(b)}
                       className="text-link !text-xs font-semibold whitespace-nowrap"
                     >
-                      Dossier
+                      Details
                     </button>
                     <button
                       type="button"
@@ -4277,7 +4362,7 @@ function UsersView({ onReload, onNavigate, onInspectProperty }) {
   const [roleFilter, setRoleFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [selectedOwner, setSelectedOwner] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const { data, loading, error, reload } = useData(
     `admin/users?page=${page}&limit=10${roleFilter ? `&role=${roleFilter}` : ''}${search ? `&q=${encodeURIComponent(search)}` : ''}`
   );
@@ -4335,7 +4420,7 @@ function UsersView({ onReload, onNavigate, onInspectProperty }) {
           <Search size={16} className="text-stone-400 shrink-0" />
           <input
             type="text"
-            placeholder="Search by name, email, or phone number..."
+            placeholder="Search by Account ID (e.g. UF-BR-740031, UF-SP-020109), name, email, or phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input !h-10 !text-sm"
@@ -4363,6 +4448,7 @@ function UsersView({ onReload, onNavigate, onInspectProperty }) {
         <table>
           <thead>
             <tr>
+              <th>Account ID</th>
               <th>User Name</th>
               <th>Contact Details</th>
               <th>Platform Role</th>
@@ -4375,13 +4461,32 @@ function UsersView({ onReload, onNavigate, onInspectProperty }) {
             {data?.items?.map((u) => (
               <tr
                 key={u._id}
-                onClick={() => {
-                  if (u.role === 'owner' || u.propertiesCount > 0) {
-                    setSelectedOwner(u);
-                  }
-                }}
-                className={u.role === 'owner' || u.propertiesCount > 0 ? 'cursor-pointer hover:bg-stone-50 transition-colors' : ''}
+                onClick={() => setSelectedUser(u)}
+                className="cursor-pointer hover:bg-stone-50 transition-colors"
               >
+                <td>
+                  {u.accountId ? (
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <span className="font-mono text-xs font-bold text-stone-900 bg-stone-100 px-2 py-0.5 rounded border border-stone-200 select-all">
+                        {u.accountId}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (typeof navigator !== 'undefined') navigator.clipboard?.writeText(u.accountId);
+                          toast(`Copied ${u.accountId}`);
+                        }}
+                        className="p-1 text-stone-400 hover:text-stone-700 rounded transition-colors cursor-pointer"
+                        title="Copy Account ID"
+                      >
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-stone-400 font-mono">—</span>
+                  )}
+                </td>
                 <td>
                   <strong className="text-stone-900">{u.name}</strong>
                   {u.company && <div className="text-xs muted">{u.company}</div>}
@@ -4411,9 +4516,9 @@ function UsersView({ onReload, onNavigate, onInspectProperty }) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedOwner(u);
+                        setSelectedUser(u);
                       }}
-                      className="pill text-xs font-semibold !bg-forest !text-white flex items-center gap-1 hover:!bg-[#205347]"
+                      className="pill text-xs font-semibold !bg-forest !text-white flex items-center gap-1 hover:!bg-[#205347] cursor-pointer"
                       title="Inspect owner listings"
                     >
                       <Home size={11} /> {u.propertiesCount} Listed
@@ -4430,21 +4535,19 @@ function UsersView({ onReload, onNavigate, onInspectProperty }) {
                   </span>
                 </td>
                 <td className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-2 whitespace-nowrap">
-                    {(u.role === 'owner' || u.propertiesCount > 0) && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOwner(u)}
-                        className="text-link !text-xs font-semibold whitespace-nowrap"
-                      >
-                        Dossier
-                      </button>
-                    )}
+                  <div className="flex items-center gap-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUser(u)}
+                      className="text-link !text-xs font-semibold whitespace-nowrap cursor-pointer"
+                    >
+                      Details
+                    </button>
                     <button
                       type="button"
                       disabled={busyId === u._id}
                       onClick={() => toggleActive(u)}
-                      className="text-xs font-semibold muted hover:text-stone-900 whitespace-nowrap"
+                      className="text-xs font-semibold muted hover:text-stone-900 whitespace-nowrap cursor-pointer"
                     >
                       {u.active ? 'Disable' : 'Enable'}
                     </button>
@@ -4467,10 +4570,10 @@ function UsersView({ onReload, onNavigate, onInspectProperty }) {
         </div>
       )}
 
-      {selectedOwner && (
-        <OwnerDetailModal
-          user={selectedOwner}
-          onClose={() => setSelectedOwner(null)}
+      {selectedUser && (
+        <UserDetailModal
+          user={selectedUser}
+          onClose={() => setSelectedUser(null)}
           onToggleStatus={toggleActive}
           onReload={reload}
           onInspectProperty={onInspectProperty}

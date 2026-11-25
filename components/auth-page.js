@@ -24,8 +24,11 @@ import {
   Handshake,
   Heart,
   Phone,
+  Copy,
+  Sparkles,
 } from 'lucide-react';
 import { serviceCategories } from '@/lib/serviceCategories';
+import AccountIdCard from './dashboard/shared/AccountIdCard';
 
 const ROLE_OPTIONS = [
   {
@@ -93,6 +96,8 @@ export default function AuthPage({ register = false, adminLogin = false }) {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [registrationSuccessData, setRegistrationSuccessData] = useState(null);
+  const [copiedSuccessId, setCopiedSuccessId] = useState(false);
 
   const next = params.get('next');
   const isAdminLogin = adminLogin || next?.startsWith('/admin') || params.get('role') === 'admin';
@@ -162,6 +167,17 @@ export default function AuthPage({ register = false, adminLogin = false }) {
         } catch (e) {}
       }
 
+      if (register && data.user?.accountId) {
+        setRegistrationSuccessData({
+          user: data.user,
+          accountId: data.user.accountId,
+          role: data.user.role,
+          accountType: selectedRole,
+          destination
+        });
+        return;
+      }
+
       router.push(destination);
     } catch (e) {
       setError(e.message);
@@ -171,6 +187,105 @@ export default function AuthPage({ register = false, adminLogin = false }) {
   }
 
   const providerServices = serviceCategories.filter((c) => c.slug !== 'properties');
+
+  /* =========================================================================
+     REGISTRATION SUCCESS VIEW (With Permanent Account ID)
+     ========================================================================= */
+  if (registrationSuccessData) {
+    const matchedRole = ROLE_OPTIONS.find(
+      (r) => r.id === registrationSuccessData.accountType || r.apiValue === registrationSuccessData.role
+    );
+    const roleLabel = matchedRole?.label || 'Account';
+    const accountId = registrationSuccessData.accountId;
+
+    const handleCopy = async () => {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(accountId);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = accountId;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
+        setCopiedSuccessId(true);
+        setTimeout(() => setCopiedSuccessId(false), 2000);
+      } catch (e) {
+        console.error('Failed to copy ID:', e);
+      }
+    };
+
+    return (
+      <section className="min-h-[calc(100vh-86px)] w-full py-8 sm:py-12 px-4 bg-[#f8faf7] flex items-center justify-center">
+        <div className="w-full max-w-md bg-white rounded-2xl p-5 sm:p-7 shadow-lg border border-stone-200/90 text-center space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-[#ecf2e4] text-[#163e35] flex items-center justify-center mx-auto shadow-2xs">
+            <Check size={24} strokeWidth={2.5} />
+          </div>
+
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#eaf0df] text-[#163e35] mb-1">
+              <Sparkles size={12} /> Welcome to UrbanFindr!
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
+              Your account has been created successfully.
+            </h1>
+          </div>
+
+          {/* Account ID Showcase Box */}
+          <div className="bg-[#fafbf8] border border-stone-200/90 rounded-xl p-3.5 sm:p-4 text-center space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+              Your Unique Account ID:
+            </div>
+            <div className="font-mono text-xl sm:text-2xl font-extrabold text-stone-900 tracking-wider py-0.5 select-all">
+              {accountId}
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-0.5">
+              <span className="text-[11px] font-semibold text-stone-600 bg-white px-2.5 py-1 rounded-md border border-stone-200 shadow-2xs">
+                {roleLabel} · Account ID
+              </span>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                  copiedSuccessId
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                    : 'bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 shadow-2xs'
+                }`}
+              >
+                {copiedSuccessId ? (
+                  <>
+                    <Check size={12} className="text-emerald-600" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} />
+                    <span>Copy ID</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Account ID reminder message */}
+          <p className="text-xs leading-relaxed bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 text-stone-700">
+            This is your permanent UrbanFindr Account ID. Keep it for account identification, support, and verification purposes.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => router.push(registrationSuccessData.destination)}
+            className="w-full bg-[#163e35] hover:bg-[#204e43] text-white font-bold py-2.5 px-5 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs text-xs sm:text-sm cursor-pointer"
+          >
+            <span>Proceed to Dashboard</span>
+            <ArrowRight size={15} />
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   /* =========================================================================
      LOGIN PAGE VIEW

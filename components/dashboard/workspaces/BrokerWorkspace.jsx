@@ -13,6 +13,7 @@ import DataTable from '../shared/DataTable';
 import AnalyticsChart from '../shared/AnalyticsChart';
 import PromotionModal from '../shared/PromotionModal';
 import PromotionManagementView from '../../promotions/PromotionManagementView';
+import AccountIdCard from '../shared/AccountIdCard';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -297,29 +298,29 @@ function BrokerOverviewView({ stats, onSelectSection, onPromote }) {
           </p>
         </div>
 
-        {/* Right Skyline Art & + Add Property button */}
-        <div className="flex items-center gap-3 sm:self-center">
-          <div className="hidden md:block absolute right-32 top-0 bottom-0 w-60 lg:w-80 overflow-hidden pointer-events-none opacity-85">
-            <img
-              src="/photos/builder-1.jpg"
-              alt="City skyline"
-              className="w-full h-full object-cover object-left"
-              style={{
-                maskImage: 'linear-gradient(to right, transparent 0%, black 50%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 50%, transparent 100%)'
-              }}
-            />
-          </div>
-
-          <Link
-            href="/post-property"
-            className="relative z-10 px-3.5 py-2 bg-[#163e35] hover:bg-[#24564a] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-          >
-            <Plus size={15} />
-            <span>Add Property</span>
-          </Link>
+        {/* Right Skyline Art */}
+        <div className="hidden md:block absolute right-0 top-0 bottom-0 w-60 lg:w-80 overflow-hidden pointer-events-none opacity-85">
+          <img
+            src="/photos/builder-1.jpg"
+            alt="City skyline"
+            className="w-full h-full object-cover object-left"
+            style={{
+              maskImage: 'linear-gradient(to right, transparent 0%, black 50%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 50%, transparent 100%)'
+            }}
+          />
         </div>
       </div>
+
+      {/* Permanent UrbanFindr Account ID Card */}
+      {user?.accountId && (
+        <AccountIdCard
+          accountId={user.accountId}
+          accountType="broker"
+          holderName={user.name || user.company || 'Broker / Agent'}
+          verificationStatus="Verified"
+        />
+      )}
 
       {/* ── ROW 1: 4 TOP KPI STAT CARDS MATCHING DESIGN & THEME (COMPACT) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
@@ -2633,6 +2634,15 @@ function BrokerProfileSection() {
         <h2 className="text-xl font-bold text-stone-900">Agent &amp; Agency Accreditation</h2>
         <p className="text-xs text-stone-500">RERA licensing, firm name, and professional advisory details</p>
       </div>
+
+      {user?.accountId && (
+        <AccountIdCard
+          accountId={user.accountId}
+          accountType="broker"
+          holderName={user.name || user.company || 'Broker / Agent'}
+          verificationStatus="Verified"
+        />
+      )}
 
       <form onSubmit={handleSave} className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">

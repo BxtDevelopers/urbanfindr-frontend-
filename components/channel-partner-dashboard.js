@@ -76,6 +76,7 @@ import { money, date } from '@/lib/format';
 import { propertyImages } from '@/lib/media';
 import { Image, State } from './ui';
 import MessageCenter from './dashboard/shared/MessageCenter';
+import AccountIdCard from './dashboard/shared/AccountIdCard';
 
 export const TIME_RANGE_OPTIONS = [
   { id: 'all', label: 'All Time' },
@@ -1297,6 +1298,16 @@ export default function ChannelPartnerDashboard({
             COLUMN 1: PARTNER WORKSPACE SIDEBAR
            ======================================================================= */}
         <aside className="space-y-6 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto no-scrollbar pb-8">
+          {/* Permanent UrbanFindr Account ID Card */}
+          {(user?.accountId || partner?.accountId) && (
+            <AccountIdCard
+              accountId={user?.accountId || partner?.accountId}
+              accountType="channel_partner"
+              holderName={partner.company || user?.company || user?.name || 'Channel Partner'}
+              verificationStatus="Verified"
+            />
+          )}
+
           {/* Agency Identification Badge with Profile Icon */}
           <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -5111,7 +5122,16 @@ export default function ChannelPartnerDashboard({
 
             <div className="p-6 space-y-5 max-h-[72vh] overflow-y-auto no-scrollbar">
               {profileModalTab === 'credentials' ? (
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="space-y-5">
+                  {(user?.accountId || partner?.accountId) && (
+                    <AccountIdCard
+                      accountId={user?.accountId || partner?.accountId}
+                      accountType="channel_partner"
+                      holderName={partner.company || user?.company || user?.name || 'Channel Partner'}
+                      verificationStatus="Verified"
+                    />
+                  )}
+                  <form onSubmit={handleUpdateProfile} className="space-y-4">
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-stone-700 mb-1.5">
@@ -5207,7 +5227,8 @@ export default function ChannelPartnerDashboard({
                     </button>
                   </div>
                 </form>
-              ) : (
+              </div>
+            ) : (
                 /* PASSWORD & SECURITY TAB */
                 <form onSubmit={handleChangePassword} className="space-y-4">
                   {/* Security Notice / Future OTP Roadmap */}

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useWorkspace, WORKSPACE_CONFIG } from '../WorkspaceContext';
 import { useApp, useData, useNotificationSummary } from '../../providers';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
+import AccountIdCard from './AccountIdCard';
 import {
   House,
   LayoutDashboard,
@@ -238,6 +239,18 @@ export default function DashboardSidebar({
                 <X size={18} />
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Permanent Account ID Badge */}
+        {user?.accountId && !collapsed && (
+          <div className="px-3 py-2 border-b border-[#e5e9e2]/80">
+            <AccountIdCard
+              accountId={user.accountId}
+              accountType={user.role}
+              variant="compact"
+              className="w-full justify-between bg-stone-50/80"
+            />
           </div>
         )}
 
