@@ -1,7 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
-import { ArrowUpRight, Heart, MapPin, BedDouble, Maximize, GitCompareArrows, Check, Home, ArrowRight, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowUpRight, Heart, MapPin, BedDouble, Maximize, GitCompareArrows, Check, Home, ArrowRight, Sparkles, Navigation } from 'lucide-react';
+import { useUserLocation } from './LocationContext';
+import { calculateDistance, formatDistance, getCoordinatesForProperty } from '@/lib/geo';
 import { api,useApp } from './providers';
 import { money } from '@/lib/format';
 import { isMonthly } from '@/lib/catalog';
@@ -30,8 +32,26 @@ export function Pagination({data,onChange}){if(!data||data.pages<2)return null;r
 export function Submit({busy,children='Save changes'}){return <button className="btn" disabled={busy}>{busy?'Please wait…':children}<ArrowRight size={16}/></button>;}
 export function PropertyCard({item,onFavorite}){
   const {user,refresh,toast,compare,toggleCompare}=useApp();
+  const {location}=useUserLocation();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [busy,setBusy]=useState(false);
   const saved=user?.favorites?.includes(item._id);
+
+  let displayDistance = item.distanceText || '';
+  if (!displayDistance && item.distanceKm != null) {
+    displayDistance = formatDistance(item.distanceKm);
+  } else if (!displayDistance && mounted && location?.lat && location?.lng) {
+    const coords = getCoordinatesForProperty(item, item.city || 'Bengaluru');
+    if (coords?.lat && coords?.lng) {
+      const d = calculateDistance(location.lat, location.lng, coords.lat, coords.lng);
+      if (d !== null) {
+        displayDistance = formatDistance(d);
+      }
+    }
+  }
 
   async function favorite(){
     if(!user){toast('Log in to save a home.');return;}
@@ -100,7 +120,22 @@ export function PropertyCard({item,onFavorite}){
           ) : null}
         </div>
         <Link className="card-title" href={`/properties/${item._id}`}>{item.title}</Link>
-        <p className="muted flex gap-1 items-center text-sm mt-2"><MapPin size={13}/>{item.locality}, {item.city}</p>
+        <div className="flex items-center justify-between gap-2 mt-2">
+          <p className="muted flex gap-1 items-center text-sm truncate">
+            <MapPin size={13} className="shrink-0" />
+            <span className="truncate">{item.locality}, {item.city}</span>
+          </p>
+          {displayDistance && (
+            <span
+              suppressHydrationWarning
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#163e35] bg-[#ecf2e4] px-2 py-0.5 rounded-full shrink-0 border border-[#d8edb3]"
+              title={`Approximately ${displayDistance}`}
+            >
+              <Navigation size={9} className="stroke-[2.5]" />
+              {displayDistance}
+            </span>
+          )}
+        </div>
         <div className="card-specs">
           <span><BedDouble size={15}/>{item.bedrooms ? `${item.bedrooms} BHK` : item.type}</span>
           <span><Maximize size={14}/>{item.area.toLocaleString()} sq ft</span>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   SlidersHorizontal,
   Search,
@@ -16,9 +16,12 @@ import {
   ChevronDown,
   Building2,
   House,
+  Compass,
+  Navigation,
 } from 'lucide-react';
 
 import { useData, useApp, api } from './providers';
+import { useUserLocation } from './LocationContext';
 import {
   Field,
   Pagination,
@@ -44,12 +47,18 @@ import PropertyMapView from './PropertyMapView';
 // Shows regular properties underneath the builder projects and Spotlight.
 function CityPropertiesSection({ cityName }) {
   const [page, setPage] = useState(1);
+  const { location, isLocationActive } = useUserLocation();
 
   const query = new URLSearchParams({
     city: cityName,
     page: String(page),
     limit: '10',
   });
+
+  if (isLocationActive && location?.lat && location?.lng) {
+    query.set('userLat', String(location.lat));
+    query.set('userLng', String(location.lng));
+  }
 
   const { data, error, loading } = useData(
     `properties?${query.toString()}`
@@ -149,6 +158,11 @@ export default function Listings({
   const router = useRouter();
   const params = useSearchParams();
   const { user, toast } = useApp();
+  const { location, isLocationActive, enableLocation, permissionStatus, openLocationPrompt } = useUserLocation();
+  const [locationUiMounted, setLocationUiMounted] = useState(false);
+  useEffect(() => {
+    setLocationUiMounted(true);
+  }, []);
   const [expanded, setExpanded] = useState(false);
   const [projectsExpanded, setProjectsExpanded] = useState(false);
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
@@ -202,8 +216,12 @@ export default function Listings({
     favorites,
   });
 
+  const locationSuffix = !projects && isLocationActive && location?.lat && location?.lng
+    ? `&userLat=${location.lat}&userLng=${location.lng}`
+    : '';
+
   const { data, error, loading, reload } = useData(
-    `${projects ? 'projects' : 'properties'}?${query}`
+    `${projects ? 'projects' : 'properties'}?${query}${locationSuffix}`
   );
 
   const fields = [
@@ -1110,20 +1128,23 @@ export default function Listings({
 
           <div className="flex gap-3">
             <select
-              className="input !w-auto"
+              className="input !w-auto text-xs sm:text-sm font-semibold"
               name="sort"
               aria-label="Sort results"
               defaultValue={params.get('sort') || ''}
+              onChange={(e) => {
+                if (e.target.value === 'nearest' && !isLocationActive) {
+                  enableLocation();
+                }
+              }}
             >
-              <option value="">Newest first</option>
+              <option value="">Newest Listings</option>
               <option value="recommended">Recommended</option>
-              <option value="price-asc">Price: low to high</option>
-
+              <option value="nearest">Nearest to me</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
               {!projects && (
-                <>
-                  <option value="price-desc">Price: high to low</option>
-                  <option value="area-desc">Largest first</option>
-                </>
+                <option value="area-desc">Largest first</option>
               )}
             </select>
 
@@ -1163,6 +1184,42 @@ export default function Listings({
               <Bell size={13} className="text-[#163e35]" />
               Save Search &amp; Create Alert 🔔
             </button>
+          )}
+
+          {!projects && !isLocationActive && (
+            <div className="inline-flex items-center">
+              {!locationUiMounted ? (
+                <button
+                  type="button"
+                  onClick={enableLocation}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-[#d8edb3] text-[#163e35] bg-[#f4f7f2] hover:bg-[#e8efe3] transition cursor-pointer"
+                  title="Sort by distance from your current location"
+                >
+                  <Navigation size={11} className="text-[#163e35]" />
+                  <span>Use My Location</span>
+                </button>
+              ) : permissionStatus === 'denied' ? (
+                <button
+                  type="button"
+                  onClick={() => { openLocationPrompt(); enableLocation(); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-stone-200 text-stone-700 bg-white hover:bg-stone-50 transition cursor-pointer"
+                  title="Enable location permission to discover nearby properties"
+                >
+                  <Compass size={12} className="text-stone-500" />
+                  <span>Enable Location</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { openLocationPrompt(); enableLocation(); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-[#d8edb3] text-[#163e35] bg-[#f4f7f2] hover:bg-[#e8efe3] transition cursor-pointer"
+                  title="Sort by distance from your current location"
+                >
+                  <Navigation size={11} className="text-[#163e35]" />
+                  <span>Use My Location</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
 

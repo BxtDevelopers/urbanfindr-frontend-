@@ -24,6 +24,7 @@ import {
 import PropertyMapView from './PropertyMapView';
 
 import { useData } from './providers';
+import { useUserLocation } from './LocationContext';
 import {
   Image,
   State,
@@ -141,11 +142,17 @@ export default function CityDiscovery({ slug }) {
 
   const category = categoryFor(purpose);
 
+  const { location, isLocationActive } = useUserLocation();
+
   // Query for properties or builder projects
   const propertiesQuery = listingQuery(params, {
     purpose,
     city: city.name,
   });
+
+  const locationSuffix = isLocationActive && location?.lat && location?.lng
+    ? `&userLat=${location.lat}&userLng=${location.lng}`
+    : '';
 
   const projectsQuery = listingQuery(params, {
     city: city.name,
@@ -157,7 +164,7 @@ export default function CityDiscovery({ slug }) {
     error: propertiesError,
     loading: propertiesLoading,
     reload: reloadProperties,
-  } = useData(!isProjects ? `properties?${propertiesQuery}` : null);
+  } = useData(!isProjects ? `properties?${propertiesQuery}${locationSuffix}` : null);
 
   const {
     data: projectsData,
@@ -1008,9 +1015,11 @@ export default function CityDiscovery({ slug }) {
                     })
                   }
                 >
-                  <option value="">Newest first</option>
-                  <option value="price-asc">Price: low to high</option>
-                  <option value="price-desc">Price: high to low</option>
+                  <option value="">Newest Listings</option>
+                  <option value="recommended">Recommended</option>
+                  <option value="nearest">Nearest to me</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
                   {!isProjects && <option value="area-desc">Largest first</option>}
                 </select>
               </div>

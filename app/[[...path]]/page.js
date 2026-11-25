@@ -1,2 +1,7 @@
 import Application from '@/components/application';
-export default function Page(){return <Application/>;}
+
+export const dynamic = 'force-dynamic';
+
+export default function Page(){
+  return <Application/>;
+}

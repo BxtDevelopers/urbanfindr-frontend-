@@ -20,8 +20,11 @@ import {
   IndianRupee,
   Scale,
   Sparkles,
+  Compass,
+  Navigation,
 } from 'lucide-react';
 import { useData } from './providers';
+import { useUserLocation } from './LocationContext';
 import { PropertyCard, ProjectCard, SectionTitle, State, Image } from './ui';
 import { CityCards } from './city-discovery';
 import { categories, categoryFor } from '@/lib/catalog';
@@ -250,9 +253,26 @@ export default function HomePage() {
     return !q || opt.label.toLowerCase().includes(q) || opt.sub.toLowerCase().includes(q);
   });
 
-  const featured = useData(`properties?featured=true&limit=7${featuredPurpose ? '&purpose=' + featuredPurpose : ''}`);
-  const verified = useData('properties?verified=true&limit=12');
-  const latest = useData('properties?limit=6');
+  const { location, isLocationActive, enableLocation, permissionStatus, nearestCity, openLocationPrompt } = useUserLocation();
+  const [locationUiMounted, setLocationUiMounted] = useState(false);
+  useEffect(() => {
+    setLocationUiMounted(true);
+  }, []);
+
+  // When location permission is granted and nearest city is identified, default city if not manually chosen
+  useEffect(() => {
+    if (nearestCity && !selectedCity) {
+      setSelectedCity(nearestCity);
+    }
+  }, [nearestCity, selectedCity]);
+
+  const locationQueryParam = isLocationActive && location?.lat && location?.lng
+    ? `&userLat=${location.lat}&userLng=${location.lng}&sort=recommended`
+    : '';
+
+  const featured = useData(`properties?featured=true&limit=7${featuredPurpose ? '&purpose=' + featuredPurpose : ''}${locationQueryParam}`);
+  const verified = useData(`properties?verified=true&limit=12${locationQueryParam}`);
+  const latest = useData(`properties?limit=6${locationQueryParam}`);
   const discovery = useData('discovery');
   const projects = useData('projects?limit=3');
   const designs = useData('designs?limit=3');
@@ -839,6 +859,56 @@ export default function HomePage() {
 
     {/* Explore by Category Section */}
     <ExploreCategories />
+
+    {/* Location-based Property Prioritization Indicator */}
+    <div className="wrap !pt-6 !pb-0 flex items-center justify-between flex-wrap gap-3">
+      {!locationUiMounted ? (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={enableLocation}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f4f7f2] hover:bg-[#e8efe3] text-[#163e35] text-xs font-medium border border-[#d8edb3] transition cursor-pointer"
+            title="Use current location to find nearby properties"
+          >
+            <Navigation size={12} className="text-[#163e35]" />
+            <span>Use My Location</span>
+          </button>
+          <span className="text-xs text-stone-500 hidden sm:inline">to discover properties closest to you</span>
+        </div>
+      ) : isLocationActive ? (
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ecf2e4] text-[#163e35] text-xs font-semibold border border-[#d8edb3] shadow-xs" suppressHydrationWarning>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <MapPin size={13} className="text-[#163e35]" />
+          <span>Showing properties near your location</span>
+          {nearestCity && <span className="text-stone-500 font-normal">({nearestCity} area)</span>}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2" suppressHydrationWarning>
+          {permissionStatus === 'denied' ? (
+            <button
+              type="button"
+              onClick={() => { openLocationPrompt(); enableLocation(); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium border border-stone-200 transition cursor-pointer"
+              title="Click to enable location and discover properties near you"
+            >
+              <Compass size={13} className="text-stone-500" />
+              <span>Enable Location</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { openLocationPrompt(); enableLocation(); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f4f7f2] hover:bg-[#e8efe3] text-[#163e35] text-xs font-medium border border-[#d8edb3] transition cursor-pointer"
+              title="Use current location to find nearby properties"
+            >
+              <Navigation size={12} className="text-[#163e35]" />
+              <span>Use My Location</span>
+            </button>
+          )}
+          <span className="text-xs text-stone-500 hidden sm:inline">to discover properties closest to you</span>
+        </div>
+      )}
+    </div>
 
     {/* 1. Featured Properties (Seamless Infinite Carousel) */}
     <section className="wrap section !pt-8 !pb-4 sm:!pb-6" id="featured-properties">

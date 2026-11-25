@@ -1,5 +1,8 @@
 'use client';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { LocationProvider, useUserLocation } from './LocationContext';
+
+export { useUserLocation };
 
 const inflightGetRequests = new Map();
 
@@ -241,7 +244,9 @@ export function Providers({ children }) {
         hasRole,
       }}
     >
-      {children}
+      <LocationProvider>
+        {children}
+      </LocationProvider>
       {toast && (
         <div
           role="status"
